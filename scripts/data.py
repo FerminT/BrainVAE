@@ -54,6 +54,10 @@ def crop_center(data, shape):
     return data[start_x:-start_x, start_y:-start_y, start_z:-start_z]
 
 
+def transform(img):
+    pass
+
+
 class T1Dataset(Dataset):
 
     def __init__(self, input_shape, datapath, data, transform=None):
