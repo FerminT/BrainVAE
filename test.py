@@ -1,4 +1,4 @@
-from model import icvae
+from models import icvae
 from torch import randn
 
 
