@@ -5,7 +5,7 @@ from scripts import data
 import yaml
 
 
-def train(model, metadata, batch_size, lr, epochs, log_interval, loss_fn, device, save_path):
+def train(model, dataset, val_dataset, batch_size, lr, epochs, log_interval, loss_fn, device, save_path):
     pass
 
 
@@ -30,11 +30,11 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default='models', help='save path')
 
     args = parser.parse_args()
-    metadata = Path('datasets', args.dataset, 'metadata', f'{args.dataset}_image_baseline_metadata.csv')
-    # TODO: check if splits have already been generated
-    train, val, test = data.generate_splits(metadata, args.sample_size, args.val_size, args.test_size, True, 42)
+    datapath = Path('datasets', args.dataset)
+    config = load_yaml(Path('cfg', args.cfg))
+    train_data, val_data, test_data = data.load_datasets(datapath, config['input_shape'], args.sample_size,
+                                                         args.val_size, args.test_size, shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset)
-    model_config = load_yaml(Path('cfg', args.cfg))
-    model = icvae.ICVAE(**model_config)
-    train(model, metadata, args.batch_size, args.lr, args.epochs, args.log_interval, loss.vae_loss,
+    model = icvae.ICVAE(**config)
+    train(model, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval, loss.vae_loss,
           args.device, save_path)
