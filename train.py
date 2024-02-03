@@ -26,6 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
     parser.add_argument('--val_size', type=float, default=0.2, help='validation size')
     parser.add_argument('--test_size', type=float, default=0.1, help='test size')
+    parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
     parser.add_argument('--device', type=str, default='cpu', help='device (cuda or cpu)')
     parser.add_argument('--save_path', type=str, default='models', help='save path')
 
@@ -33,7 +34,8 @@ if __name__ == '__main__':
     datapath = Path('datasets', args.dataset)
     config = load_yaml(Path('cfg', args.cfg))
     train_data, val_data, test_data = data.load_datasets(datapath, config['input_shape'], args.sample_size,
-                                                         args.val_size, args.test_size, shuffle=True, random_state=42)
+                                                         args.val_size, args.test_size, args.redo_splits,
+                                                         shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset)
     model = icvae.ICVAE(**config)
     train(model, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval, loss.vae_loss,

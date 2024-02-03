@@ -5,9 +5,9 @@ from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 
 
-def load_datasets(datapath, input_shape, sample_size, val_size, test_size, shuffle, random_state):
+def load_datasets(datapath, input_shape, sample_size, val_size, test_size, redo_splits, shuffle, random_state):
     metadata = pd.read_csv(datapath / 'metadata' / f'{datapath.name}_image_baseline_metadata.csv')
-    train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size,
+    train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
     train_dataset = T1Dataset(input_shape, datapath, train)
     val_dataset = T1Dataset(input_shape, datapath, val)
@@ -15,9 +15,9 @@ def load_datasets(datapath, input_shape, sample_size, val_size, test_size, shuff
     return train_dataset, val_dataset, test_dataset
 
 
-def load_splits(datapath, metadata, sample_size, val_size, test_size, shuffle, random_state):
+def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuffle, random_state):
     splits_path = datapath / 'splits'
-    if splits_path.exists():
+    if splits_path.exists() and not redo:
         train = pd.read_csv(splits_path / 'train.csv')
         val = pd.read_csv(splits_path / 'val.csv')
         test = pd.read_csv(splits_path / 'test.csv')
