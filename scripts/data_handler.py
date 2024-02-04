@@ -1,8 +1,12 @@
 import nibabel as nib
 import numpy as np
 import pandas as pd
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
+
+
+def get_loader(dataset, batch_size, shuffle):
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 def load_datasets(datapath, input_shape, sample_size, val_size, test_size, redo_splits, shuffle, random_state):
