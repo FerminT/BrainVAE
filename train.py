@@ -8,7 +8,7 @@ import torch
 import yaml
 
 
-def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, run_name, save_path):
+def train(model_name, config, train_data, val_data, batch_size, lr, epochs, save_interval, device, run_name, save_path):
     model = getattr(icvae, model_name)(**config)
     model.to(device)
     optimizer = getattr(torch.optim, config['optimizer'].upper())(model.parameters(), lr=lr)
@@ -19,7 +19,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
     for epoch in range(epochs):
         model.train()
         train_loss = 0
-        for batch_idx, (data, _) in enumerate(train_loader):
+        for data in train_loader:
             data = data.to(device)
             optimizer.zero_grad()
             recon_batch, mu, logvar = model(data)
@@ -27,14 +27,11 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
             loss.backward()
             train_loss += loss.item()
             optimizer.step()
-            if batch_idx % log_interval == 0:
-                print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} '
-                      f'({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item() / len(data):.6f}')
         print(f'====> Epoch: {epoch} Average loss: {train_loss / len(train_loader.dataset):.4f}')
         model.eval()
         val_loss = 0
         with torch.no_grad():
-            for i, (data, _) in enumerate(val_loader):
+            for i, data in enumerate(val_loader):
                 data = data.to(device)
                 recon_batch, mu, logvar = model(data)
                 val_loss += criterion(recon_batch, data, mu, logvar).item()
@@ -45,6 +42,10 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         val_loss /= len(val_loader.dataset)
         print(f'====> Validation set loss: {val_loss:.4f}')
         log.step(train_loss / len(train_loader.dataset), val_loss)
+        if epoch % save_interval == 0:
+            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(), 'loss': val_loss},
+                       f'{save_path}/{run_name}_checkpoint_{epoch}.pt')
     torch.save(model.state_dict(), f'{save_path}/{run_name}.pt')
 
 
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
-    parser.add_argument('--log_interval', type=int, default=10, help='log interval')
+    parser.add_argument('--save_interval', type=int, default=10, help='save checkpoint interval')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
     parser.add_argument('--val_size', type=float, default=0.2, help='validation size')
     parser.add_argument('--test_size', type=float, default=0.1, help='test size')
@@ -79,5 +80,5 @@ if __name__ == '__main__':
     if not save_path.exists():
         save_path.mkdir(parents=True)
     run_name = f'{args.model}_b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
-    train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
+    train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.save_interval,
           args.device, run_name, save_path)
