@@ -9,3 +9,5 @@ pool_stride: 2
 last_kernel_size: 1
 last_padding: 0
 channels: [32, 64, 128, 256, 256, 64]
+loss: 'bce_kld'
+optimizer: 'adam'
