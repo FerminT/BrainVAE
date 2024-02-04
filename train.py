@@ -1,12 +1,51 @@
 import argparse
 from pathlib import Path
-from models import icvae, loss
-from scripts import data
+from models import icvae, losses
+from scripts import log
+from scripts.data_handler import get_loader, load_datasets
+from torchvision.utils import save_image
+import torch
 import yaml
 
 
-def train(model, dataset, val_dataset, batch_size, lr, epochs, log_interval, loss_fn, device, save_path):
-    pass
+def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, run_name, save_path):
+    model = getattr(icvae, model_name)(**config)
+    model.to(device)
+    optimizer = getattr(torch.optim, config['optimizer'].upper())(model.parameters(), lr=lr)
+    criterion = getattr(losses, config['loss'])
+    train_loader = get_loader(train_data, batch_size, shuffle=False)
+    val_loader = get_loader(val_data, batch_size, shuffle=False)
+    log.init('BrainVAE', run_name, config['latent_dim'], lr, batch_size, epochs, len(train_data))
+    for epoch in range(epochs):
+        model.train()
+        train_loss = 0
+        for batch_idx, (data, _) in enumerate(train_loader):
+            data = data.to(device)
+            optimizer.zero_grad()
+            recon_batch, mu, logvar = model(data)
+            loss = criterion(recon_batch, data, mu, logvar)
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
+            if batch_idx % log_interval == 0:
+                print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} '
+                      f'({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item() / len(data):.6f}')
+        print(f'====> Epoch: {epoch} Average loss: {train_loss / len(train_loader.dataset):.4f}')
+        model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            for i, (data, _) in enumerate(val_loader):
+                data = data.to(device)
+                recon_batch, mu, logvar = model(data)
+                val_loss += criterion(recon_batch, data, mu, logvar).item()
+                if i == 0:
+                    n = min(data.size(0), 8)
+                    comparison = torch.cat([data[:n], recon_batch.view(batch_size, 1, *config['input_shape'])[:n]])
+                    save_image(comparison.cpu(), f'{save_path}/{run_name}_reconstruction_{epoch}.png', nrow=n)
+        val_loss /= len(val_loader.dataset)
+        print(f'====> Validation set loss: {val_loss:.4f}')
+        log.step(train_loss / len(train_loader.dataset), val_loss)
+    torch.save(model.state_dict(), f'{save_path}/{run_name}.pt')
 
 
 def load_yaml(filepath):
@@ -28,15 +67,17 @@ if __name__ == '__main__':
     parser.add_argument('--test_size', type=float, default=0.1, help='test size')
     parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
     parser.add_argument('--device', type=str, default='cpu', help='device (cuda or cpu)')
-    parser.add_argument('--save_path', type=str, default='models', help='save path')
+    parser.add_argument('--save_path', type=str, default='checkpoints', help='save path')
 
     args = parser.parse_args()
     datapath = Path('datasets', args.dataset)
     config = load_yaml(Path('cfg', args.cfg))
-    train_data, val_data, test_data = data.load_datasets(datapath, config['input_shape'], args.sample_size,
-                                                         args.val_size, args.test_size, args.redo_splits,
-                                                         shuffle=True, random_state=42)
+    train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], args.sample_size,
+                                                    args.val_size, args.test_size, args.redo_splits,
+                                                    shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset)
-    model = icvae.ICVAE(**config)
-    train(model, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval, loss.vae_loss,
-          args.device, save_path)
+    if not save_path.exists():
+        save_path.mkdir(parents=True)
+    run_name = f'{args.model}_b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
+    train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
+          args.device, run_name, save_path)
