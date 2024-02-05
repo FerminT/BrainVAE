@@ -1,5 +1,40 @@
-from models import icvae
+from models import icvae, losses
 from torch import randn
+from scripts.utils import load_yaml
+from pathlib import Path
+from torch import optim
+from scripts.data_handler import load_datasets, get_loader
+
+CFG_PATH = Path('cfg')
+DATA_PATH = Path('datasets')
+
+
+def load_ukbb_data():
+    config = load_yaml(CFG_PATH / 'default.yaml')
+    train, val, test = load_datasets(DATA_PATH / 'ukbb', config['input_shape'], -1, 0.2, 0.1,
+                                        redo_splits=False, shuffle=True, random_state=42)
+    train_loader = get_loader(train, 8, shuffle=False)
+    val_loader = get_loader(val, 8, shuffle=False)
+    test_loader = get_loader(test, 8, shuffle=False)
+    assert len(train) > 0, f"len(train): {len(train)}"
+    assert len(val) > 0, f"len(val): {len(val)}"
+    assert len(test) > 0, f"len(test): {len(test)}"
+    assert len(train_loader) > 0, f"len(train_loader): {len(train_loader)}"
+    assert len(val_loader) > 0, f"len(val_loader): {len(val_loader)}"
+    assert len(test_loader) > 0, f"len(test_loader): {len(test_loader)}"
+    (DATA_PATH / 'ukbb' / 'splits' / 'train.csv').unlink()
+    (DATA_PATH / 'ukbb' / 'splits' / 'val.csv').unlink()
+    (DATA_PATH / 'ukbb' / 'splits' / 'test.csv').unlink()
+    (DATA_PATH / 'ukbb' / 'splits').rmdir()
+    print("load_ukbb_data passed")
+
+
+def load_model_with_config():
+    config = load_yaml(CFG_PATH / 'default.yaml')
+    model = getattr(icvae, 'ICVAE')(**config)
+    optimizer = getattr(optim, config['optimizer'].upper())(model.parameters(), lr=0.001)
+    criterion = getattr(losses, config['loss'])
+    print("load_model_with_config passed")
 
 
 def encoder_decoder_shapes():
