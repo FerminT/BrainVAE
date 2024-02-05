@@ -4,6 +4,7 @@ from scripts import log
 from scripts.data_handler import get_loader, load_datasets
 from torchvision.utils import save_image
 from scripts.utils import load_yaml
+from scripts.log import save_ckpt
 import argparse
 import torch
 
@@ -15,8 +16,17 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
     criterion = getattr(losses, config['loss'])
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
-    log.init('BrainVAE', run_name, config['params']['latent_dim'], lr, batch_size, epochs, len(train_data), model)
-    for epoch in range(epochs):
+    epoch, best_val_loss = log.resume(project='BrainVAE',
+                                      run_name=run_name,
+                                      model=model,
+                                      optimizer=optimizer,
+                                      lr=lr,
+                                      batch_size=batch_size,
+                                      epochs=epochs,
+                                      latent_dim=config['params']['latent_dim'],
+                                      sample_size=len(train_data),
+                                      save_path=save_path)
+    while epoch < epochs:
         model.train()
         train_rcon_loss, train_prior_loss = 0, 0
         for batch_idx, data in enumerate(train_loader):
@@ -46,17 +56,18 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                 if i == 0:
                     n = min(data.size(0), 8)
                     comparison = torch.cat([data[:n], recon_batch.view(batch_size, 1, *config['input_shape'])[:n]])
-                    save_image(comparison.cpu(), f'{save_path}/{run_name}_reconstruction_{epoch}.png', nrow=n)
+                    save_image(comparison.cpu(), save_path / f'{run_name}_reconstruction_{epoch}.png', nrow=n)
         val_rcon_loss /= len(val_loader.dataset)
         val_prior_loss /= len(val_loader.dataset)
-        print(f'====> Validation set loss: {(val_rcon_loss + val_prior_loss):.4f}')
+        total_val_loss = val_rcon_loss + val_prior_loss
+        print(f'====> Validation set loss: {total_val_loss:.4f}')
         log.step({'train': {'reconstruction_loss': train_rcon_loss, 'prior_loss': train_prior_loss, 'epoch': epoch},
                   'val': {'reconstruction_loss': val_rcon_loss, 'prior_loss': val_prior_loss, 'epoch': epoch}})
-        if epoch % log_interval == 0:
-            torch.save({'epoch': epoch, 'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict()},
-                       f'{save_path}/{run_name}_checkpoint_{epoch}.pt')
-    torch.save(model.state_dict(), f'{save_path}/{run_name}.pt')
+        is_best_run = total_val_loss < best_val_loss
+        best_val_loss = min(best_val_loss, total_val_loss)
+        save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, is_best_run, save_path, run_name)
+        epoch += 1
+    torch.save(model.state_dict(), save_path / f'{run_name}.pt')
 
 
 if __name__ == '__main__':
@@ -81,9 +92,9 @@ if __name__ == '__main__':
     train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], args.sample_size,
                                                     args.val_size, args.test_size, args.redo_splits,
                                                     shuffle=True, random_state=42)
-    save_path = Path(args.save_path, args.dataset)
+    save_path = Path(args.save_path, args.dataset, args.model, args.cfg.split('.')[0])
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    run_name = f'{args.model}_b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
+    run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
     train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
           args.device, run_name, save_path)
