@@ -1,11 +1,11 @@
-import argparse
 from pathlib import Path
 from models import icvae, losses
 from scripts import log
 from scripts.data_handler import get_loader, load_datasets
 from torchvision.utils import save_image
+from scripts.utils import load_yaml
+import argparse
 import torch
-import yaml
 
 
 def train(model_name, config, train_data, val_data, batch_size, lr, epochs, save_interval, device, run_name, save_path):
@@ -47,11 +47,6 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, save
                         'optimizer_state_dict': optimizer.state_dict(), 'loss': val_loss},
                        f'{save_path}/{run_name}_checkpoint_{epoch}.pt')
     torch.save(model.state_dict(), f'{save_path}/{run_name}.pt')
-
-
-def load_yaml(filepath):
-    with filepath.open('r') as file:
-        return yaml.safe_load(file)
 
 
 if __name__ == '__main__':
