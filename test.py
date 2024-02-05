@@ -11,7 +11,7 @@ DATA_PATH = Path('datasets')
 
 def load_ukbb_data():
     config = load_yaml(CFG_PATH / 'default.yaml')
-    train, val, test = load_datasets(DATA_PATH / 'ukbb', config['input_shape'], -1, 0.2, 0.1,
+    train, val, test = load_datasets(DATA_PATH / 'ukbb', config['params']['input_shape'], -1, 0.2, 0.1,
                                         redo_splits=False, shuffle=True, random_state=42)
     train_loader = get_loader(train, 8, shuffle=False)
     val_loader = get_loader(val, 8, shuffle=False)
@@ -31,8 +31,8 @@ def load_ukbb_data():
 
 def load_model_with_config():
     config = load_yaml(CFG_PATH / 'default.yaml')
-    model = getattr(icvae, 'ICVAE')(**config)
-    optimizer = getattr(optim, config['optimizer'].upper())(model.parameters(), lr=0.001)
+    model = getattr(icvae, 'ICVAE')(**config['params'])
+    optimizer = getattr(optim, config['optimizer'].capitalize())(model.parameters(), lr=0.001)
     criterion = getattr(losses, config['loss'])
     print("load_model_with_config passed")
 
@@ -67,4 +67,6 @@ def forward_pass():
 if __name__ == "__main__":
     encoder_decoder_shapes()
     forward_pass()
+    load_model_with_config()
+    load_ukbb_data()
     print("All tests passed")

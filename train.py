@@ -9,13 +9,13 @@ import torch
 
 
 def train(model_name, config, train_data, val_data, batch_size, lr, epochs, save_interval, device, run_name, save_path):
-    model = getattr(icvae, model_name)(**config)
+    model = getattr(icvae, model_name)(**config['params'])
     model.to(device)
     optimizer = getattr(torch.optim, config['optimizer'].upper())(model.parameters(), lr=lr)
     criterion = getattr(losses, config['loss'])
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
-    log.init('BrainVAE', run_name, config['latent_dim'], lr, batch_size, epochs, len(train_data))
+    log.init('BrainVAE', run_name, config['params']['latent_dim'], lr, batch_size, epochs, len(train_data))
     for epoch in range(epochs):
         model.train()
         train_loss = 0
