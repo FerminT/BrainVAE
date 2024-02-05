@@ -17,5 +17,5 @@ def init(project, name, latent_dim, lr, batch_size, epoch, sample_size, offline=
     return run
 
 
-def step(train_loss, val_loss):
-    wandb.log({'train_loss': train_loss, 'val_loss': val_loss})
+def step(metrics_dict):
+    wandb.log(metrics_dict)
