@@ -32,7 +32,7 @@ def load_ukbb_data():
 def load_model_with_config():
     config = load_yaml(CFG_PATH / 'default.yaml')
     model = getattr(icvae, 'ICVAE')(**config['params'])
-    optimizer = getattr(optim, config['optimizer'].capitalize())(model.parameters(), lr=0.001)
+    optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=0.001)
     criterion = getattr(losses, config['loss'])
     print("load_model_with_config passed")
 

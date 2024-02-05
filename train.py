@@ -11,7 +11,7 @@ import torch
 def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, run_name, save_path):
     model = getattr(icvae, model_name)(**config['params'])
     model.to(device)
-    optimizer = getattr(torch.optim, config['optimizer'].upper())(model.parameters(), lr=lr)
+    optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr)
     criterion = getattr(losses, config['loss'])
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
