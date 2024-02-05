@@ -15,7 +15,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
     criterion = getattr(losses, config['loss'])
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
-    log.init('BrainVAE', run_name, config['params']['latent_dim'], lr, batch_size, epochs, len(train_data))
+    log.init('BrainVAE', run_name, config['params']['latent_dim'], lr, batch_size, epochs, len(train_data), model)
     for epoch in range(epochs):
         model.train()
         train_rcon_loss, train_prior_loss = 0, 0

@@ -2,7 +2,7 @@ import wandb
 from os import environ
 
 
-def init(project, name, latent_dim, lr, batch_size, epoch, sample_size, offline=False):
+def init(project, name, latent_dim, lr, batch_size, epoch, sample_size, model, offline=False):
     if offline:
         environ['WANDB_MODE'] = 'offline'
     wandb.login()
@@ -13,6 +13,7 @@ def init(project, name, latent_dim, lr, batch_size, epoch, sample_size, offline=
         'epoch': epoch,
         'sample_size': sample_size
     })
+    wandb.watch(model)
 
     return run
 
