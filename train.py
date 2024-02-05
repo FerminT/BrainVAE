@@ -10,7 +10,7 @@ import torch
 
 
 def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, run_name, save_path):
-    model = getattr(icvae, model_name)(**config['params'])
+    model = getattr(icvae, model_name.upper())(**config['params'])
     model.to(device)
     optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr)
     criterion = getattr(losses, config['loss'])
@@ -56,7 +56,9 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                 val_prior_loss += prior_loss.item()
                 if i == 0:
                     n = min(data.size(0), 8)
-                    comparison = torch.cat([data[:n], recon_batch.view(batch_size, 1, *config['input_shape'])[:n]])
+                    comparison = torch.cat([data[:n], recon_batch.view(batch_size,
+                                                                       1,
+                                                                       *config['params']['input_shape'])[:n]])
                     save_image(comparison.cpu(), save_path / f'{run_name}_reconstruction_{epoch}.png', nrow=n)
         val_rcon_loss /= len(val_loader.dataset)
         val_prior_loss /= len(val_loader.dataset)
@@ -90,12 +92,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     datapath = Path('datasets', args.dataset)
     config = load_yaml(Path('cfg', args.cfg))
-    train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], args.sample_size,
-                                                    args.val_size, args.test_size, args.redo_splits,
+    if args.device == 'cuda' and not torch.cuda.is_available():
+        raise ValueError('cuda is not available')
+    device = torch.device(args.device)
+    train_data, val_data, test_data = load_datasets(datapath, config['params']['input_shape'], args.sample_size,
+                                                    args.val_size, args.test_size, args.redo_splits, device,
                                                     shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset, args.model, args.cfg.split('.')[0])
     if not save_path.exists():
         save_path.mkdir(parents=True)
     run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
     train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
-          args.device, run_name, save_path)
+          device, run_name, save_path)

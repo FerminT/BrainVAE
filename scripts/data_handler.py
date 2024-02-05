@@ -2,6 +2,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+from torch import from_numpy
 from sklearn.model_selection import train_test_split
 
 
@@ -9,13 +10,13 @@ def get_loader(dataset, batch_size, shuffle):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def load_datasets(datapath, input_shape, sample_size, val_size, test_size, redo_splits, shuffle, random_state):
+def load_datasets(datapath, input_shape, sample_size, val_size, test_size, redo_splits, device, shuffle, random_state):
     metadata = pd.read_csv(datapath / 'metadata' / f'{datapath.name}_image_baseline_metadata.csv')
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train)
-    val_dataset = T1Dataset(input_shape, datapath, val)
-    test_dataset = T1Dataset(input_shape, datapath, test)
+    train_dataset = T1Dataset(input_shape, datapath, train, device)
+    val_dataset = T1Dataset(input_shape, datapath, val, device)
+    test_dataset = T1Dataset(input_shape, datapath, test, device)
     return train_dataset, val_dataset, test_dataset
 
 
@@ -64,11 +65,12 @@ def transform(img):
 
 class T1Dataset(Dataset):
 
-    def __init__(self, input_shape, datapath, data, transform=None):
+    def __init__(self, input_shape, datapath, data, device, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
+        self.device = device
 
     def __len__(self):
         return len(self.data)
@@ -81,4 +83,5 @@ class T1Dataset(Dataset):
         if self.transform:
             t1_img = self.transform(t1_img)
         t1_img = crop_center(t1_img, self.input_shape)
+        t1_img = from_numpy(np.asarray([t1_img])).to(self.device)
         return t1_img
