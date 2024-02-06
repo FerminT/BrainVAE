@@ -27,7 +27,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
                                                     epoch)
         print(f'====> Epoch: {epoch} Avg loss: 'f'{avg_rcon_loss + avg_prior_loss:.4f}')
-        val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, device, epoch, run_name, save_path)
+        val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, device, epoch, save_path)
         total_val_loss = val_rcon_loss + val_prior_loss
         print(f'====> Validation set loss: {total_val_loss:.4f}')
         log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
@@ -59,7 +59,7 @@ def train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
     return rcon_loss / len(train_loader.dataset), prior_loss / len(train_loader.dataset)
 
 
-def eval_epoch(model, val_loader, criterion, device, epoch, run_name, save_path):
+def eval_epoch(model, val_loader, criterion, device, epoch, save_path):
     model.eval()
     val_rcon_loss, val_prior_loss = 0, 0
     with torch.no_grad():
@@ -70,7 +70,7 @@ def eval_epoch(model, val_loader, criterion, device, epoch, run_name, save_path)
             val_rcon_loss += rcon_loss.item()
             val_prior_loss += prior_loss.item()
             if i == 0:
-                save_reconstruction_batch(data, recon_batch, epoch, run_name, save_path)
+                save_reconstruction_batch(data, recon_batch, epoch, save_path)
 
     return val_rcon_loss / len(val_loader.dataset), val_prior_loss / len(val_loader.dataset)
 
@@ -102,8 +102,9 @@ if __name__ == '__main__':
                                                     args.val_size, args.test_size, args.redo_splits, device,
                                                     shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset, args.model, args.cfg.split('.')[0])
+    run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
+    save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
     train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
           device, run_name, args.no_sync, save_path)
