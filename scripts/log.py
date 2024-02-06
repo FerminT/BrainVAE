@@ -25,12 +25,12 @@ def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_d
     return epoch, val_loss
 
 
-def save_ckpt(epoch, model_state, optimizer_state, val_loss, is_best_run, save_path, run_name):
+def save_ckpt(epoch, model_state, optimizer_state, loss, best_loss, save_path, run_name):
     filename = save_path / f'{run_name}_ckpt_{epoch}.pt'
     save_dict = {'epoch': epoch, 'model_state_dict': model_state, 'optimizer_state_dict': optimizer_state,
-                 'val_loss': val_loss}
+                 'val_loss': loss}
     save(save_dict, filename)
-    if is_best_run:
+    if loss < best_loss:
         best_filename = save_path / f'{run_name}_best.pt'
         save(save_dict, best_filename)
 

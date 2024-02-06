@@ -36,9 +36,9 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         print(f'====> Validation set loss: {total_val_loss:.4f}')
         log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
                   'val': {'reconstruction_loss': val_rcon_loss, 'prior_loss': val_prior_loss, 'epoch': epoch}})
-        is_best_run = total_val_loss < best_val_loss
+        log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, best_val_loss,
+                      save_path, run_name)
         best_val_loss = min(best_val_loss, total_val_loss)
-        log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, is_best_run, save_path, run_name)
         epoch += 1
     log.finish(model.state_dict(), save_path, run_name)
 
