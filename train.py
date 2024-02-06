@@ -1,7 +1,6 @@
 from pathlib import Path
 from models import icvae, losses
 from scripts.data_handler import get_loader, load_datasets
-from torchvision.utils import save_image
 from scripts.utils import load_yaml, save_reconstruction_batch
 from scripts import log
 from tqdm import tqdm
@@ -29,24 +28,9 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       save_path=save_path,
                                       offline=no_sync)
     while epoch < epochs:
-        model.train()
-        train_rcon_loss, train_prior_loss = 0, 0
-        for batch_idx, data in enumerate(pbar := tqdm(train_loader)):
-            data = data.to(device)
-            optimizer.zero_grad()
-            recon_batch, mu, logvar = model(data)
-            recon_loss, prior_loss = criterion(recon_batch, data, mu, logvar)
-            loss = recon_loss + prior_loss
-            loss.backward()
-            train_rcon_loss += recon_loss.item()
-            train_prior_loss += prior_loss.item()
-            optimizer.step()
-            pbar.set_description(f'Epoch {epoch} - loss: {loss.item():.4f}')
-            if batch_idx % log_interval == 0:
-                log.step({'train': {'batch': batch_idx, 'reconstruction_loss': recon_loss, 'prior_loss': prior_loss}})
-        train_rcon_loss /= len(train_loader.dataset)
-        train_prior_loss /= len(train_loader.dataset)
-        print(f'====> Epoch: {epoch} Average loss: 'f'{train_rcon_loss + train_prior_loss:.4f}')
+        avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
+                                                    epoch)
+        print(f'====> Epoch: {epoch} Avg loss: 'f'{avg_rcon_loss + avg_prior_loss:.4f}')
         model.eval()
         val_rcon_loss, val_prior_loss = 0, 0
         with torch.no_grad():
@@ -62,13 +46,33 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         val_prior_loss /= len(val_loader.dataset)
         total_val_loss = val_rcon_loss + val_prior_loss
         print(f'====> Validation set loss: {total_val_loss:.4f}')
-        log.step({'train': {'reconstruction_loss': train_rcon_loss, 'prior_loss': train_prior_loss, 'epoch': epoch},
+        log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
                   'val': {'reconstruction_loss': val_rcon_loss, 'prior_loss': val_prior_loss, 'epoch': epoch}})
         is_best_run = total_val_loss < best_val_loss
         best_val_loss = min(best_val_loss, total_val_loss)
         log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, is_best_run, save_path, run_name)
         epoch += 1
     log.finish(model.state_dict(), save_path, run_name)
+
+
+def train_epoch(model, train_loader, optimizer, criterion, device, log_interval, epoch):
+    rcon_loss, prior_loss = 0, 0
+    model.train()
+    for batch_idx, data in enumerate(pbar := tqdm(train_loader)):
+        data = data.to(device)
+        optimizer.zero_grad()
+        recon_batch, mu, logvar = model(data)
+        recon_loss, prior_loss = criterion(recon_batch, data, mu, logvar)
+        loss = recon_loss + prior_loss
+        loss.backward()
+        rcon_loss += recon_loss.item()
+        prior_loss += prior_loss.item()
+        optimizer.step()
+        pbar.set_description(f'Epoch {epoch} - loss: {loss.item():.4f}')
+        if batch_idx % log_interval == 0:
+            log.step({'train': {'batch': batch_idx, 'reconstruction_loss': recon_loss, 'prior_loss': prior_loss}})
+
+    return rcon_loss / len(train_loader.dataset), prior_loss / len(train_loader.dataset)
 
 
 if __name__ == '__main__':
