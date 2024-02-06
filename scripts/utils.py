@@ -1,6 +1,15 @@
 import yaml
-from torch import cat
+from torch import cat, optim
 from torchvision.utils import save_image
+from models import icvae, losses
+
+
+def load_architecture(model_name, config, device, lr):
+    model = getattr(icvae, model_name.upper())(**config['params'])
+    model.to(device)
+    optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=lr)
+    criterion = getattr(losses, config['loss'])
+    return model, optimizer, criterion
 
 
 def save_reconstruction_batch(data, recon_batch, epoch, run_name, save_path):

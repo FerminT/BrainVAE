@@ -1,7 +1,6 @@
 from pathlib import Path
-from models import icvae, losses
 from scripts.data_handler import get_loader, load_datasets
-from scripts.utils import load_yaml, save_reconstruction_batch
+from scripts.utils import load_yaml, load_architecture, save_reconstruction_batch
 from scripts import log
 from tqdm import tqdm
 import argparse
@@ -10,10 +9,7 @@ import torch
 
 def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval,
           device, run_name, no_sync, save_path):
-    model = getattr(icvae, model_name.upper())(**config['params'])
-    model.to(device)
-    optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr)
-    criterion = getattr(losses, config['loss'])
+    model, optimizer, criterion = load_architecture(model_name, config, device, lr)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     epoch, best_val_loss = log.resume(project='BrainVAE',
