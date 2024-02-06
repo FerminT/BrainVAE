@@ -55,11 +55,19 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                 val_rcon_loss += rcon_loss.item()
                 val_prior_loss += prior_loss.item()
                 if i == 0:
-                    n = min(data.size(0), 8)
-                    comparison = torch.cat([data[:n], recon_batch.view(batch_size,
-                                                                       1,
-                                                                       *config['params']['input_shape'])[:n]])
-                    save_image(comparison.cpu(), save_path / f'{run_name}_reconstruction_{epoch}.png', nrow=n)
+                    n, n_slice = min(data.size(0), 8), 50
+                    for axis in range(3):
+                        if axis == 0:
+                            original_slice = data[:, :, n_slice, :, :]
+                            reconstructed_slice = recon_batch[:, :, n_slice, :, :]
+                        elif axis == 1:
+                            original_slice = data[:, :, :, n_slice, :]
+                            reconstructed_slice = recon_batch[:, :, :, n_slice, :]
+                        else:
+                            original_slice = data[:, :, :, :, n_slice]
+                            reconstructed_slice = recon_batch[:, :, :, :, n_slice]
+                        comparison = torch.cat([original_slice[:n], reconstructed_slice[:n]])
+                        save_image(comparison.cpu(), save_path / f'{run_name}_reconstruction_{epoch}_axis_{axis}.png', nrow=n)
         val_rcon_loss /= len(val_loader.dataset)
         val_prior_loss /= len(val_loader.dataset)
         total_val_loss = val_rcon_loss + val_prior_loss
@@ -70,7 +78,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         best_val_loss = min(best_val_loss, total_val_loss)
         log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, is_best_run, save_path, run_name)
         epoch += 1
-    torch.save(model.state_dict(), save_path / f'{run_name}.pt')
+    log.finish(model.state_dict(), save_path, run_name)
 
 
 if __name__ == '__main__':

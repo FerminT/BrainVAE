@@ -14,9 +14,8 @@ def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_d
         'epochs': epochs,
         'sample_size': sample_size
     }, resume=True)
-    best_ckpt = save_path / f'{run_name}_best.pt'
-    if wandb.run.resumed and best_ckpt.exists():
-        ckpt = load(wandb.restore(best_ckpt))
+    if wandb.run.resumed:
+        ckpt = load(wandb.restore(f'{run_name}_best.pt'))
         model.load_state_dict(ckpt['model_state_dict'])
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
         epoch, val_loss = ckpt['epoch'], ckpt['val_loss']
@@ -32,10 +31,16 @@ def save_ckpt(epoch, model_state, optimizer_state, val_loss, is_best_run, save_p
                  'val_loss': val_loss}
     save(save_dict, filename)
     if is_best_run:
-        best_filename = f'{save_path}/{run_name}_best.pt'
+        best_filename = save_path / f'{run_name}_best.pt'
         save(save_dict, best_filename)
-    wandb.save(filename)
+        wandb.save(best_filename)
 
 
 def step(metrics_dict):
     wandb.log(metrics_dict)
+
+
+def finish(model_state, save_path, run_name):
+    save(model_state, save_path / f'{run_name}.pt')
+    wandb.save(save_path / f'{run_name}.pt')
+    wandb.finish()
