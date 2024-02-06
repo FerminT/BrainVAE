@@ -31,19 +31,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
                                                     epoch)
         print(f'====> Epoch: {epoch} Avg loss: 'f'{avg_rcon_loss + avg_prior_loss:.4f}')
-        model.eval()
-        val_rcon_loss, val_prior_loss = 0, 0
-        with torch.no_grad():
-            for i, data in enumerate(val_loader):
-                data = data.to(device)
-                recon_batch, mu, logvar = model(data)
-                rcon_loss, prior_loss = criterion(recon_batch, data, mu, logvar)
-                val_rcon_loss += rcon_loss.item()
-                val_prior_loss += prior_loss.item()
-                if i == 0:
-                    save_reconstruction_batch(data, recon_batch, epoch, run_name, save_path)
-        val_rcon_loss /= len(val_loader.dataset)
-        val_prior_loss /= len(val_loader.dataset)
+        val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, device, epoch, run_name, save_path)
         total_val_loss = val_rcon_loss + val_prior_loss
         print(f'====> Validation set loss: {total_val_loss:.4f}')
         log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
@@ -73,6 +61,22 @@ def train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
             log.step({'train': {'batch': batch_idx, 'reconstruction_loss': recon_loss, 'prior_loss': prior_loss}})
 
     return rcon_loss / len(train_loader.dataset), prior_loss / len(train_loader.dataset)
+
+
+def eval_epoch(model, val_loader, criterion, device, epoch, run_name, save_path):
+    model.eval()
+    val_rcon_loss, val_prior_loss = 0, 0
+    with torch.no_grad():
+        for i, data in enumerate(val_loader):
+            data = data.to(device)
+            recon_batch, mu, logvar = model(data)
+            rcon_loss, prior_loss = criterion(recon_batch, data, mu, logvar)
+            val_rcon_loss += rcon_loss.item()
+            val_prior_loss += prior_loss.item()
+            if i == 0:
+                save_reconstruction_batch(data, recon_batch, epoch, run_name, save_path)
+
+    return val_rcon_loss / len(val_loader.dataset), val_prior_loss / len(val_loader.dataset)
 
 
 if __name__ == '__main__':
