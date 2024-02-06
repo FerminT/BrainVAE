@@ -26,6 +26,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       epochs=epochs,
                                       latent_dim=config['params']['latent_dim'],
                                       sample_size=len(train_data),
+                                      save_path=save_path,
                                       offline=no_sync)
     while epoch < epochs:
         model.train()
