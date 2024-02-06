@@ -9,7 +9,8 @@ import argparse
 import torch
 
 
-def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, run_name, save_path):
+def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval,
+          device, run_name, no_sync, save_path):
     model = getattr(icvae, model_name.upper())(**config['params'])
     model.to(device)
     optimizer = getattr(torch.optim, config['optimizer'])(model.parameters(), lr=lr)
@@ -25,7 +26,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       epochs=epochs,
                                       latent_dim=config['params']['latent_dim'],
                                       sample_size=len(train_data),
-                                      save_path=save_path)
+                                      offline=no_sync)
     while epoch < epochs:
         model.train()
         train_rcon_loss, train_prior_loss = 0, 0
@@ -94,6 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_size', type=float, default=0.2, help='validation size')
     parser.add_argument('--test_size', type=float, default=0.1, help='test size')
     parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
+    parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
     parser.add_argument('--device', type=str, default='cpu', help='device (cuda or cpu)')
     parser.add_argument('--save_path', type=str, default='checkpoints', help='save path')
 
@@ -111,4 +113,4 @@ if __name__ == '__main__':
         save_path.mkdir(parents=True)
     run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
     train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
-          device, run_name, save_path)
+          device, run_name, args.no_sync, save_path)

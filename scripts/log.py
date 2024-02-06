@@ -3,8 +3,7 @@ from os import environ
 from torch import save, load
 
 
-def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_dim, sample_size, save_path,
-           offline=False):
+def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_dim, sample_size, offline=False):
     if offline:
         environ['WANDB_MODE'] = 'offline'
     wandb.init(project=project, name=run_name, config={
