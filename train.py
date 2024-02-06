@@ -2,7 +2,7 @@ from pathlib import Path
 from models import icvae, losses
 from scripts.data_handler import get_loader, load_datasets
 from torchvision.utils import save_image
-from scripts.utils import load_yaml
+from scripts.utils import load_yaml, save_reconstruction_batch
 from scripts import log
 from tqdm import tqdm
 import argparse
@@ -57,19 +57,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                 val_rcon_loss += rcon_loss.item()
                 val_prior_loss += prior_loss.item()
                 if i == 0:
-                    n, n_slice = min(data.size(0), 8), 50
-                    for axis in range(3):
-                        if axis == 0:
-                            original_slice = data[:, :, n_slice, :, :]
-                            reconstructed_slice = recon_batch[:, :, n_slice, :, :]
-                        elif axis == 1:
-                            original_slice = data[:, :, :, n_slice, :]
-                            reconstructed_slice = recon_batch[:, :, :, n_slice, :]
-                        else:
-                            original_slice = data[:, :, :, :, n_slice]
-                            reconstructed_slice = recon_batch[:, :, :, :, n_slice]
-                        comparison = torch.cat([original_slice[:n], reconstructed_slice[:n]])
-                        save_image(comparison.cpu(), save_path / f'{run_name}_reconstruction_{epoch}_axis_{axis}.png', nrow=n)
+                    save_reconstruction_batch(data, recon_batch, epoch, run_name, save_path)
         val_rcon_loss /= len(val_loader.dataset)
         val_prior_loss /= len(val_loader.dataset)
         total_val_loss = val_rcon_loss + val_prior_loss
