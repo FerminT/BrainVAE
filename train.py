@@ -12,6 +12,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
     model, optimizer, criterion = load_architecture(model_name, config, device, lr)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
+    weights_path = save_path / 'weights'
     epoch, best_val_loss = log.resume(project='BrainVAE',
                                       run_name=run_name,
                                       model=model,
@@ -21,7 +22,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       epochs=epochs,
                                       latent_dim=config['params']['latent_dim'],
                                       sample_size=len(train_data),
-                                      save_path=save_path,
+                                      weights_path=weights_path,
                                       offline=no_sync)
     while epoch < epochs:
         avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
@@ -33,7 +34,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
                   'val': {'reconstruction_loss': val_rcon_loss, 'prior_loss': val_prior_loss, 'epoch': epoch}})
         log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, best_val_loss,
-                      save_path, run_name)
+                      weights_path, run_name)
         best_val_loss = min(best_val_loss, total_val_loss)
         epoch += 1
     log.finish(model.state_dict(), save_path, run_name)

@@ -3,7 +3,7 @@ from os import environ
 from torch import save, load
 
 
-def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_dim, sample_size, save_path,
+def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_dim, sample_size, weights_path,
            offline=False):
     if offline:
         environ['WANDB_MODE'] = 'offline'
@@ -15,7 +15,7 @@ def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_d
         'sample_size': sample_size
     }, resume=True)
     if wandb.run.resumed:
-        ckpt = load(save_path / f'{run_name}_best.pt')
+        ckpt = load(weights_path / f'{run_name}_best.pt')
         model.load_state_dict(ckpt['model_state_dict'])
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
         epoch, val_loss = ckpt['epoch'] + 1, ckpt['val_loss']
@@ -25,13 +25,13 @@ def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_d
     return epoch, val_loss
 
 
-def save_ckpt(epoch, model_state, optimizer_state, loss, best_loss, save_path, run_name):
-    filename = save_path / f'{run_name}_ckpt_{epoch}.pt'
+def save_ckpt(epoch, model_state, optimizer_state, loss, best_loss, weights_path, run_name):
+    filename = weights_path / f'{run_name}_ckpt_{epoch}.pt'
     save_dict = {'epoch': epoch, 'model_state_dict': model_state, 'optimizer_state_dict': optimizer_state,
                  'val_loss': loss}
     save(save_dict, filename)
     if loss < best_loss:
-        best_filename = save_path / f'{run_name}_best.pt'
+        best_filename = weights_path / f'{run_name}_best.pt'
         save(save_dict, best_filename)
 
 
@@ -39,6 +39,6 @@ def step(metrics_dict):
     wandb.log(metrics_dict)
 
 
-def finish(model_state, save_path, run_name):
-    save(model_state, save_path / f'{run_name}.pt')
+def finish(model_state, weights_path, run_name):
+    save(model_state, weights_path / f'{run_name}.pt')
     wandb.finish()
