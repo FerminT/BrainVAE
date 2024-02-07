@@ -1,11 +1,11 @@
 import yaml
 from torch import cat, optim
 from torchvision.utils import save_image
-from models import icvae, losses
+from models import vae, losses
 
 
 def load_architecture(model_name, config, device, lr):
-    model = getattr(icvae, model_name.upper())(**config['params'])
+    model = getattr(vae, model_name.upper())(**config['params'])
     model.to(device)
     optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=lr)
     criterion = getattr(losses, config['loss'])

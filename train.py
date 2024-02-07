@@ -78,7 +78,7 @@ def eval_epoch(model, val_loader, criterion, device, epoch, save_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='ukbb', help='dataset name')
-    parser.add_argument('--model', type=str, default='icvae', help='model name')
+    parser.add_argument('--model', type=str, default='vae', help='model name')
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
     parser.add_argument('--batch_size', type=int, default=1, help='batch size')
     parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')

@@ -1,4 +1,7 @@
-from models import icvae, losses
+import models.decoder
+import models.encoder
+import models.utils
+from models import vae, losses
 from torch import randn
 from scripts.utils import load_yaml
 from pathlib import Path
@@ -39,15 +42,15 @@ def load_model_with_config():
 
 def encoder_decoder_shapes():
     input_shape, latent_dim = (160, 192, 160), 354
-    encoder = icvae.Encoder(input_shape=input_shape)
+    encoder = models.encoder.Encoder(input_shape=input_shape)
     x = randn((1, 1, *input_shape))
     mu, logvar, pooling_indices = encoder(x)
     assert mu.shape == (1, latent_dim), f"mu.shape: {mu.shape}"
     assert logvar.shape == (1, latent_dim), f"logvar.shape: {logvar.shape}"
     assert len(pooling_indices) == encoder.n_blocks - 1, f"len(pooling_indices): {len(pooling_indices)}"
 
-    decoder = icvae.Decoder(latent_dim=latent_dim)
-    z = icvae.reparameterize(mu, logvar)
+    decoder = models.decoder.Decoder(latent_dim=latent_dim)
+    z = models.utils.reparameterize(mu, logvar)
     x_recon = decoder(z, pooling_indices)
     assert x_recon.shape == (1, 1, *input_shape), f"x_recon.shape: {x_recon.shape}"
     print("encoder_decoder_shapes passed")
@@ -55,7 +58,7 @@ def encoder_decoder_shapes():
 
 def forward_pass():
     input_shape, latent_dim = (160, 192, 160), 354
-    vae = icvae.ICVAE(input_shape=input_shape, latent_dim=latent_dim)
+    vae = icvae.VAE(input_shape=input_shape, latent_dim=latent_dim)
     x = randn((1, 1, *input_shape))
     x_recon, mu, logvar = vae(x)
     assert x_recon.shape == (1, 1, *input_shape), f"x_recon.shape: {x_recon.shape}"
