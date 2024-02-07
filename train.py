@@ -7,14 +7,13 @@ import argparse
 import torch
 
 
-def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval,
-          device, run_name, no_sync, save_path):
+def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, no_sync, save_path):
     model, optimizer, criterion = load_architecture(model_name, config, device, lr)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     weights_path = save_path / 'weights'
     epoch, best_val_loss = log.resume(project='BrainVAE',
-                                      run_name=run_name,
+                                      run_name=f'{save_path.parent.name}_{save_path.name}',
                                       model=model,
                                       optimizer=optimizer,
                                       lr=lr,
@@ -34,10 +33,10 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
                   'val': {'reconstruction_loss': val_rcon_loss, 'prior_loss': val_prior_loss, 'epoch': epoch}})
         log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, best_val_loss,
-                      weights_path, run_name)
+                      weights_path)
         best_val_loss = min(best_val_loss, total_val_loss)
         epoch += 1
-    log.finish(model.state_dict(), save_path, run_name)
+    log.finish(model.state_dict(), save_path)
 
 
 def train_epoch(model, train_loader, optimizer, criterion, device, log_interval, epoch):
@@ -108,4 +107,4 @@ if __name__ == '__main__':
     if not save_path.exists():
         save_path.mkdir(parents=True)
     train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
-          device, run_name, args.no_sync, save_path)
+          device, args.no_sync, save_path)
