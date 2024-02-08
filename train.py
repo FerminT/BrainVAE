@@ -24,8 +24,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       weights_path=weights_path,
                                       offline=no_sync)
     while epoch < epochs:
-        avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
-                                                    epoch)
+        avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch)
         print(f'====> Epoch: {epoch} Avg loss: 'f'{avg_rcon_loss + avg_prior_loss:.4f}')
         val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, device, epoch, save_path)
         total_val_loss = val_rcon_loss + val_prior_loss
@@ -39,14 +38,13 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
     log.finish(model.state_dict(), save_path)
 
 
-def train_epoch(model, train_loader, optimizer, criterion, device, log_interval, epoch):
+def train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch):
     rcon_loss, prior_loss = 0, 0
     model.train()
-    for batch_idx, data in enumerate(pbar := tqdm(train_loader)):
-        data = data.to(device)
+    for batch_idx, (t1_imgs, ages) in enumerate(pbar := tqdm(train_loader)):
         optimizer.zero_grad()
-        recon_batch, mu, logvar = model(data)
-        recon_loss, prior_loss = criterion(recon_batch, data, mu, logvar)
+        recon_batch, mu, logvar = model(t1_imgs)
+        recon_loss, prior_loss = criterion(recon_batch, t1_imgs, mu, logvar)
         loss = recon_loss + prior_loss
         loss.backward()
         rcon_loss += recon_loss.item()
@@ -59,18 +57,18 @@ def train_epoch(model, train_loader, optimizer, criterion, device, log_interval,
     return rcon_loss / len(train_loader.dataset), prior_loss / len(train_loader.dataset)
 
 
-def eval_epoch(model, val_loader, criterion, device, epoch, save_path):
+def eval_epoch(model, val_loader, criterion, epoch, save_path):
     model.eval()
     val_rcon_loss, val_prior_loss = 0, 0
     with torch.no_grad():
-        for i, data in enumerate(val_loader):
-            data = data.to(device)
-            recon_batch, mu, logvar = model(data)
-            rcon_loss, prior_loss = criterion(recon_batch, data, mu, logvar)
+        for i, (t1_imgs, ages) in enumerate(val_loader):
+            t1_imgs = t1_imgs.to(device)
+            recon_batch, mu, logvar = model(t1_imgs)
+            rcon_loss, prior_loss = criterion(recon_batch, t1_imgs, mu, logvar)
             val_rcon_loss += rcon_loss.item()
             val_prior_loss += prior_loss.item()
             if i == 0:
-                save_reconstruction_batch(data, recon_batch, epoch, save_path)
+                save_reconstruction_batch(t1_imgs, recon_batch, epoch, save_path)
 
     return val_rcon_loss / len(val_loader.dataset), val_prior_loss / len(val_loader.dataset)
 
@@ -80,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='ukbb', help='dataset name')
     parser.add_argument('--model', type=str, default='vae', help='model name')
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
-    parser.add_argument('--batch_size', type=int, default=1, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=2, help='batch size')
     parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
     parser.add_argument('--log_interval', type=int, default=10, help='log and save checkpoint interval')

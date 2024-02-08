@@ -2,7 +2,7 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
-from torch import from_numpy
+from torch import from_numpy, tensor
 from sklearn.model_selection import train_test_split
 
 
@@ -77,8 +77,8 @@ class T1Dataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         t1_img = self.load_and_process_img(sample)
-
-        return t1_img
+        age = tensor(sample['age_at_scan']).to(self.device)
+        return t1_img, age
 
     def load_and_process_img(self, sample):
         t1_img = nib.load(self.datapath / sample['image_path'])
