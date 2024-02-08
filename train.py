@@ -26,7 +26,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
     while epoch < epochs:
         avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch)
         print(f'====> Epoch: {epoch} Avg loss: 'f'{avg_rcon_loss + avg_prior_loss:.4f}')
-        val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, device, epoch, save_path)
+        val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, epoch, save_path)
         total_val_loss = val_rcon_loss + val_prior_loss
         print(f'====> Validation set loss: {total_val_loss:.4f}')
         log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
@@ -62,7 +62,6 @@ def eval_epoch(model, val_loader, criterion, epoch, save_path):
     val_rcon_loss, val_prior_loss = 0, 0
     with torch.no_grad():
         for i, (t1_imgs, ages) in enumerate(val_loader):
-            t1_imgs = t1_imgs.to(device)
             recon_batch, mu, logvar = model(t1_imgs)
             rcon_loss, prior_loss = criterion(recon_batch, t1_imgs, mu, logvar)
             val_rcon_loss += rcon_loss.item()
