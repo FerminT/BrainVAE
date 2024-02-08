@@ -69,6 +69,9 @@ class T1Dataset(Dataset):
         self.datapath = datapath
         self.data = data
         self.transform = transform
+        self.age_range = [int(data['age_at_scan'].min()), int(data['age_at_scan'].max())]
+        self.age_step = 1
+        self.age_sigma = 1
         self.device = device
 
     def __len__(self):
