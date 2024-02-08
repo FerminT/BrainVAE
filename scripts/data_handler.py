@@ -64,7 +64,6 @@ def transform(img):
 
 
 class T1Dataset(Dataset):
-
     def __init__(self, input_shape, datapath, data, device, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
@@ -77,6 +76,11 @@ class T1Dataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
+        t1_img = self.load_and_process_img(sample)
+
+        return t1_img
+
+    def load_and_process_img(self, sample):
         t1_img = nib.load(self.datapath / sample['image_path'])
         t1_img = t1_img.get_fdata(dtype=np.float32)
         t1_img = t1_img / t1_img.mean()
