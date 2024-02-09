@@ -22,24 +22,15 @@ class Decoder(nn.Module):
         self.input_shape = list(input_shape)
 
         self.fc_input = nn.Linear(latent_dim, self.channels[0] * np.prod(input_shape))
-        self.tconv_blocks = nn.ModuleList()
-        for i in range(self.n_blocks):
-            out_channels = 1 if i == self.n_blocks - 1 else self.channels[i + 1]
-            if i == 0:
-                self.tconv_blocks.append(tconv_block(self.channels[i], out_channels, first_kernel_size, first_padding,
-                                                     stride))
-            else:
-                self.tconv_blocks.append(tconv_block(self.channels[i], out_channels, kernel_size, padding, stride))
+        self.tconv_blocks = build_modules(self.n_blocks, self.channels, kernel_size, stride, padding, first_kernel_size,
+                                          first_padding)
         self.activation = nn.ReLU()
         self.unpooling_layer = nn.MaxUnpool3d(kernel_size=unpool_size, stride=unpool_stride)
 
     def forward(self, x, pooling_indices):
         x = self.fc_input(x)
         x = x.view(-1, self.channels[0], *self.input_shape)
-        for i, block in enumerate(self.tconv_blocks):
-            if i > 0:
-                x = self.unpooling_layer(x, indices=pooling_indices.pop())
-            x = self.activation(block(x))
+        x = perform_deconvolution(x, pooling_indices, self.tconv_blocks, self.unpooling_layer, self.activation)
         return x
 
 
@@ -62,22 +53,32 @@ class ConditionalDecoder(nn.Module):
         self.input_shape = list(input_shape)
 
         self.fc_input = nn.Linear(latent_dim + condition_dim, self.channels[0] * np.prod(input_shape))
-        self.tconv_blocks = nn.ModuleList()
-        for i in range(self.n_blocks):
-            out_channels = 1 if i == self.n_blocks - 1 else self.channels[i + 1]
-            if i == 0:
-                self.tconv_blocks.append(tconv_block(self.channels[i], out_channels, first_kernel_size, first_padding,
-                                                     stride))
-            else:
-                self.tconv_blocks.append(tconv_block(self.channels[i], out_channels, kernel_size, padding, stride))
+        self.tconv_blocks = build_modules(self.n_blocks, self.channels, kernel_size, stride, padding, first_kernel_size,
+                                          first_padding)
         self.activation = nn.ReLU()
         self.unpooling_layer = nn.MaxUnpool3d(kernel_size=unpool_size, stride=unpool_stride)
 
     def forward(self, x, pooling_indices, condition):
         x = self.fc_input(cat([x, condition], dim=1))
         x = x.view(-1, self.channels[0], *self.input_shape)
-        for i, block in enumerate(self.tconv_blocks):
-            if i > 0:
-                x = self.unpooling_layer(x, indices=pooling_indices.pop())
-            x = self.activation(block(x))
+        x = perform_deconvolution(x, pooling_indices, self.tconv_blocks, self.unpooling_layer, self.activation)
         return x
+
+
+def perform_deconvolution(x, pooling_indices, tconv_blocks, unpooling_layer, activation):
+    for i, block in enumerate(tconv_blocks):
+        if i > 0:
+            x = unpooling_layer(x, indices=pooling_indices.pop())
+        x = activation(block(x))
+    return x
+
+
+def build_modules(n_blocks, channels, kernel_size, stride, padding, first_kernel_size, first_padding):
+    modules = nn.ModuleList()
+    for i in range(n_blocks):
+        out_channels = 1 if i == n_blocks - 1 else channels[i + 1]
+        if i == 0:
+            modules.append(tconv_block(channels[i], out_channels, first_kernel_size, first_padding, stride))
+        else:
+            modules.append(tconv_block(channels[i], out_channels, kernel_size, padding, stride))
+    return modules
