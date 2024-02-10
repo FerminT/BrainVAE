@@ -5,7 +5,7 @@ from models import vae, losses
 from torch import randn
 from scripts.utils import load_yaml
 from pathlib import Path
-from torch import optim
+from torch import optim, device
 from scripts.data_handler import load_datasets, get_loader
 
 CFG_PATH = Path('cfg')
@@ -15,7 +15,7 @@ DATA_PATH = Path('datasets')
 def load_ukbb_data():
     config = load_yaml(CFG_PATH / 'default.yaml')
     train, val, test = load_datasets(DATA_PATH / 'ukbb', config['params']['input_shape'], -1, 0.2, 0.1,
-                                        redo_splits=False, shuffle=True, random_state=42)
+                                        redo_splits=False, device=device('cpu'), shuffle=True, random_state=42)
     train_loader = get_loader(train, 8, shuffle=False)
     val_loader = get_loader(val, 8, shuffle=False)
     test_loader = get_loader(test, 8, shuffle=False)
@@ -34,7 +34,7 @@ def load_ukbb_data():
 
 def load_model_with_config():
     config = load_yaml(CFG_PATH / 'default.yaml')
-    model = getattr(icvae, 'ICVAE')(**config['params'])
+    model = getattr(vae, 'VAE')(**config['params'])
     optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=0.001)
     criterion = getattr(losses, config['loss'])
     print("load_model_with_config passed")
@@ -58,9 +58,9 @@ def encoder_decoder_shapes():
 
 def forward_pass():
     input_shape, latent_dim = (160, 192, 160), 354
-    vae = icvae.VAE(input_shape=input_shape, latent_dim=latent_dim)
+    model = vae.VAE(input_shape=input_shape, latent_dim=latent_dim)
     x = randn((1, 1, *input_shape))
-    x_recon, mu, logvar = vae(x)
+    x_recon, mu, logvar = model(x)
     assert x_recon.shape == (1, 1, *input_shape), f"x_recon.shape: {x_recon.shape}"
     assert mu.shape == (1, latent_dim), f"mu.shape: {mu.shape}"
     assert logvar.shape == (1, latent_dim), f"logvar.shape: {logvar.shape}"
