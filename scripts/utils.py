@@ -3,7 +3,7 @@ import numpy as np
 from torch import cat, optim
 from torchvision.utils import save_image
 from scipy.stats import norm
-from models import vae, losses
+from models import icvae, losses
 
 
 def load_architecture(model_name, config, device, lr):

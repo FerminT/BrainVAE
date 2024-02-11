@@ -1,7 +1,7 @@
 import models.decoder
 import models.encoder
 import models.utils
-from models import vae, losses
+from models import icvae, losses
 from torch import randn
 from scripts.utils import load_yaml
 from pathlib import Path
@@ -58,7 +58,7 @@ def encoder_decoder_shapes():
 
 def forward_pass():
     input_shape, latent_dim = (160, 192, 160), 354
-    model = vae.VAE(input_shape=input_shape, latent_dim=latent_dim)
+    model = vae.ICVAE(input_shape=input_shape, latent_dim=latent_dim)
     x = randn((1, 1, *input_shape))
     x_recon, mu, logvar = model(x)
     assert x_recon.shape == (1, 1, *input_shape), f"x_recon.shape: {x_recon.shape}"

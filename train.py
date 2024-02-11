@@ -39,11 +39,11 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
 
 
 def train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch):
-    rcon_loss, prior_loss = 0, 0
     model.train()
+    rcon_loss, prior_loss = 0, 0
     for batch_idx, (t1_imgs, ages) in enumerate(pbar := tqdm(train_loader)):
         optimizer.zero_grad()
-        recon_batch, mu, logvar = model(t1_imgs)
+        recon_batch, mu, logvar = model(t1_imgs, ages)
         recon_loss, prior_loss = criterion(recon_batch, t1_imgs, mu, logvar)
         loss = recon_loss + prior_loss
         loss.backward()
@@ -75,7 +75,7 @@ def eval_epoch(model, val_loader, criterion, epoch, save_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='ukbb', help='dataset name')
-    parser.add_argument('--model', type=str, default='vae', help='model name')
+    parser.add_argument('--model', type=str, default='icvae', help='model name')
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
     parser.add_argument('--batch_size', type=int, default=2, help='batch size')
     parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     train_data, val_data, test_data = load_datasets(datapath, config['params']['input_shape'], args.sample_size,
                                                     args.val_size, args.test_size, args.redo_splits, device,
                                                     shuffle=True, random_state=42)
-    save_path = Path(args.save_path, args.dataset, args.model, args.cfg.split('.')[0])
+    save_path = Path(args.save_path, args.dataset, args.cfg.split('.')[0])
     run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
     save_path = save_path / run_name
     if not save_path.exists():
