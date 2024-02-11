@@ -46,13 +46,13 @@ class ConditionalDecoder(nn.Module):
                  first_kernel_size=1,
                  first_padding=0,
                  channels=(64, 256, 256, 128, 64, 32),
-                 condition_dim=1):
+                 conditional_dim=1):
         super(ConditionalDecoder, self).__init__()
         self.channels = list(channels)
         self.n_blocks = len(channels)
         self.input_shape = list(input_shape)
 
-        self.fc_input = nn.Linear(latent_dim + condition_dim, self.channels[0] * np.prod(input_shape))
+        self.fc_input = nn.Linear(latent_dim + conditional_dim, self.channels[0] * np.prod(input_shape))
         self.tconv_blocks = build_modules(self.n_blocks, self.channels, kernel_size, stride, padding, first_kernel_size,
                                           first_padding)
         self.activation = nn.ReLU()
