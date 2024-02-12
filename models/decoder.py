@@ -31,7 +31,7 @@ class Decoder(nn.Module):
 
     def forward(self, x, pooling_indices, condition):
         if self.conditional_dim > 0:
-            if condition.ndim != self.conditional_dim:
+            if condition is not None and condition.ndim != self.conditional_dim:
                 raise ValueError('Conditional dimension does not match the input dimension')
             x = cat([x, condition], dim=1)
         x = self.fc_input(x)
