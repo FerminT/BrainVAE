@@ -7,7 +7,7 @@ from models import icvae, losses
 
 
 def load_architecture(model_name, config, device, lr):
-    model = getattr(vae, model_name.upper())(**config['params'])
+    model = getattr(icvae, model_name.upper())(**config['params'])
     model.to(device)
     optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=lr)
     criterion = getattr(losses, config['loss'])
