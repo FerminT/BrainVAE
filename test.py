@@ -34,7 +34,7 @@ def load_ukbb_data():
 
 def load_model_with_config():
     config = load_yaml(CFG_PATH / 'default.yaml')
-    model = getattr(vae, 'VAE')(**config['params'])
+    model = getattr(icvae, 'ICVAE')(**config['params'])
     optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=0.001)
     criterion = getattr(losses, config['loss'])
     print("load_model_with_config passed")
@@ -51,14 +51,14 @@ def encoder_decoder_shapes():
 
     decoder = models.decoder.Decoder(latent_dim=latent_dim)
     z = models.utils.reparameterize(mu, logvar)
-    x_recon = decoder(z, pooling_indices)
+    x_recon = decoder(z, pooling_indices, condition=None)
     assert x_recon.shape == (1, 1, *input_shape), f"x_recon.shape: {x_recon.shape}"
     print("encoder_decoder_shapes passed")
 
 
 def forward_pass():
     input_shape, latent_dim = (160, 192, 160), 354
-    model = vae.ICVAE(input_shape=input_shape, latent_dim=latent_dim)
+    model = icvae.ICVAE(input_shape=input_shape, latent_dim=latent_dim)
     x = randn((1, 1, *input_shape))
     x_recon, mu, logvar = model(x)
     assert x_recon.shape == (1, 1, *input_shape), f"x_recon.shape: {x_recon.shape}"
