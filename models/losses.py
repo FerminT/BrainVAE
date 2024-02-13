@@ -4,13 +4,15 @@ import torch.nn as nn
 
 def invariant_loss(recon_x, x, mu, logvar, latent_dim):
     recon_loss = mse(recon_x, x)
-    prior_loss = -kl_divergence(mu, logvar)
-    marginal_loss = pairwise_gaussian_kl(mu, logvar, latent_dim)
+    prior_loss = kl_divergence(mu, logvar).mean()
+    marginal_loss = pairwise_gaussian_kl(mu, logvar, latent_dim).mean()
     return recon_loss, prior_loss, marginal_loss
 
 
 def mse_kld(recon_x, x, mu, logvar):
-    return mse(recon_x, x), -kl_divergence(mu, logvar)
+    recon_loss = mse(recon_x, x)
+    prior_loss = kl_divergence(mu, logvar).mean()
+    return recon_loss, prior_loss
 
 
 def mse(recon_x, x):
@@ -18,7 +20,7 @@ def mse(recon_x, x):
 
 
 def kl_divergence(mu, logvar):
-    return 0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).sum(axis=1)
+    return -0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).sum(axis=1)
 
 
 def pairwise_gaussian_kl(mu, logvar, latent_dim):

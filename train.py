@@ -77,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='ukbb', help='dataset name')
     parser.add_argument('--model', type=str, default='icvae', help='model name')
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
-    parser.add_argument('--batch_size', type=int, default=2, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=1, help='batch size')
     parser.add_argument('--lr', type=float, default=0.001, help='initial learning rate')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
     parser.add_argument('--log_interval', type=int, default=10, help='log and save checkpoint interval')
