@@ -1,6 +1,6 @@
 import yaml
 import numpy as np
-from torch import cat, optim
+from torch import cat, optim, nn as nn
 from torchvision.utils import save_image
 from scipy.stats import norm
 from models import icvae, losses
@@ -8,6 +8,7 @@ from models import icvae, losses
 
 def load_architecture(model_name, config, device, lr):
     model = getattr(icvae, model_name.upper())(**config['params'])
+    model = nn.DataParallel(model)
     model.to(device)
     optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=lr)
     criterion = getattr(losses, config['loss'])
