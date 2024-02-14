@@ -12,6 +12,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     weights_path = save_path / 'weights'
+    weights_path.mkdir(exist_ok=True)
     epoch, best_val_loss = log.resume(project='BrainVAE',
                                       run_name=f'{save_path.parent.name}_{save_path.name}',
                                       model=model,
