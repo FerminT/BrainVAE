@@ -30,8 +30,9 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
         val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, epoch, save_path)
         total_val_loss = val_rcon_loss + val_prior_loss
         print(f'====> Validation set loss: {total_val_loss:.4f}')
-        log.step({'train': {'reconstruction_loss': avg_rcon_loss, 'prior_loss': avg_prior_loss, 'epoch': epoch},
-                  'val': {'reconstruction_loss': val_rcon_loss, 'prior_loss': val_prior_loss, 'epoch': epoch}})
+        log.step({'train/reconstruction_loss': avg_rcon_loss, 'train/prior_loss': avg_prior_loss,
+                  'val/reconstruction_loss': val_rcon_loss, 'val/prior_loss': val_prior_loss,
+                  'epoch': epoch})
         log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, best_val_loss,
                       weights_path)
         best_val_loss = min(best_val_loss, total_val_loss)
@@ -53,7 +54,8 @@ def train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch):
         optimizer.step()
         pbar.set_description(f'Epoch {epoch} - loss: {loss.item():.4f}')
         if batch_idx % log_interval == 0:
-            log.step({'train': {'batch': batch_idx, 'reconstruction_loss': recon_loss, 'prior_loss': prior_loss}})
+            log.step({'train/recon_batch_loss': recon_loss, 'train/prior_batch_loss': prior_loss,
+                      'batch': batch_idx})
 
     return rcon_loss / len(train_loader.dataset), prior_loss / len(train_loader.dataset)
 
