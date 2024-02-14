@@ -29,7 +29,7 @@ def save_reconstruction_batch(data, recon_batch, epoch, save_path):
             original_slice = data[:, :, :, :, n_slice]
             reconstructed_slice = recon_batch[:, :, :, :, n_slice]
         comparison = cat([original_slice[:n], reconstructed_slice[:n]])
-        save_image(comparison.cpu(), imgs_path / f'recon_{epoch}_axis_{axis}.png', nrow=n)
+        save_image(comparison.cpu(), imgs_path / f'epoch_{epoch}_axis_{axis}.png', nrow=n)
 
 
 def load_yaml(filepath):
