@@ -61,19 +61,6 @@ def log_dict(mode, recon_loss, prior_loss, marginal_loss, step):
     return state
 
 
-def invariant_loss(recon_x, x, mu, logvar, latent_dim):
-    recon_loss = mse(recon_x, x)
-    prior_loss = kl_divergence(mu, logvar).mean()
-    marginal_loss = pairwise_gaussian_kl(mu, logvar, latent_dim).mean()
-    return recon_loss, prior_loss, marginal_loss
-
-
-def mse_kld(recon_x, x, mu, logvar):
-    recon_loss = mse(recon_x, x)
-    prior_loss = kl_divergence(mu, logvar).mean()
-    return recon_loss, prior_loss
-
-
 def mse(recon_x, x):
     return nn.functional.mse_loss(recon_x, x, reduction='mean')
 
