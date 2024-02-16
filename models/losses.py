@@ -2,10 +2,10 @@ from torch import matmul, unsqueeze
 import torch.nn as nn
 
 
-class Criterion:
+class Loss:
 
-    def __init__(self, mode, dataset_size, latent_dim, conditional_dim, best_loss=float('inf')):
-        self.mode = mode
+    def __init__(self, dataset_size, latent_dim, conditional_dim, best_loss=float('inf')):
+        self.mode = 'train'
         self.dataset_size = dataset_size
         self.latent_dim = latent_dim
         self.is_conditional = conditional_dim > 0
@@ -31,15 +31,26 @@ class Criterion:
         return self.avg_recon_loss + self.avg_prior_loss + self.avg_marginal_loss
 
     def step(self):
-        if self.get_avg() < self.best_loss:
-            self.best_loss = self.get_avg()
-            self.is_best = True
-        else:
-            self.is_best = False
-        self.avg_recon_loss, self.avg_prior_loss, self.avg_marginal_loss = 0, 0, 0
+        if self.mode == 'val':
+            if self.get_avg() < self.best_loss:
+                self.best_loss = self.get_avg()
+                self.is_best = True
+            else:
+                self.is_best = False
 
     def state_dict(self):
         return log_dict(self.mode, self.avg_recon_loss, self.avg_prior_loss, self.avg_marginal_loss, step='epoch')
+
+    def reset(self):
+        self.avg_recon_loss, self.avg_prior_loss, self.avg_marginal_loss = 0, 0, 0
+
+    def eval(self):
+        self.reset()
+        self.mode = 'val'
+
+    def train(self):
+        self.reset()
+        self.mode = 'train'
 
 
 def log_dict(mode, recon_loss, prior_loss, marginal_loss, step):
