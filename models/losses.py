@@ -2,6 +2,54 @@ from torch import matmul, unsqueeze
 import torch.nn as nn
 
 
+class Criterion:
+
+    def __init__(self, mode, dataset_size, latent_dim, conditional_dim, best_loss=float('inf')):
+        self.mode = mode
+        self.dataset_size = dataset_size
+        self.latent_dim = latent_dim
+        self.is_conditional = conditional_dim > 0
+        self.best_loss = best_loss
+        self.is_best = False
+        self.avg_recon_loss, self.avg_prior_loss, self.avg_marginal_loss = 0, 0, 0
+
+    def __call__(self, recon_x, x, mu, logvar):
+        recon_loss = mse(recon_x, x)
+        prior_loss = kl_divergence(mu, logvar).mean()
+        loss = recon_loss + prior_loss
+        self.avg_recon_loss += recon_loss.item() / self.dataset_size
+        self.avg_prior_loss += prior_loss.item() / self.dataset_size
+        marginal_loss = 0
+        if self.is_conditional:
+            marginal_loss = pairwise_gaussian_kl(mu, logvar, self.latent_dim).mean()
+            loss += marginal_loss
+            self.avg_marginal_loss += marginal_loss.item() / self.dataset_size
+
+        return loss, log_dict(self.mode, recon_loss, prior_loss, marginal_loss, step='batch')
+
+    def get_avg(self):
+        return self.avg_recon_loss + self.avg_prior_loss + self.avg_marginal_loss
+
+    def step(self):
+        if self.get_avg() < self.best_loss:
+            self.best_loss = self.get_avg()
+            self.is_best = True
+        else:
+            self.is_best = False
+        self.avg_recon_loss, self.avg_prior_loss, self.avg_marginal_loss = 0, 0, 0
+
+    def state_dict(self):
+        return log_dict(self.mode, self.avg_recon_loss, self.avg_prior_loss, self.avg_marginal_loss, step='epoch')
+
+
+def log_dict(mode, recon_loss, prior_loss, marginal_loss, step):
+    state = {f'{mode}/{step}_recon_loss': recon_loss,
+             f'{mode}/{step}_prior_loss': prior_loss}
+    if marginal_loss != 0:
+        state[f'{mode}/{step}_marginal_loss'] = marginal_loss
+    return state
+
+
 def invariant_loss(recon_x, x, mu, logvar, latent_dim):
     recon_loss = mse(recon_x, x)
     prior_loss = kl_divergence(mu, logvar).mean()
