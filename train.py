@@ -3,16 +3,18 @@ from scripts.data_handler import get_loader, load_datasets
 from scripts.utils import load_yaml, load_architecture, save_reconstruction_batch
 from scripts import log
 from tqdm import tqdm
+from models.losses import Loss
 import argparse
 import torch
 
 
 def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, no_sync, save_path):
-    model, optimizer, criterion = load_architecture(model_name, config, device, lr)
+    model, optimizer = load_architecture(model_name, config, device, lr)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     weights_path = save_path / 'weights'
     weights_path.mkdir(exist_ok=True)
+    latent_dim, conditional_dim = config['params']['latent_dim'], config['params']['conditional_dim']
     epoch, best_val_loss = log.resume(project='BrainVAE',
                                       run_name=f'{save_path.parent.name}_{save_path.name}',
                                       model=model,
@@ -24,55 +26,45 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       sample_size=len(train_data),
                                       weights_path=weights_path,
                                       offline=no_sync)
+    criterion = Loss(len(train_data), latent_dim, conditional_dim, best_val_loss)
     while epoch < epochs:
-        avg_rcon_loss, avg_prior_loss = train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch)
-        print(f'====> Epoch: {epoch} Avg loss: 'f'{avg_rcon_loss + avg_prior_loss:.4f}')
-        val_rcon_loss, val_prior_loss = eval_epoch(model, val_loader, criterion, epoch, save_path)
-        total_val_loss = val_rcon_loss + val_prior_loss
-        print(f'====> Validation set loss: {total_val_loss:.4f}')
-        log.step({'train/reconstruction_loss': avg_rcon_loss, 'train/prior_loss': avg_prior_loss,
-                  'val/reconstruction_loss': val_rcon_loss, 'val/prior_loss': val_prior_loss,
-                  'epoch': epoch})
-        log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), total_val_loss, best_val_loss,
+        train_loss_dict = train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch)
+        print(f'====> Epoch: {epoch} Avg loss: 'f'{criterion.get_avg():.4f}')
+        val_loss_dict = eval_epoch(model, val_loader, criterion, epoch, save_path)
+        print(f'====> Validation set loss: {criterion.get_avg():.4f}')
+        criterion.step()
+        log.step(train_loss_dict.update(val_loss_dict), step='epoch', step_num=epoch)
+        log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), criterion.get_avg(), criterion.is_best,
                       weights_path)
-        best_val_loss = min(best_val_loss, total_val_loss)
         epoch += 1
     log.finish(model.state_dict(), save_path)
 
 
 def train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch):
-    model.train()
-    rcon_loss, prior_loss = 0, 0
+    model.train(), criterion.train()
     for batch_idx, (t1_imgs, ages) in enumerate(pbar := tqdm(train_loader)):
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(t1_imgs, ages)
-        recon_loss, prior_loss = criterion(recon_batch, t1_imgs, mu, logvar)
-        loss = recon_loss + prior_loss
+        loss, loss_dict = criterion(recon_batch, t1_imgs, mu, logvar)
         loss.backward()
-        rcon_loss += recon_loss.item()
-        prior_loss += prior_loss.item()
         optimizer.step()
         pbar.set_description(f'Epoch {epoch} - loss: {loss.item():.4f}')
         if batch_idx % log_interval == 0:
-            log.step({'train/recon_batch_loss': recon_loss, 'train/prior_batch_loss': prior_loss,
-                      'batch': batch_idx})
+            log.step(loss_dict, step='batch', step_num=epoch * len(train_loader) + batch_idx)
 
-    return rcon_loss / len(train_loader.dataset), prior_loss / len(train_loader.dataset)
+    return criterion.state_dict()
 
 
 def eval_epoch(model, val_loader, criterion, epoch, save_path):
-    model.eval()
-    val_rcon_loss, val_prior_loss = 0, 0
+    model.eval(), criterion.eval()
     with torch.no_grad():
         for i, (t1_imgs, ages) in enumerate(val_loader):
             recon_batch, mu, logvar = model(t1_imgs)
-            rcon_loss, prior_loss = criterion(recon_batch, t1_imgs, mu, logvar)
-            val_rcon_loss += rcon_loss.item()
-            val_prior_loss += prior_loss.item()
+            criterion(recon_batch, t1_imgs, mu, logvar)
             if i == 0:
                 save_reconstruction_batch(t1_imgs, recon_batch, epoch, save_path)
 
-    return val_rcon_loss / len(val_loader.dataset), val_prior_loss / len(val_loader.dataset)
+    return criterion.state_dict()
 
 
 if __name__ == '__main__':

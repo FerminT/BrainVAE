@@ -25,17 +25,18 @@ def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_d
     return epoch, val_loss
 
 
-def save_ckpt(epoch, model_state, optimizer_state, loss, best_loss, weights_path):
+def save_ckpt(epoch, model_state, optimizer_state, loss, is_best, weights_path):
     filename = weights_path / f'ckpt_{epoch}.pt'
     save_dict = {'epoch': epoch, 'model_state_dict': model_state, 'optimizer_state_dict': optimizer_state,
                  'val_loss': loss}
     save(save_dict, filename)
-    if loss < best_loss:
+    if is_best:
         best_filename = weights_path / 'best.pt'
         save(save_dict, best_filename)
 
 
-def step(metrics_dict):
+def step(metrics_dict, step, step_num):
+    metrics_dict.update({step: step_num})
     wandb.log(metrics_dict)
 
 
