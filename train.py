@@ -28,12 +28,13 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       offline=no_sync)
     criterion = Loss(len(train_data), latent_dim, conditional_dim, best_val_loss)
     while epoch < epochs:
-        train_loss_dict = train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch)
+        loss_dict = train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch)
         print(f'====> Epoch: {epoch} Avg loss: 'f'{criterion.get_avg():.4f}')
         val_loss_dict = eval_epoch(model, val_loader, criterion, epoch, save_path)
         print(f'====> Validation set loss: {criterion.get_avg():.4f}')
         criterion.step()
-        log.step(train_loss_dict.update(val_loss_dict), step='epoch', step_num=epoch)
+        loss_dict.update(val_loss_dict)
+        log.step(loss_dict, step='epoch', step_num=epoch)
         log.save_ckpt(epoch, model.state_dict(), optimizer.state_dict(), criterion.get_avg(), criterion.is_best,
                       weights_path)
         epoch += 1
