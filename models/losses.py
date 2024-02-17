@@ -1,4 +1,4 @@
-from torch import matmul, unsqueeze
+from torch import matmul, unsqueeze, zeros
 import torch.nn as nn
 
 
@@ -19,13 +19,13 @@ class Loss:
         loss = recon_loss + prior_loss
         self.avg_recon_loss += recon_loss.item() / self.dataset_size
         self.avg_prior_loss += prior_loss.item() / self.dataset_size
-        marginal_loss = 0
+        marginal_loss = zeros(1)
         if self.is_conditional:
             marginal_loss = pairwise_gaussian_kl(mu, logvar, self.latent_dim).mean()
             loss += marginal_loss
             self.avg_marginal_loss += marginal_loss.item() / self.dataset_size
 
-        return loss, log_dict(self.mode, recon_loss, prior_loss, marginal_loss, step='batch')
+        return loss, log_dict(self.mode, recon_loss.item(), prior_loss.item(), marginal_loss.item(), step='batch')
 
     def get_avg(self):
         return self.avg_recon_loss + self.avg_prior_loss + self.avg_marginal_loss
