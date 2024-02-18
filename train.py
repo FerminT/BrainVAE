@@ -60,7 +60,7 @@ def eval_epoch(model, val_loader, criterion, epoch, save_path):
     model.eval(), criterion.eval()
     with torch.no_grad():
         for i, (t1_imgs, ages) in enumerate(val_loader):
-            recon_batch, mu, logvar = model(t1_imgs)
+            recon_batch, mu, logvar = model(t1_imgs, ages)
             criterion(recon_batch, t1_imgs, mu, logvar)
             if i == 0:
                 save_reconstruction_batch(t1_imgs, recon_batch, epoch, save_path)
