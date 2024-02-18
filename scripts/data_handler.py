@@ -80,7 +80,7 @@ class T1Dataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         t1_img = self.load_and_process_img(sample)
-        age = tensor(sample['age_at_scan']).to(self.device)
+        age = tensor(float(sample['age_at_scan'])).to(self.device)
         return t1_img, age
 
     def load_and_process_img(self, sample):
