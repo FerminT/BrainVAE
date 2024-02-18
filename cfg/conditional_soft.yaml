@@ -1,0 +1,19 @@
+# define architecture hyperparameters
+params:
+  input_shape: [160, 192, 160]
+  latent_dim: 354
+  kernel_size: 3
+  stride: 1
+  padding: 1
+  pool_size: 2
+  pool_stride: 2
+  last_kernel_size: 1
+  last_padding: 0
+  channels: [32, 64, 128, 256, 256, 64]
+  conditional_dim: 31
+soft_label: True
+optimizer: 'Adam'
+losses_weights:
+  reconstruction: 1.0
+  prior: 1.0
+  marginal: 0.01
