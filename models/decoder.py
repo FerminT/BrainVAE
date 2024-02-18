@@ -33,7 +33,7 @@ class Decoder(nn.Module):
         if self.conditional_dim > 0:
             if condition is None or condition.ndim != self.conditional_dim:
                 raise ValueError('Conditional dimension does not match the input dimension')
-            x = cat([x.squeeze(), condition]).unsqueeze(dim=0)
+            x = cat([x, condition.unsqueeze(dim=1)], dim=1)
         x = self.fc_input(x)
         x = x.view(-1, self.channels[0], *self.input_shape)
         x = perform_deconvolution(x, pooling_indices, self.tconv_blocks, self.unpooling_layer, self.activation)
