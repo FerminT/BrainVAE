@@ -4,6 +4,7 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
 from sklearn.model_selection import train_test_split
+from scripts.utils import num2vect
 
 
 def get_loader(dataset, batch_size, shuffle):
@@ -66,11 +67,12 @@ def transform(img):
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, device, transform=None):
+    def __init__(self, input_shape, datapath, data, device, soft_label=False, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
+        self.soft_label = soft_label
         self.age_range = [int(data['age_at_scan'].min()), round(data['age_at_scan'].max() + 0.5)]
         self.age_step = 1
         self.age_sigma = 1
@@ -82,7 +84,7 @@ class T1Dataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         t1_img = self.load_and_process_img(sample)
-        age = tensor(float(sample['age_at_scan'])).to(self.device)
+        age = self.load_and_process_age(sample)
         return t1_img, age
 
     def load_and_process_img(self, sample):
@@ -94,3 +96,11 @@ class T1Dataset(Dataset):
         t1_img = crop_center(t1_img, self.input_shape)
         t1_img = from_numpy(np.asarray([t1_img])).to(self.device)
         return t1_img
+
+    def load_and_process_age(self, sample):
+        age = tensor(float(sample['age_at_scan']))
+        if self.soft_label:
+            age, _ = num2vect(age.item(), self.age_range, self.age_step, self.age_sigma)
+            age = from_numpy(age)
+        age = age.to(self.device)
+        return age
