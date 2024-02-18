@@ -96,6 +96,8 @@ if __name__ == '__main__':
                                                     shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset, args.cfg.split('.')[0])
     run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
+    if args.sample_size != -1:
+        run_name = f's{args.sample_size}_{run_name}'
     save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)

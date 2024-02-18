@@ -22,6 +22,8 @@ def load_datasets(datapath, input_shape, sample_size, val_size, test_size, redo_
 
 def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuffle, random_state):
     splits_path = datapath / 'splits'
+    if sample_size != -1:
+        splits_path = splits_path / f'sample_{sample_size}'
     if splits_path.exists() and not redo:
         train = pd.read_csv(splits_path / 'train.csv')
         val = pd.read_csv(splits_path / 'val.csv')
