@@ -54,13 +54,13 @@ def num2vect(x, bin_range, bin_step, sigma):
     bin_centers = bin_start + float(bin_step) / 2 + bin_step * np.arange(bin_number)
 
     if sigma == 0:
-        x = np.array(x)
+        x = np.array(x, dtype=np.float32)
         i = np.floor((x - bin_start) / bin_step)
         i = i.astype(int)
         return i, bin_centers
     elif sigma > 0:
         if np.isscalar(x):
-            v = np.zeros((bin_number,))
+            v = np.zeros((bin_number,), dtype=np.float32)
             for i in range(bin_number):
                 x1 = bin_centers[i] - float(bin_step) / 2
                 x2 = bin_centers[i] + float(bin_step) / 2
@@ -68,7 +68,7 @@ def num2vect(x, bin_range, bin_step, sigma):
                 v[i] = cdfs[1] - cdfs[0]
             return v, bin_centers
         else:
-            v = np.zeros((len(x), bin_number))
+            v = np.zeros((len(x), bin_number), dtype=np.float32)
             for j in range(len(x)):
                 for i in range(bin_number):
                     x1 = bin_centers[i] - float(bin_step) / 2

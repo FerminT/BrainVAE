@@ -11,13 +11,14 @@ def get_loader(dataset, batch_size, shuffle):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def load_datasets(datapath, input_shape, sample_size, val_size, test_size, redo_splits, device, shuffle, random_state):
+def load_datasets(datapath, input_shape, soft_label, sample_size, val_size, test_size, redo_splits,
+                  device, shuffle, random_state):
     metadata = pd.read_csv(datapath / 'metadata' / f'{datapath.name}_image_baseline_metadata.csv')
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train, device)
-    val_dataset = T1Dataset(input_shape, datapath, val, device)
-    test_dataset = T1Dataset(input_shape, datapath, test, device)
+    train_dataset = T1Dataset(input_shape, datapath, train, device, soft_label)
+    val_dataset = T1Dataset(input_shape, datapath, val, device, soft_label)
+    test_dataset = T1Dataset(input_shape, datapath, test, device, soft_label)
     return train_dataset, val_dataset, test_dataset
 
 
@@ -98,8 +99,10 @@ class T1Dataset(Dataset):
         return t1_img
 
     def load_and_process_age(self, sample):
-        age = tensor(float(sample['age_at_scan']))
-        if self.soft_label:
+        age = sample['age_at_scan']
+        if not self.soft_label:
+            age = tensor(float(age)).unsqueeze(dim=0)
+        else:
             age, _ = num2vect(age.item(), self.age_range, self.age_step, self.age_sigma)
             age = from_numpy(age)
         age = age.to(self.device)
