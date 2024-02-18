@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class Loss:
 
-    def __init__(self, dataset_size, latent_dim, conditional_dim, best_loss=float('inf')):
+    def __init__(self, dataset_size, latent_dim, conditional_dim, losses_weights, best_loss=float('inf')):
         self.mode = 'train'
         self.dataset_size = dataset_size
         self.latent_dim = latent_dim
@@ -12,16 +12,18 @@ class Loss:
         self.best_loss = best_loss
         self.is_best = False
         self.avg_recon_loss, self.avg_prior_loss, self.avg_marginal_loss = 0, 0, 0
+        check_weights(losses_weights)
+        self.weights = losses_weights
 
     def __call__(self, recon_x, x, mu, logvar):
-        recon_loss = mse(recon_x, x)
-        prior_loss = kl_divergence(mu, logvar).mean()
+        recon_loss = mse(recon_x, x) * self.weights['reconstruction']
+        prior_loss = kl_divergence(mu, logvar).mean() * self.weights['prior']
         loss = recon_loss + prior_loss
         self.avg_recon_loss += recon_loss.item() / self.dataset_size
         self.avg_prior_loss += prior_loss.item() / self.dataset_size
         marginal_loss = zeros(1)
         if self.is_conditional:
-            marginal_loss = pairwise_gaussian_kl(mu, logvar, self.latent_dim).mean()
+            marginal_loss = pairwise_gaussian_kl(mu, logvar, self.latent_dim).mean() * self.weights['marginal']
             loss += marginal_loss
             self.avg_marginal_loss += marginal_loss.item() / self.dataset_size
 
@@ -51,6 +53,11 @@ class Loss:
     def train(self):
         self.reset()
         self.mode = 'train'
+
+
+def check_weights(weights):
+    if weights is None or 'reconstruction' not in weights or 'prior' not in weights or 'marginal' not in weights:
+        raise ValueError('Loss weights must contain keys: reconstruction, prior and marginal')
 
 
 def log_dict(mode, recon_loss, prior_loss, marginal_loss, step):

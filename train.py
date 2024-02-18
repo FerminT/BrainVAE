@@ -26,7 +26,7 @@ def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_
                                       sample_size=len(train_data),
                                       weights_path=weights_path,
                                       offline=no_sync)
-    criterion = Loss(len(train_data), latent_dim, conditional_dim, best_val_loss)
+    criterion = Loss(len(train_data), latent_dim, conditional_dim, config['losses_weights'], best_val_loss)
     while epoch < epochs:
         loss_dict = train_epoch(model, train_loader, optimizer, criterion, log_interval, epoch)
         print(f'====> Epoch: {epoch} Avg loss: 'f'{criterion.get_avg():.4f}')

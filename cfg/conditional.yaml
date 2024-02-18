@@ -12,3 +12,7 @@ params:
   channels: [32, 64, 128, 256, 256, 64]
   conditional_dim: 1
 optimizer: 'Adam'
+losses_weights:
+  reconstruction: 1.0
+  prior: 1.0
+  marginal: 0.01
