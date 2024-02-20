@@ -1,16 +1,14 @@
-# define architecture hyperparameters
-params:
-  input_shape: [160, 192, 160]
-  latent_dim: 354
-  kernel_size: 3
-  stride: 1
-  padding: 1
-  pool_size: 2
-  pool_stride: 2
-  last_kernel_size: 1
-  last_padding: 0
-  channels: [32, 64, 128, 256, 256, 64]
-  conditional_dim: 1
+input_shape: [160, 192, 160]
+latent_dim: 354
+kernel_size: 3
+stride: 1
+padding: 1
+pool_size: 2
+pool_stride: 2
+last_kernel_size: 1
+last_padding: 0
+channels: [32, 64, 128, 256, 256, 64]
+conditional_dim: 1
 soft_label: False
 optimizer: 'AdamW'
 momentum: 0.9

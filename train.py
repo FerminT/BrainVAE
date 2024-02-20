@@ -8,8 +8,8 @@ import argparse
 import torch
 
 
-def train(model_name, config, train_data, val_data, batch_size, lr, epochs, log_interval, device, no_sync, save_path):
-    model, optimizer = load_architecture(model_name, config, device, lr)
+def train(model_name, config, train_data, val_data, batch_size, epochs, log_interval, device, no_sync, save_path):
+    model = load_architecture(model_name, config, len(train_data), epochs, device)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     weights_path = save_path / 'weights'
@@ -74,7 +74,6 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, default='icvae', help='model name')
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
     parser.add_argument('--batch_size', type=int, default=2, help='batch size')
-    parser.add_argument('--lr', type=float, default=0.01, help='initial learning rate')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
     parser.add_argument('--log_interval', type=int, default=10, help='log and save checkpoint interval')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
@@ -95,11 +94,11 @@ if __name__ == '__main__':
                                                     args.sample_size, args.val_size, args.test_size, args.redo_splits,
                                                     device, shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset, args.cfg.split('.')[0])
-    run_name = f'b{args.batch_size}_lr{args.lr * 1000:.0f}e-3_e{args.epochs}'
+    run_name = f'b{args.batch_size}_e{args.epochs}'
     if args.sample_size != -1:
         run_name = f's{args.sample_size}_{run_name}'
     save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    train(args.model, config, train_data, val_data, args.batch_size, args.lr, args.epochs, args.log_interval,
+    train(args.model, config, train_data, val_data, args.batch_size, args.epochs, args.log_interval,
           device, args.no_sync, save_path)

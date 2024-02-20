@@ -6,17 +6,11 @@ from scipy.stats import norm
 from models import icvae
 
 
-def load_architecture(model_name, config, device, lr):
-    model = getattr(icvae, model_name.upper())(**config['params'])
-    model = nn.DataParallel(model)
+def load_architecture(model_name, config, num_batches, num_epochs, device):
+    config['num_steps'] = num_batches * num_epochs
+    model = getattr(icvae, model_name.upper())(**config)
     model.to(device)
-    if config['optimizer'] == 'AdamW':
-        optimizer = optim.AdamW(model.parameters(), lr=lr, betas=(config['momentum'], 0.999))
-    elif config['optimizer'] == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=config['momentum'], nesterov=True)
-    else:
-        optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=lr)
-    return model, optimizer
+    return model
 
 
 def save_reconstruction_batch(data, recon_batch, epoch, save_path):
