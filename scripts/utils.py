@@ -13,7 +13,7 @@ def load_architecture(model_name, config, device, lr):
     if config['optimizer'] == 'AdamW':
         optimizer = optim.AdamW(model.parameters(), lr=lr, betas=(config['momentum'], 0.999))
     elif config['optimizer'] == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=config['momentum'])
+        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=config['momentum'], nesterov=True)
     else:
         optimizer = getattr(optim, config['optimizer'])(model.parameters(), lr=lr)
     return model, optimizer
