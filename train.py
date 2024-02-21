@@ -4,13 +4,14 @@ from scripts.utils import load_yaml, load_architecture
 from scripts.log import LogReconstructionsCallback
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, DeviceStatsMonitor
-from lightning.pytorch import Trainer
+from lightning.pytorch import Trainer, seed_everything
 import wandb
 import argparse
 import torch
 
 
 def train(model_name, config, train_data, val_data, batch_size, epochs, device, no_sync, save_path):
+    seed_everything(42, workers=True)
     model = load_architecture(model_name, config, len(train_data), epochs)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
@@ -23,7 +24,8 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, device, 
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       logger=wandb_logger,
-                      callbacks=[checkpoint_callback, reconstruction_callback, device_stats_callback])
+                      callbacks=[checkpoint_callback, reconstruction_callback, device_stats_callback],
+                      deterministic=True)
     trainer.fit(model, train_loader, val_loader)
     wandb.finish()
 
