@@ -90,7 +90,7 @@ if __name__ == '__main__':
     if args.device == 'cuda' and not torch.cuda.is_available():
         raise ValueError('cuda is not available')
     device = torch.device(args.device)
-    train_data, val_data, test_data = load_datasets(datapath, config['params']['input_shape'], config['soft_label'],
+    train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['conditional_dim'],
                                                     args.sample_size, args.val_size, args.test_size, args.redo_splits,
                                                     device, shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset, args.cfg.split('.')[0])

@@ -68,13 +68,15 @@ def transform(img):
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, device, soft_label=False, transform=None):
+    def __init__(self, input_shape, datapath, data, device, conditional_dim=0, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
-        self.soft_label = soft_label
+        self.soft_label = conditional_dim > 0
         self.age_range = [int(data['age_at_scan'].min()), round(data['age_at_scan'].max() + 0.5)]
+        if self.soft_label and (self.age_range[1] - self.age_range[0]) != conditional_dim:
+            raise ValueError('conditional_dim should be equal to the number of bins in the age range')
         self.age_step = 1
         self.age_sigma = 1
         self.device = device
@@ -103,7 +105,7 @@ class T1Dataset(Dataset):
         if not self.soft_label:
             age = tensor(float(age)).unsqueeze(dim=0)
         else:
-            age, _ = num2vect(age.item(), self.age_range, self.age_step, self.age_sigma)
+            age, _ = num2vect(age, self.age_range, self.age_step, self.age_sigma)
             age = from_numpy(age)
         age = age.to(self.device)
         return age
