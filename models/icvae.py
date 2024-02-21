@@ -1,8 +1,9 @@
+import lightning as lg
 from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize
-from torch import optim
-import lightning as lg
+from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights
+from torch import optim, zeros
 
 
 class ICVAE(lg.LightningModule):
@@ -31,6 +32,7 @@ class ICVAE(lg.LightningModule):
         self.optimizer = optimizer
         self.lr, self.max_lr = lr, max_lr
         self.momentum, self.weight_decay = momentum, weight_decay
+        check_weights(losses_weights)
         self.losses_weights = losses_weights
         self.num_steps = num_steps
         channels = list(channels)
@@ -57,5 +59,30 @@ class ICVAE(lg.LightningModule):
         else:
             optimizer = getattr(optim, self.optimizer)(self.parameters(), lr=self.lr)
         lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.max_lr, total_steps=self.num_steps)
-
         return optimizer, lr_scheduler
+
+    def training_step(self, batch, batch_idx):
+        x, condition = batch
+        x_reconstructed, mu, logvar = self(x, condition)
+        loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar)
+        self.log_dict(loss_dict)
+        return loss
+
+    def _loss(self, recon_x, x, mu, logvar, mode='train'):
+        recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
+        prior_loss = kl_divergence(mu, logvar).mean() * self.losses_weights['prior']
+        loss = recon_loss + prior_loss
+        marginal_loss = zeros(1)
+        if self.hparams.conditional_dim > 0:
+            marginal_loss = (pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean()
+                             * self.losses_weights['marginal'])
+            loss += marginal_loss
+        return loss, self._log_dict(mode, recon_loss.item(), prior_loss.item(), marginal_loss.item())
+
+    def _log_dict(self, mode, recon_loss, prior_loss, marginal_loss):
+        state = {f'{mode}/recon_loss': recon_loss,
+                 f'{mode}/prior_loss': prior_loss}
+        if self.hparams.conditional_dim > 0:
+            state[f'{mode}/marginal_loss'] = marginal_loss
+        state[f'{mode}/loss'] = recon_loss + prior_loss + marginal_loss
+        return state
