@@ -24,8 +24,7 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, device, 
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       logger=wandb_logger,
-                      callbacks=[checkpoint_callback, reconstruction_callback, device_stats_callback],
-                      deterministic=True)
+                      callbacks=[checkpoint_callback, reconstruction_callback, device_stats_callback])
     trainer.fit(model, train_loader, val_loader)
     wandb.finish()
 
