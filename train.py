@@ -51,7 +51,7 @@ if __name__ == '__main__':
         raise ValueError('gpu is not available')
     train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['conditional_dim'],
                                                     args.sample_size, args.val_size, args.test_size, args.redo_splits,
-                                                    args.device, shuffle=True, random_state=42)
+                                                    shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset, args.cfg.split('.')[0])
     run_name = f'b{args.batch_size}_e{args.epochs}'
     if args.sample_size != -1:

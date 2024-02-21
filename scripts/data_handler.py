@@ -11,14 +11,14 @@ def get_loader(dataset, batch_size, shuffle):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-def load_datasets(datapath, input_shape, soft_label, sample_size, val_size, test_size, redo_splits,
-                  device, shuffle, random_state):
+def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size, test_size, redo_splits,
+                  shuffle, random_state):
     metadata = pd.read_csv(datapath / 'metadata' / f'{datapath.name}_image_baseline_metadata.csv')
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train, device, soft_label)
-    val_dataset = T1Dataset(input_shape, datapath, val, device, soft_label)
-    test_dataset = T1Dataset(input_shape, datapath, test, device, soft_label)
+    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim)
+    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim)
+    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim)
     return train_dataset, val_dataset, test_dataset
 
 
@@ -68,7 +68,7 @@ def transform(img):
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, device, conditional_dim=0, transform=None):
+    def __init__(self, input_shape, datapath, data, conditional_dim=0, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
@@ -79,7 +79,6 @@ class T1Dataset(Dataset):
             raise ValueError('conditional_dim should be equal to the number of bins in the age range')
         self.age_step = 1
         self.age_sigma = 1
-        self.device = device
 
     def __len__(self):
         return len(self.data)
@@ -97,7 +96,7 @@ class T1Dataset(Dataset):
         if self.transform:
             t1_img = self.transform(t1_img)
         t1_img = crop_center(t1_img, self.input_shape)
-        t1_img = from_numpy(np.asarray([t1_img])).to(self.device)
+        t1_img = from_numpy(np.asarray([t1_img]))
         return t1_img
 
     def load_and_process_age(self, sample):
@@ -107,5 +106,4 @@ class T1Dataset(Dataset):
         else:
             age, _ = num2vect(age, self.age_range, self.age_step, self.age_sigma)
             age = from_numpy(age)
-        age = age.to(self.device)
         return age
