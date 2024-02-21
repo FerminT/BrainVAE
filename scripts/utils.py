@@ -6,10 +6,9 @@ from scipy.stats import norm
 from models import icvae
 
 
-def load_architecture(model_name, config, num_batches, num_epochs, device):
+def load_architecture(model_name, config, num_batches, num_epochs):
     config['num_steps'] = num_batches * num_epochs
     model = getattr(icvae, model_name.upper())(**config)
-    model.to(device)
     return model
 
 
