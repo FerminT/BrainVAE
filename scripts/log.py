@@ -15,7 +15,7 @@ class LogReconstructionsCallback(Callback):
             x, condition = batch
             n, n_slice = min(self.sample_size, x.size(0)), self.slice_idx
             imgs, captions = save_reconstruction_batch(x, outputs, n, n_slice, trainer.current_epoch)
-            trainer.logger.log_image(key='reconstructions', images=imgs, captions=captions)
+            trainer.logger.experiment.log_image(key='reconstructions', images=imgs, captions=captions)
 
 
 
