@@ -17,7 +17,7 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, device, 
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     wandb.init()
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync,
-                               log_model='all')
+                               log_model='all' if not no_sync else False)
     device_stats_callback = DeviceStatsMonitor()
     checkpoint_callback = ModelCheckpoint(dirpath=save_path, filename='best', monitor='val/loss', mode='min')
     reconstruction_callback = LogReconstructionsCallback(sample_size=8)
