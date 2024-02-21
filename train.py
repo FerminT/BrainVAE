@@ -50,10 +50,9 @@ if __name__ == '__main__':
     config = load_yaml(Path('cfg', args.cfg))
     if args.device == 'gpu' and not torch.cuda.is_available():
         raise ValueError('gpu is not available')
-    device = torch.device(args.device)
     train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['conditional_dim'],
                                                     args.sample_size, args.val_size, args.test_size, args.redo_splits,
-                                                    device, shuffle=True, random_state=42)
+                                                    args.device, shuffle=True, random_state=42)
     save_path = Path(args.save_path, args.dataset, args.cfg.split('.')[0])
     run_name = f'b{args.batch_size}_e{args.epochs}'
     if args.sample_size != -1:
@@ -61,4 +60,4 @@ if __name__ == '__main__':
     save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    train(args.model, config, train_data, val_data, args.batch_size, args.epochs, device, args.no_sync, save_path)
+    train(args.model, config, train_data, val_data, args.batch_size, args.epochs, args.device, args.no_sync, save_path)
