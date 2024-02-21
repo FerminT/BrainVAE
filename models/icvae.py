@@ -59,7 +59,7 @@ class ICVAE(lg.LightningModule):
         else:
             optimizer = getattr(optim, self.optimizer)(self.parameters(), lr=self.lr)
         lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.max_lr, total_steps=self.num_steps)
-        return optimizer, lr_scheduler
+        return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
         x, condition = batch
