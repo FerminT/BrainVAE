@@ -1,6 +1,35 @@
 import wandb
 from os import environ
-from torch import save, load
+from torch import save, load, cat
+from torchvision.utils import make_grid
+from lightning.pytorch.callbacks import Callback
+
+
+class LogReconstructionsCallback(Callback):
+    def __init__(self, sample_size, slice_idx=50):
+        self.sample_size = sample_size
+        self.slice_idx = slice_idx
+
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if batch_idx == 0:
+            x, condition = batch
+            n, n_slice = min(self.sample_size, x.size(0)), self.slice_idx
+            imgs, captions = [], []
+            for axis in range(3):
+                if axis == 0:
+                    original_slice = x[:, :, n_slice, :, :]
+                    reconstructed_slice = outputs[:, :, n_slice, :, :]
+                elif axis == 1:
+                    original_slice = x[:, :, :, n_slice, :]
+                    reconstructed_slice = outputs[:, :, :, n_slice, :]
+                else:
+                    original_slice = x[:, :, :, :, n_slice]
+                    reconstructed_slice = outputs[:, :, :, :, n_slice]
+                img_comparison = make_grid(cat([original_slice[:n], reconstructed_slice[:n]]), nrow=n)
+                imgs.append(img_comparison)
+                captions.append(f'Epoch: {trainer.current_epoch} Axis: {axis}')
+            trainer.logger.log_image(key='reconstructions', images=imgs, captions=captions)
+
 
 
 def resume(project, run_name, model, optimizer, lr, batch_size, epochs, latent_dim, sample_size, weights_path,

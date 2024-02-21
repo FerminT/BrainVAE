@@ -68,6 +68,13 @@ class ICVAE(lg.LightningModule):
         self.log_dict(loss_dict)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        x, condition = batch
+        x_reconstructed, mu, logvar = self(x, condition)
+        loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar, mode='val')
+        self.log_dict(loss_dict)
+        return x_reconstructed
+
     def _loss(self, recon_x, x, mu, logvar, mode='train'):
         recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
         prior_loss = kl_divergence(mu, logvar).mean() * self.losses_weights['prior']
