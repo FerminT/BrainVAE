@@ -87,9 +87,9 @@ class ICVAE(lg.LightningModule):
         return loss, self._log_dict(mode, recon_loss.item(), prior_loss.item(), marginal_loss.item())
 
     def _log_dict(self, mode, recon_loss, prior_loss, marginal_loss):
-        state = {f'{mode}/recon_loss': recon_loss,
-                 f'{mode}/prior_loss': prior_loss}
+        state = {f'{mode}_recon_loss': recon_loss,
+                 f'{mode}_prior_loss': prior_loss}
         if self.hparams.conditional_dim > 0:
-            state[f'{mode}/marginal_loss'] = marginal_loss
-        state[f'{mode}/loss'] = recon_loss + prior_loss + marginal_loss
+            state[f'{mode}_marginal_loss'] = marginal_loss
+        state[f'{mode}_loss'] = recon_loss + prior_loss + marginal_loss
         return state
