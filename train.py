@@ -18,6 +18,8 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, device, 
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     if no_sync:
         os.environ['WANDB_MODE'] = 'offline'
+    if wandb.run is not None:
+        wandb.finish()
     wandb.init()
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync,
                                log_model='all' if not no_sync else False)
