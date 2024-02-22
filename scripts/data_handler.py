@@ -1,6 +1,7 @@
 import nibabel as nib
 import numpy as np
 import pandas as pd
+from os import cpu_count
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
 from sklearn.model_selection import train_test_split
@@ -8,7 +9,7 @@ from scripts.utils import num2vect
 
 
 def get_loader(dataset, batch_size, shuffle):
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=cpu_count())
 
 
 def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size, test_size, redo_splits,
