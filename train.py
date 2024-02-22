@@ -6,6 +6,7 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, DeviceStatsMonitor
 from lightning.pytorch import Trainer, seed_everything
 import wandb
+import os
 import argparse
 import torch
 
@@ -15,6 +16,8 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, device, 
     model = load_architecture(model_name, config, len(train_data), epochs)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
+    if no_sync:
+        os.environ['WANDB_MODE'] = 'offline'
     wandb.init()
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync,
                                log_model='all' if not no_sync else False)
