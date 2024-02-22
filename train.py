@@ -21,6 +21,7 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
     reconstruction_callback = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
+                      precision='16-mixed',
                       logger=wandb_logger,
                       callbacks=[checkpoint_callback, reconstruction_callback],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
