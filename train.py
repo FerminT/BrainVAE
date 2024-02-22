@@ -16,11 +16,6 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
     model = load_architecture(model_name, config, len(train_data), epochs)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
-    if no_sync:
-        os.environ['WANDB_MODE'] = 'offline'
-    if wandb.run is not None:
-        wandb.finish()
-    wandb.init()
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync,
                                log_model='all' if not no_sync else False)
     device_stats_callback = DeviceStatsMonitor()
