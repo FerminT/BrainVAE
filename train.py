@@ -6,7 +6,6 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, DeviceStatsMonitor
 from lightning.pytorch import Trainer, seed_everything
 import wandb
-import os
 import argparse
 import torch
 

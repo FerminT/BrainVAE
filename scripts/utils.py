@@ -2,6 +2,7 @@ import yaml
 import numpy as np
 from torch import cat
 from torchvision.utils import make_grid
+from torchvision.transforms import Resize
 from scipy.stats import norm
 from models import icvae
 
@@ -14,6 +15,7 @@ def load_architecture(model_name, config, num_batches, num_epochs):
 
 def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
     imgs, captions = [], []
+    max_shape = [0, 0]
     for axis in range(3):
         if axis == 0:
             original_slice = data[:, :, slice_idx, :, :]
@@ -27,6 +29,10 @@ def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
         img_comparison = make_grid(cat([original_slice[:n], reconstructed_slice[:n]]), nrow=n)
         imgs.append(img_comparison)
         captions.append(f'Epoch: {epoch} Axis: {axis}')
+        max_shape[0] = max(max_shape[0], img_comparison.shape[1])
+        max_shape[1] = max(max_shape[1], img_comparison.shape[2])
+    for i in range(len(imgs)):
+        imgs[i] = Resize(max_shape, antialias=True)(imgs[i])
     return imgs, captions
 
 
