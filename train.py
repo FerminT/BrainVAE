@@ -15,8 +15,7 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
     model = load_architecture(model_name, config, len(train_data), epochs)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
-    wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync,
-                               log_model='all' if not no_sync else False)
+    wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
     checkpoint_callback = ModelCheckpoint(dirpath=save_path, filename='best', monitor='val/loss', mode='min')
     reconstruction_callback = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
