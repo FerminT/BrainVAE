@@ -40,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
     parser.add_argument('--log_interval', type=int, default=50, help='log interval')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
-    parser.add_argument('--val_size', type=float, default=0.2, help='validation size')
+    parser.add_argument('--val_size', type=float, default=0.1, help='validation size')
     parser.add_argument('--test_size', type=float, default=0.1, help='test size')
     parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
