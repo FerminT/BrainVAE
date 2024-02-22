@@ -27,6 +27,7 @@ def save_reconstruction_batch(data, outputs, n, slice_idx, epoch):
         img_comparison = make_grid(cat([original_slice[:n], reconstructed_slice[:n]]), nrow=n)
         imgs.append(img_comparison)
         captions.append(f'Epoch: {epoch} Axis: {axis}')
+    return imgs, captions
 
 
 def load_yaml(filepath):
