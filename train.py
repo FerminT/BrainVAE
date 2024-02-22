@@ -25,7 +25,7 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
                       callbacks=[checkpoint_callback, reconstruction_callback],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
                       )
-    trainer.fit(model, train_loader, val_loader)
+    trainer.fit(model, train_loader, val_loader, ckpt_path=save_path / 'best.ckpt')
     wandb.finish()
 
 
