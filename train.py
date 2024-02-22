@@ -11,7 +11,7 @@ import argparse
 import torch
 
 
-def train(model_name, config, train_data, val_data, batch_size, epochs, device, no_sync, save_path):
+def train(model_name, config, train_data, val_data, batch_size, epochs, log_interval, device, no_sync, save_path):
     seed_everything(42, workers=True)
     model = load_architecture(model_name, config, len(train_data), epochs)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
@@ -29,7 +29,9 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, device, 
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       logger=wandb_logger,
-                      callbacks=[checkpoint_callback, reconstruction_callback, device_stats_callback])
+                      callbacks=[checkpoint_callback, reconstruction_callback, device_stats_callback],
+                      log_every_n_steps=min(log_interval, len(train_loader) // 10)
+                      )
     trainer.fit(model, train_loader, val_loader)
     wandb.finish()
 
@@ -41,6 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
     parser.add_argument('--batch_size', type=int, default=2, help='batch size')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
+    parser.add_argument('--log_interval', type=int, default=50, help='log interval')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
     parser.add_argument('--val_size', type=float, default=0.2, help='validation size')
     parser.add_argument('--test_size', type=float, default=0.1, help='test size')
@@ -64,4 +67,5 @@ if __name__ == '__main__':
     save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    train(args.model, config, train_data, val_data, args.batch_size, args.epochs, args.device, args.no_sync, save_path)
+    train(args.model, config, train_data, val_data, args.batch_size, args.epochs, args.log_interval,
+          args.device, args.no_sync, save_path)
