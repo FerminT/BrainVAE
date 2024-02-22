@@ -12,7 +12,7 @@ def load_architecture(model_name, config, num_batches, num_epochs):
     return model
 
 
-def save_reconstruction_batch(data, outputs, n, slice_idx, epoch):
+def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
     imgs, captions = [], []
     for axis in range(3):
         if axis == 0:
