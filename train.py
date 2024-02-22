@@ -17,13 +17,12 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync,
                                log_model='all' if not no_sync else False)
-    device_stats_callback = DeviceStatsMonitor()
     checkpoint_callback = ModelCheckpoint(dirpath=save_path, filename='best', monitor='val/loss', mode='min')
     reconstruction_callback = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       logger=wandb_logger,
-                      callbacks=[checkpoint_callback, reconstruction_callback, device_stats_callback],
+                      callbacks=[checkpoint_callback, reconstruction_callback],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
                       )
     trainer.fit(model, train_loader, val_loader)
