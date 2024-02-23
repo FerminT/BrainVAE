@@ -3,7 +3,7 @@ from scripts.data_handler import get_loader, load_datasets
 from scripts.utils import load_yaml, load_architecture
 from scripts.log import LogReconstructionsCallback
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch import Trainer, seed_everything
 import wandb
 import argparse
@@ -16,14 +16,15 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
-    checkpoint_callback = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
+    checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
                                           mode='min', save_top_k=10)
-    reconstruction_callback = LogReconstructionsCallback(sample_size=8)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='min')
+    reconstruction = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='16-mixed',
                       logger=wandb_logger,
-                      callbacks=[checkpoint_callback, reconstruction_callback],
+                      callbacks=[checkpoint, reconstruction, early_stopping],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
                       )
     checkpoints = sorted(save_path.glob('*.ckpt'))
