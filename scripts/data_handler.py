@@ -1,6 +1,7 @@
 import nibabel as nib
 import numpy as np
 import pandas as pd
+from torchio.transforms import RandomFlip
 from os import cpu_count
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
@@ -64,12 +65,8 @@ def crop_center(data, shape):
     return data[start_x:-start_x, start_y:-start_y, start_z:-start_z]
 
 
-def transform(img):
-    pass
-
-
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim=0, transform=None):
+    def __init__(self, input_shape, datapath, data, conditional_dim=0, transform=RandomFlip()):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
@@ -92,10 +89,10 @@ class T1Dataset(Dataset):
 
     def load_and_process_img(self, sample):
         t1_img = nib.load(self.datapath / sample['image_path'])
-        t1_img = t1_img.get_fdata(dtype=np.float32)
-        t1_img = t1_img / t1_img.mean()
         if self.transform:
             t1_img = self.transform(t1_img)
+        t1_img = t1_img.get_fdata(dtype=np.float32)
+        t1_img = t1_img / t1_img.mean()
         t1_img = crop_center(t1_img, self.input_shape)
         t1_img = from_numpy(np.asarray([t1_img]))
         return t1_img
