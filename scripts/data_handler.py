@@ -71,7 +71,7 @@ class T1Dataset(Dataset):
         self.datapath = datapath
         self.data = data
         self.transform = transform
-        self.soft_label = conditional_dim > 0
+        self.soft_label = conditional_dim > 1
         self.age_range = [int(data['age_at_scan'].min()), round(data['age_at_scan'].max() + 0.5)]
         if self.soft_label and (self.age_range[1] - self.age_range[0]) != conditional_dim:
             raise ValueError('conditional_dim should be equal to the number of bins in the age range')
