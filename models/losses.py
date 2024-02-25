@@ -22,9 +22,9 @@ def pairwise_gaussian_kl(mu, logvar, latent_dim):
     sigma_sq_inv = 1.0 / sigma_sq
     first_term = matmul(sigma_sq, sigma_sq_inv.transpose(0, 1))
 
-    r = matmul(mu * mu, sigma_sq_inv.squeeze().transpose(0, 1))
-    r2 = (mu * mu * sigma_sq_inv.squeeze()).sum(axis=1)
-    second_term = 2 * matmul(mu, (mu * sigma_sq_inv.squeeze()).transpose(0, 1))
+    r = matmul(mu * mu, sigma_sq_inv.transpose(0, 1))
+    r2 = (mu * mu * sigma_sq_inv).sum(axis=1)
+    second_term = 2 * matmul(mu, (mu * sigma_sq_inv).transpose(0, 1))
     second_term = r - second_term + r2
     det_sigma = logvar.sum(axis=1)
     third_term = unsqueeze(det_sigma, dim=1) - unsqueeze(det_sigma, dim=1).transpose(0, 1)
