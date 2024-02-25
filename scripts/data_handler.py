@@ -52,7 +52,7 @@ def generate_splits(data, sample_size, val_size, test_size, shuffle, random_stat
 
 def preprocess(data, sample_size):
     data['age_at_scan'] = data['days_since_baseline'] / 365 + data['age_at_baseline']
-    data = data.sort_values(['subject_id', 'days_since_baseline']).groupby('subject_id').first()
+    data = data.drop_duplicates(subset='subject_id')
     if 0 < sample_size < len(data):
         data = data.sample(n=sample_size, random_state=42)
     return data
