@@ -28,16 +28,17 @@ def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuf
     splits_path = datapath / 'splits'
     if sample_size != -1:
         splits_path = splits_path / f'sample_{sample_size}'
-    if splits_path.exists() and not redo:
+    train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
+    if train_csv.exists() and val_csv.exists() and test_csv.exists() and not redo:
         train = pd.read_csv(splits_path / 'train.csv')
         val = pd.read_csv(splits_path / 'val.csv')
         test = pd.read_csv(splits_path / 'test.csv')
     else:
         train, val, test = generate_splits(metadata, sample_size, val_size, test_size, shuffle, random_state)
         splits_path.mkdir(parents=True)
-        train.to_csv(splits_path / 'train.csv', index=False)
-        val.to_csv(splits_path / 'val.csv', index=False)
-        test.to_csv(splits_path / 'test.csv', index=False)
+        train.to_csv(train_csv, index=False)
+        val.to_csv(val_csv, index=False)
+        test.to_csv(test_csv, index=False)
     return train, val, test
 
 
