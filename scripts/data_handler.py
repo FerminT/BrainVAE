@@ -19,8 +19,8 @@ def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size,
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim)
-    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim)
-    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim)
+    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim, testing=True)
+    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim, testing=True)
     return train_dataset, val_dataset, test_dataset
 
 
@@ -67,12 +67,13 @@ def crop_center(data, shape):
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim=0, transform=RandomFlip()):
+    def __init__(self, input_shape, datapath, data, conditional_dim=0, testing=False, transform=RandomFlip()):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
         self.soft_label = conditional_dim > 1
+        self.testing = testing
         self.age_range = [int(data['age_at_scan'].min()), round(data['age_at_scan'].max() + 0.5)]
         if self.soft_label and (self.age_range[1] - self.age_range[0]) != conditional_dim:
             raise ValueError('conditional_dim should be equal to the number of bins in the age range')
@@ -90,7 +91,7 @@ class T1Dataset(Dataset):
 
     def load_and_process_img(self, sample):
         t1_img = nib.load(self.datapath / sample['image_path'])
-        if self.transform:
+        if self.transform and not self.testing:
             t1_img = self.transform(t1_img)
         t1_img = t1_img.get_fdata(dtype=np.float32)
         t1_img = t1_img / t1_img.mean()
