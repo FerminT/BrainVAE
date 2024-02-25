@@ -35,7 +35,7 @@ def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuf
         test = pd.read_csv(splits_path / 'test.csv')
     else:
         train, val, test = generate_splits(metadata, sample_size, val_size, test_size, shuffle, random_state)
-        splits_path.mkdir(parents=True)
+        splits_path.mkdir(parents=True, exist_ok=True)
         train.to_csv(train_csv, index=False)
         val.to_csv(val_csv, index=False)
         test.to_csv(test_csv, index=False)
