@@ -3,7 +3,7 @@ from scripts.data_handler import get_loader, load_datasets
 from scripts.utils import load_yaml, load_architecture
 from scripts.log import LogReconstructionsCallback
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from lightning.pytorch import Trainer, seed_everything
 import wandb
 import argparse
@@ -18,13 +18,14 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
                                           mode='min', save_top_k=10)
+    lr_monitor = LearningRateMonitor(logging_interval='step')
     early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='min')
     reconstruction = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='16-mixed',
                       logger=wandb_logger,
-                      callbacks=[checkpoint, reconstruction, early_stopping],
+                      callbacks=[checkpoint, reconstruction, early_stopping, lr_monitor],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
                       )
     checkpoints = sorted(save_path.glob('*.ckpt'))
