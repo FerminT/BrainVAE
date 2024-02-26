@@ -1,7 +1,7 @@
 import nibabel as nib
 import numpy as np
 import pandas as pd
-from torchio.transforms import RandomFlip
+from torchio import Compose, RandomFlip, RandomNoise, RandomElasticDeformation, RandomSwap
 from os import cpu_count
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
@@ -66,8 +66,15 @@ def crop_center(data, shape):
     return data[start_x:-start_x, start_y:-start_y, start_z:-start_z]
 
 
+def transform(t1_img):
+    return Compose([RandomFlip(axes=[0, 1, 2], flip_probability=0.5),
+                    RandomNoise(p=0.5),
+                    RandomElasticDeformation(p=0.2),
+                    RandomSwap(p=0.75)])(t1_img)
+
+
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, testing=False, transform=RandomFlip()):
+    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, testing=False, transform=transform):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
