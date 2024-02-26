@@ -10,9 +10,9 @@ import argparse
 import torch
 
 
-def train(model_name, config, train_data, val_data, batch_size, epochs, log_interval, device, no_sync, save_path):
+def train(config, train_data, val_data, batch_size, epochs, log_interval, device, no_sync, save_path):
     seed_everything(42, workers=True)
-    model = load_architecture(model_name, config, len(train_data), epochs)
+    model = load_architecture(config, len(train_data), epochs)
     train_loader = get_loader(train_data, batch_size, shuffle=False)
     val_loader = get_loader(val_data, batch_size, shuffle=False)
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
@@ -36,7 +36,6 @@ def train(model_name, config, train_data, val_data, batch_size, epochs, log_inte
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='ukbb', help='dataset name')
-    parser.add_argument('--model', type=str, default='icvae', help='model name')
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
     parser.add_argument('--batch_size', type=int, default=2, help='batch size')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
@@ -64,5 +63,5 @@ if __name__ == '__main__':
     save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    train(args.model, config, train_data, val_data, args.batch_size, args.epochs, args.log_interval,
+    train(config, train_data, val_data, args.batch_size, args.epochs, args.log_interval,
           args.device, args.no_sync, save_path)

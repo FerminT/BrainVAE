@@ -4,12 +4,12 @@ from torch import cat
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from scipy.stats import norm
-from models import icvae
+from models.icvae import ICVAE
 
 
-def load_architecture(model_name, config, num_batches, num_epochs):
+def load_architecture(config, num_batches, num_epochs):
     config['num_steps'] = num_batches * num_epochs
-    model = getattr(icvae, model_name.upper())(**config)
+    model = ICVAE(**config)
     return model
 
 
