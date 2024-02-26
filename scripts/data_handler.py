@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
 from sklearn.model_selection import train_test_split
 from scripts.utils import num2vect
+from scripts import constants
 
 
 def get_loader(dataset, batch_size, shuffle):
@@ -15,7 +16,7 @@ def get_loader(dataset, batch_size, shuffle):
 
 def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size, test_size, redo_splits,
                   shuffle, random_state):
-    metadata = pd.read_csv(datapath / 'metadata' / f'{datapath.name}_image_baseline_metadata.csv')
+    metadata = pd.read_csv(datapath / constants.METADATA_PATH / f'{datapath.name}_image_baseline_metadata.csv')
     age_range = [int(metadata['age_at_scan'].min()), round(metadata['age_at_scan'].max() + 0.5)]
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
@@ -26,7 +27,7 @@ def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size,
 
 
 def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuffle, random_state):
-    splits_path = datapath / 'splits'
+    splits_path = datapath / constants.SPLITS_PATH
     if sample_size != -1:
         splits_path = splits_path / f'sample_{sample_size}'
     train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'

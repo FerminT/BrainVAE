@@ -2,6 +2,7 @@ from pathlib import Path
 from scripts.data_handler import get_loader, load_datasets
 from scripts.utils import load_yaml, load_architecture
 from scripts.log import LogReconstructionsCallback
+from scripts import constants
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from lightning.pytorch import Trainer, seed_everything
@@ -46,17 +47,16 @@ if __name__ == '__main__':
     parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
     parser.add_argument('--device', type=str, default='cpu', help='device (gpu or cpu)')
-    parser.add_argument('--save_path', type=str, default='checkpoints', help='save path')
 
     args = parser.parse_args()
-    datapath = Path('datasets', args.dataset)
-    config = load_yaml(Path('cfg', args.cfg))
+    datapath = Path(constants.DATA_PATH, args.dataset)
+    config = load_yaml(Path(constants.CFG_PATH, args.cfg))
     if args.device == 'gpu' and not torch.cuda.is_available():
         raise ValueError('gpu is not available')
     train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['conditional_dim'],
                                                     args.sample_size, args.val_size, args.test_size, args.redo_splits,
                                                     shuffle=True, random_state=42)
-    save_path = Path(args.save_path, args.dataset, args.cfg.split('.')[0])
+    save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg.split('.')[0])
     run_name = f'b{args.batch_size}_e{args.epochs}'
     if args.sample_size != -1:
         run_name = f's{args.sample_size}_{run_name}'
