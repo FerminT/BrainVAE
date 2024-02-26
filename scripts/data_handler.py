@@ -16,11 +16,12 @@ def get_loader(dataset, batch_size, shuffle):
 def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size, test_size, redo_splits,
                   shuffle, random_state):
     metadata = pd.read_csv(datapath / 'metadata' / f'{datapath.name}_image_baseline_metadata.csv')
+    age_range = [int(metadata['age_at_scan'].min()), round(metadata['age_at_scan'].max() + 0.5)]
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim)
-    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim, testing=True)
-    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim, testing=True)
+    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim, age_range, testing=False)
+    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim, age_range, testing=True)
+    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim, age_range, testing=True)
     return train_dataset, val_dataset, test_dataset
 
 
@@ -51,7 +52,6 @@ def generate_splits(data, sample_size, val_size, test_size, shuffle, random_stat
 
 
 def preprocess(data, sample_size):
-    data['age_at_scan'] = data['days_since_baseline'] / 365 + data['age_at_baseline']
     data = data.drop_duplicates(subset='subject_id')
     if 0 < sample_size < len(data):
         data = data.sample(n=sample_size, random_state=42)
@@ -67,15 +67,15 @@ def crop_center(data, shape):
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim=0, testing=False, transform=RandomFlip()):
+    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, testing=False, transform=RandomFlip()):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
         self.soft_label = conditional_dim > 1
         self.testing = testing
-        self.age_range = [int(data['age_at_scan'].min()), round(data['age_at_scan'].max() + 0.5)]
-        if self.soft_label and (self.age_range[1] - self.age_range[0]) != conditional_dim:
+        self.age_range = age_range
+        if self.soft_label and self.age_range[1] - self.age_range[0] != conditional_dim:
             raise ValueError('conditional_dim should be equal to the number of bins in the age range')
         self.age_step = 1
         self.age_sigma = 1
