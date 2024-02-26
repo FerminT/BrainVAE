@@ -6,7 +6,7 @@ from os import cpu_count
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
 from sklearn.model_selection import train_test_split
-from scripts.utils import num2vect
+from scripts.utils import num2vect, get_splits_files
 from scripts import constants
 
 
@@ -14,10 +14,15 @@ def get_loader(dataset, batch_size, shuffle):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=cpu_count())
 
 
-def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size, test_size, redo_splits,
-                  shuffle, random_state):
+def load_metadata(datapath):
     metadata = pd.read_csv(datapath / constants.METADATA_PATH / f'{datapath.name}_image_baseline_metadata.csv')
     age_range = [int(metadata['age_at_scan'].min()), round(metadata['age_at_scan'].max() + 0.5)]
+    return metadata, age_range
+
+
+def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size, test_size, redo_splits,
+                  shuffle, random_state):
+    metadata, age_range = load_metadata(datapath)
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim, age_range, testing=False)
@@ -27,17 +32,14 @@ def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size,
 
 
 def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuffle, random_state):
-    splits_path = datapath / constants.SPLITS_PATH
-    if sample_size != -1:
-        splits_path = splits_path / f'sample_{sample_size}'
-    train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
+    train_csv, val_csv, test_csv = get_splits_files(datapath, sample_size)
     if train_csv.exists() and val_csv.exists() and test_csv.exists() and not redo:
-        train = pd.read_csv(splits_path / 'train.csv')
-        val = pd.read_csv(splits_path / 'val.csv')
-        test = pd.read_csv(splits_path / 'test.csv')
+        train = pd.read_csv(train_csv)
+        val = pd.read_csv(val_csv)
+        test = pd.read_csv(test_csv)
     else:
         train, val, test = generate_splits(metadata, sample_size, val_size, test_size, shuffle, random_state)
-        splits_path.mkdir(parents=True, exist_ok=True)
+        train_csv.absolute().parent.mkdir(parents=True, exist_ok=True)
         train.to_csv(train_csv, index=False)
         val.to_csv(val_csv, index=False)
         test.to_csv(test_csv, index=False)

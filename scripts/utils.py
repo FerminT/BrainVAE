@@ -5,6 +5,7 @@ from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from scipy.stats import norm
 from models.icvae import ICVAE
+from scripts.constants import SPLITS_PATH
 
 
 def load_architecture(config, num_batches, num_epochs):
@@ -34,6 +35,14 @@ def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
     for i in range(len(imgs)):
         imgs[i] = Resize(max_shape, antialias=True)(imgs[i])
     return imgs, captions
+
+
+def get_splits_files(datapath, sample_size):
+    splits_path = datapath / SPLITS_PATH
+    if sample_size != -1:
+        splits_path = splits_path / f'sample_{sample_size}'
+    train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
+    return train_csv, val_csv, test_csv
 
 
 def load_yaml(filepath):
