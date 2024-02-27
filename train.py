@@ -3,12 +3,12 @@ from scripts.data_handler import get_loader, load_datasets
 from scripts.utils import load_yaml, load_architecture
 from scripts.log import LogReconstructionsCallback
 from scripts import constants
+from torch.cuda import is_available
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from lightning.pytorch import Trainer, seed_everything
 import wandb
 import argparse
-import torch
 
 
 def train(config, train_data, val_data, batch_size, epochs, log_interval, device, no_sync, save_path):
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     datapath = Path(constants.DATA_PATH, args.dataset)
     config = load_yaml(Path(constants.CFG_PATH, args.cfg))
-    if args.device == 'gpu' and not torch.cuda.is_available():
+    if args.device == 'gpu' and not is_available():
         raise ValueError('gpu is not available')
     train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['conditional_dim'],
                                                     args.sample_size, args.val_size, args.test_size, args.redo_splits,
