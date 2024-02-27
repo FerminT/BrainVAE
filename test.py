@@ -25,9 +25,9 @@ if __name__ == '__main__':
     if not val_csv.exists() or not test_csv.exists():
         raise ValueError(f'splits files for a sample size of {args.sample_size} do not exist')
 
-    val_dataset = T1Dataset(config['input_shape'], datapath, val_csv, config['conditional_dim'], age_range,
+    val_dataset = T1Dataset(config['input_shape'], datapath, val_csv, conditional_dim=1, age_range=age_range,
                             testing=True)
-    test_dataset = T1Dataset(config['input_shape'], datapath, test_csv, config['conditional_dim'], age_range,
+    test_dataset = T1Dataset(config['input_shape'], datapath, test_csv, conditional_dim=1, age_range=age_range,
                              testing=True)
     weights = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
     test(weights, val_dataset, test_dataset, args.device)
