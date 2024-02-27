@@ -1,7 +1,7 @@
 import nibabel as nib
 import numpy as np
 import pandas as pd
-from torchio import Compose, OneOf, RandomNoise, RandomFlip, RandomSwap
+from torchio import Compose, RandomNoise, RandomFlip, RandomSwap
 from os import cpu_count
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
