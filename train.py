@@ -47,6 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
     parser.add_argument('--device', type=str, default='cpu', help='device (gpu or cpu)')
+    parser.add_argument('--run_name', type=str, default='', help='(optional) add prefix to default run name')
 
     args = parser.parse_args()
     datapath = Path(constants.DATA_PATH, args.dataset)
@@ -57,9 +58,11 @@ if __name__ == '__main__':
                                                     args.sample_size, args.val_size, args.test_size, args.redo_splits,
                                                     shuffle=True, random_state=42)
     save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg.split('.')[0])
-    run_name = f'b{args.batch_size}_e{args.epochs}'
+    run_name = f'e{args.epochs}'
     if args.sample_size != -1:
         run_name = f's{args.sample_size}_{run_name}'
+    if args.run_name:
+        run_name = f'{args.run_name}_{run_name}'
     save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)
