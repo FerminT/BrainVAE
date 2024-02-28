@@ -43,8 +43,8 @@ class ICVAE(lg.LightningModule):
         self.decoder = Decoder(features_shape, latent_dim, kernel_size, stride, padding, pool_size,
                                pool_stride, last_kernel_size, last_padding, channels, conditional_dim)
 
-    def forward(self, x, condition=None):
-        mu, logvar, pooling_indices = self.encoder(x)
+    def forward(self, x_transformed, condition=None):
+        mu, logvar, pooling_indices = self.encoder(x_transformed)
         z = reparameterize(mu, logvar)
         x_reconstructed = self.decoder(z, pooling_indices, condition)
         return x_reconstructed, mu, logvar
@@ -62,8 +62,8 @@ class ICVAE(lg.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
-        x, condition = batch
-        x_reconstructed, mu, logvar = self(x, condition)
+        x, x_transformed, condition = batch
+        x_reconstructed, mu, logvar = self(x_transformed, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar)
         self.log_dict(loss_dict, sync_dist=True)
         return loss

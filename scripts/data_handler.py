@@ -94,17 +94,21 @@ class T1Dataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        t1_img = self.load_and_process_img(sample)
+        t1_img, t1_transformed = self.load_and_process_img(sample)
         age = self.load_and_process_age(sample)
-        return t1_img, age
+        return t1_img, t1_transformed, age
 
     def get_subject(self, subject_id):
         return self.data[self.data['subject_id'] == subject_id].iloc[0]
 
     def load_and_process_img(self, sample):
         t1_img = nib.load(self.datapath / sample['image_path'])
-        if self.transform and not self.testing:
-            t1_img = self.transform(t1_img)
+        t1_transformed = self.transform(t1_img) if self.transform and not self.testing else t1_img
+        t1_img = self.preprocess_img(t1_img)
+        t1_transformed = self.preprocess_img(t1_transformed)
+        return t1_img, t1_transformed
+
+    def preprocess_img(self, t1_img):
         t1_img = t1_img.get_fdata(dtype=np.float32)
         t1_img = t1_img / t1_img.mean()
         t1_img = crop_center(t1_img, self.input_shape)
