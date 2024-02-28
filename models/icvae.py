@@ -69,7 +69,7 @@ class ICVAE(lg.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, condition = batch
+        x, _, condition = batch
         x_reconstructed, mu, logvar = self(x, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar, mode='val')
         self.log_dict(loss_dict, sync_dist=True)
