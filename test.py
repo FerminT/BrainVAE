@@ -1,12 +1,15 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import load_metadata, T1Dataset, get_loader
-from scripts.utils import load_yaml, get_splits_files
+from scripts.utils import load_yaml, get_splits_files, num2vect
+from torch import tensor, cat
 from torch.cuda import is_available
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from lightning.pytorch import Trainer, seed_everything
 from models.age_classifier import AgeClassifier
+from models.icvae import ICVAE
+from models.utils import reparameterize
 import wandb
 import argparse
 
@@ -30,6 +33,23 @@ def test(weights_path, config_name, dataset, latent_dim, batch_size, epochs, dev
     wandb.finish()
 
 
+def sample(weights_path, dataset, age, subject_id, save_path):
+    seed_everything(42, workers=True)
+    sample = dataset.get_subject(subject_id)
+    if age > 0:
+        sample['age_at_scan'] = age
+    t1_img = dataset.load_and_process_img(sample).unsqueeze(dim=0)
+    age = dataset.load_and_process_age(sample)
+    model = ICVAE.load_from_checkpoint(weights_path)
+    model.eval()
+    mu, logvar, pooling_indices = model.encoder(t1_img)
+    z = reparameterize(mu, logvar)
+    reconstructed = model.decoder(z, pooling_indices, age)
+    save_path = save_path / f'{subject_id}_reconstructed.nii.gz'
+    reconstructed.to_filename(save_path)
+    print(f'reconstructed MRI saved at {save_path}')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('weights', type=str, help='checkpoint file')
@@ -39,6 +59,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=6, help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=50, help='number of epochs used for training the age classifier')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples used for training the model')
+    parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
+    parser.add_argument('--age', type=int, default=0, help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--set', type=str, default='val', help='set to evaluate (val or test)')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
 
@@ -46,6 +68,8 @@ if __name__ == '__main__':
     datapath = Path(DATA_PATH, args.dataset)
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
     _, age_range = load_metadata(datapath)
+    if not age_range[0] < args.age < age_range[1]:
+        print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
     _, val_csv, test_csv = get_splits_files(datapath, args.sample_size)
     if not val_csv.exists() or not test_csv.exists():
         raise ValueError(f'splits files for a sample size of {args.sample_size} do not exist')
@@ -53,15 +77,18 @@ if __name__ == '__main__':
     if args.device == 'gpu' and not is_available():
         raise ValueError('gpu is not available')
 
+    conditional_dim = 1 if args.age == 0 else config['conditional_dim']
     if args.set == 'val':
-        dataset = T1Dataset(config['input_shape'], datapath, val_csv, conditional_dim=1, age_range=age_range,
-                            testing=True)
+        dataset = T1Dataset(config['input_shape'], datapath, val_csv, conditional_dim, age_range, testing=True)
     else:
-        dataset = T1Dataset(config['input_shape'], datapath, test_csv, conditional_dim=1, age_range=age_range,
-                            testing=True)
+        dataset = T1Dataset(config['input_shape'], datapath, test_csv, conditional_dim, age_range, testing=True)
     weights = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
     save_path = Path(EVALUATION_PATH, args.dataset, args.cfg)
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    test(weights, args.cfg, dataset, config['latent_dim'], args.batch_size, args.epochs,
-         args.device, args.no_sync, save_path)
+
+    if args.sample > 0:
+        sample(weights, dataset, args.age, args.sample, save_path)
+    else:
+        test(weights, args.cfg, dataset, config['latent_dim'], args.batch_size, args.epochs,
+             args.device, args.no_sync, save_path)

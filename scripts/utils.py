@@ -50,7 +50,7 @@ def load_yaml(filepath):
         return yaml.safe_load(file)
 
 
-def num2vect(x, bin_range, bin_step, sigma):
+def num2vect(x, bin_range, bin_step=1, sigma=1):
     """
     bin_range: (start, end), size-2 tuple
     bin_step: should be a divisor of |end-start|
