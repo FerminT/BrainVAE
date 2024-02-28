@@ -98,6 +98,9 @@ class T1Dataset(Dataset):
         age = self.load_and_process_age(sample)
         return t1_img, age
 
+    def get_subject(self, subject_id):
+        return self.data[self.data['subject_id'] == subject_id].iloc[0]
+
     def load_and_process_img(self, sample):
         t1_img = nib.load(self.datapath / sample['image_path'])
         if self.transform and not self.testing:
