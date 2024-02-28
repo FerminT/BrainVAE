@@ -49,7 +49,7 @@ def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuf
 def generate_splits(data, sample_size, val_size, test_size, shuffle, random_state):
     data = preprocess(data, sample_size)
     train, val_test = train_test_split(data, test_size=val_size + test_size, shuffle=shuffle, random_state=random_state)
-    val, test = train_test_split(val_test, test_size=val_size / (val_size + test_size), shuffle=shuffle,
+    val, test = train_test_split(val_test, test_size=test_size / (val_size + test_size), shuffle=shuffle,
                                  random_state=random_state)
     return train, val, test
 
