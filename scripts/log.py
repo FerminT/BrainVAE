@@ -9,7 +9,7 @@ class LogReconstructionsCallback(Callback):
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         if batch_idx == 0:
-            x, condition = batch
+            x, _, condition = batch
             n, n_slice = min(self.sample_size, x.size(0)), self.slice_idx
             imgs, captions = reconstruction_comparison_grid(x, outputs, n, n_slice, trainer.current_epoch)
             trainer.logger.log_image(key='reconstructions', images=imgs, caption=captions)
