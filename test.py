@@ -1,8 +1,7 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import load_metadata, T1Dataset, get_loader
-from scripts.utils import load_yaml, get_splits_files, num2vect
-from torch import tensor, cat
+from scripts.utils import load_yaml, get_splits_files
 from torch.cuda import is_available
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
