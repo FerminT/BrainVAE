@@ -38,7 +38,6 @@ class Encoder(nn.Module):
         self.conv_blocks = nn.Sequential(*self.conv_blocks)
 
         features_shape = self.features_shape(input_shape)
-        print(f'Features shape: {features_shape}')
         self.fc_mu = nn.Linear(self.channels[-1] * np.prod(features_shape), latent_dim)
         self.fc_logvar = nn.Linear(self.channels[-1] * np.prod(features_shape), latent_dim)
 
