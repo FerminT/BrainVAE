@@ -36,7 +36,7 @@ def test(weights_path, config_name, dataset, latent_dim, batch_size, epochs, dev
 def sample(weights_path, dataset, age, subject_id, device, save_path):
     seed_everything(42, workers=True)
     sample = dataset.get_subject(subject_id)
-    if age > 0:
+    if age > 0.0:
         sample['age_at_scan'] = age
     t1_img, _ = dataset.load_and_process_img(sample)
     t1_img = t1_img.unsqueeze(dim=0)
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=50, help='number of epochs used for training the age classifier')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples used for training the model')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
-    parser.add_argument('--age', type=int, default=0, help='age of the subject to resample to, if using ICVAE')
+    parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--set', type=str, default='val', help='set to evaluate (val or test)')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
 
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     if not val_csv.exists() or not test_csv.exists():
         raise ValueError(f'splits files for a sample size of {args.sample_size} do not exist')
 
-    conditional_dim = 1 if args.age == 0 else config['conditional_dim']
+    conditional_dim = 1 if args.age == 0.0 else config['conditional_dim']
     if args.set == 'val':
         data = read_csv(val_csv)
         dataset = T1Dataset(config['input_shape'], datapath, data, conditional_dim, age_range, testing=True)
