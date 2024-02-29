@@ -12,7 +12,7 @@ from scripts import constants
 
 def get_loader(dataset, batch_size, shuffle):
     num_workers = min(cpu_count(), 12)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
 
 
 def load_metadata(datapath):
