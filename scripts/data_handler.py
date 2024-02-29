@@ -70,9 +70,7 @@ def crop_center(data, shape):
 
 
 def transform(t1_img):
-    return Compose([RandomNoise(p=0.5),
-                    RandomFlip(axes=(0, 1, 2), flip_probability=0.5),
-                    RandomSwap(p=0.6)])(t1_img)
+    return Compose([RandomSwap(p=0.5)])(t1_img)
 
 
 class T1Dataset(Dataset):
