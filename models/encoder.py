@@ -17,13 +17,14 @@ class Encoder(nn.Module):
                  pool_stride=0,
                  last_kernel_size=1,
                  last_padding=0,
+                 last_stride=1,
                  channels=(32, 64, 128, 256, 256, 64)):
         super(Encoder, self).__init__()
         self.channels = list(channels)
         self.n_blocks = len(channels)
         self.kernel_size, self.padding, self.stride = kernel_size, padding, stride
         self.pooling_kernel, self.pooling_stride = pool_size, pool_stride
-        self.last_kernel, self.last_padding = last_kernel_size, last_padding
+        self.last_kernel, self.last_padding, self.last_stride = last_kernel_size, last_padding, last_stride
 
         self.conv_blocks = nn.ModuleList()
         for i in range(self.n_blocks):
@@ -33,9 +34,11 @@ class Encoder(nn.Module):
                                                    pool_size, pool_stride))
             else:
                 self.conv_blocks.append(
-                    conv_block(in_channels, self.channels[i], last_kernel_size, last_padding, stride))
+                    conv_block(in_channels, self.channels[i], last_kernel_size, last_padding, last_stride))
+        self.conv_blocks = nn.Sequential(*self.conv_blocks)
 
         features_shape = self.features_shape(input_shape)
+        print(f'Features shape: {features_shape}')
         self.fc_mu = nn.Linear(self.channels[-1] * np.prod(features_shape), latent_dim)
         self.fc_logvar = nn.Linear(self.channels[-1] * np.prod(features_shape), latent_dim)
 
@@ -53,5 +56,5 @@ class Encoder(nn.Module):
                 final_dim = conv_shape(final_dim, self.kernel_size, self.padding, self.stride,
                                        self.pooling_kernel, self.pooling_stride)
             else:
-                final_dim = conv_shape(final_dim, self.last_kernel, self.last_padding, self.stride)
+                final_dim = conv_shape(final_dim, self.last_kernel, self.last_padding, self.last_stride)
         return final_dim

@@ -35,7 +35,8 @@ def tconv_block(in_channels, out_channels, kernel_size, padding, stride):
                                      out_channels,
                                      kernel_size=kernel_size,
                                      padding=padding,
-                                     stride=stride))
+                                     stride=stride,
+                                     output_padding=padding))
     layers.append(nn.BatchNorm3d(out_channels))
     layers.append(nn.ReLU())
     return nn.Sequential(*layers)
