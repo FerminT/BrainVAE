@@ -45,9 +45,9 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     t1_img, age = t1_img.to(device), age.to(device)
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
-    mu, logvar, pooling_indices = model.encoder(t1_img)
+    mu, logvar = model.encoder(t1_img)
     z = reparameterize(mu, logvar)
-    reconstructed = model.decoder(z, pooling_indices, age)
+    reconstructed = model.decoder(z, age)
     comparison_grids = reconstruction_comparison_grid(t1_img, reconstructed, 1, 80, 0)
     for i, img in enumerate(comparison_grids[0]):
         wandb.Image(img).image.save(save_path / f'{subject_id}_age_{int(sample["age_at_scan"])}_axis_{i}.png')

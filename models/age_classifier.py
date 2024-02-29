@@ -28,7 +28,7 @@ class AgeClassifier(lg.LightningModule):
         self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size
 
     def forward(self, x):
-        mu, logvar, _ = self.encoder(x)
+        mu, logvar = self.encoder(x)
         z = reparameterize(mu, logvar)
         return self.fc_layers(z)
 
