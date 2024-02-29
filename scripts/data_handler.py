@@ -11,7 +11,8 @@ from scripts import constants
 
 
 def get_loader(dataset, batch_size, shuffle):
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=cpu_count())
+    num_workers = min(cpu_count(), 12)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
 
 def load_metadata(datapath):
