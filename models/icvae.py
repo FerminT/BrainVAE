@@ -11,10 +11,10 @@ class ICVAE(lg.LightningModule):
                  input_shape=(160, 192, 160),
                  latent_dim=354,
                  kernel_size=3,
-                 stride=1,
+                 stride=2,
                  padding=1,
-                 pool_size=2,
-                 pool_stride=2,
+                 pool_size=0,
+                 pool_stride=0,
                  last_kernel_size=1,
                  last_padding=0,
                  channels=(32, 64, 128, 256, 256, 64),
@@ -40,13 +40,13 @@ class ICVAE(lg.LightningModule):
                                  last_kernel_size, last_padding, channels)
         features_shape = self.encoder.features_shape(input_shape)
         channels.reverse()
-        self.decoder = Decoder(features_shape, latent_dim, kernel_size, stride, padding, pool_size,
-                               pool_stride, last_kernel_size, last_padding, channels, conditional_dim)
+        self.decoder = Decoder(features_shape, latent_dim, kernel_size, stride, padding,
+                               last_kernel_size, last_padding, channels, conditional_dim)
 
     def forward(self, x_transformed, condition=None):
-        mu, logvar, pooling_indices = self.encoder(x_transformed)
+        mu, logvar = self.encoder(x_transformed)
         z = reparameterize(mu, logvar)
-        x_reconstructed = self.decoder(z, pooling_indices, condition)
+        x_reconstructed = self.decoder(z, condition)
         return x_reconstructed, mu, logvar
 
     def configure_optimizers(self):

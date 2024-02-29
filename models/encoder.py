@@ -11,10 +11,10 @@ class Encoder(nn.Module):
                  input_shape=(160, 192, 160),
                  latent_dim=354,
                  kernel_size=3,
-                 stride=1,
+                 stride=2,
                  padding=1,
-                 pool_size=2,
-                 pool_stride=2,
+                 pool_size=0,
+                 pool_stride=0,
                  last_kernel_size=1,
                  last_padding=0,
                  channels=(32, 64, 128, 256, 256, 64)):
@@ -34,25 +34,17 @@ class Encoder(nn.Module):
             else:
                 self.conv_blocks.append(
                     conv_block(in_channels, self.channels[i], last_kernel_size, last_padding, stride))
-        self.activation = nn.ReLU()
 
         features_shape = self.features_shape(input_shape)
         self.fc_mu = nn.Linear(self.channels[-1] * np.prod(features_shape), latent_dim)
         self.fc_logvar = nn.Linear(self.channels[-1] * np.prod(features_shape), latent_dim)
 
     def forward(self, x):
-        pooling_indices = []
-        for i, block in enumerate(self.conv_blocks):
-            if i < self.n_blocks - 1:
-                x, indices = block(x)
-                pooling_indices.append(indices)
-            else:
-                x = block(x)
-            x = self.activation(x)
+        x = self.conv_blocks(x)
         x = flatten(x, 1)
         mu, logvar = self.fc_mu(x), self.fc_logvar(x)
 
-        return mu, logvar, pooling_indices
+        return mu, logvar
 
     def features_shape(self, input_shape):
         final_dim = np.array(input_shape)
