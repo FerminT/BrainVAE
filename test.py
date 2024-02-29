@@ -9,6 +9,7 @@ from models.age_classifier import AgeClassifier
 from models.icvae import ICVAE
 from models.utils import reparameterize
 from pandas import read_csv
+import torch
 import wandb
 import argparse
 
@@ -32,7 +33,7 @@ def test(weights_path, config_name, dataset, latent_dim, batch_size, epochs, dev
     wandb.finish()
 
 
-def sample(weights_path, dataset, age, subject_id, save_path):
+def sample(weights_path, dataset, age, subject_id, device, save_path):
     seed_everything(42, workers=True)
     sample = dataset.get_subject(subject_id)
     if age > 0:
@@ -40,6 +41,8 @@ def sample(weights_path, dataset, age, subject_id, save_path):
     t1_img, _ = dataset.load_and_process_img(sample)
     t1_img = t1_img.unsqueeze(dim=0)
     age = dataset.load_and_process_age(sample).unsqueeze(dim=0)
+    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    t1_img, age = t1_img.to(device), age.to(device)
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     mu, logvar, pooling_indices = model.encoder(t1_img)
@@ -88,7 +91,7 @@ if __name__ == '__main__':
         save_path.mkdir(parents=True)
 
     if args.sample > 0:
-        sample(weights, dataset, args.age, args.sample, save_path)
+        sample(weights, dataset, args.age, args.sample, args.device, save_path)
     else:
         test(weights, args.cfg, dataset, config['latent_dim'], args.batch_size, args.epochs,
              args.device, args.no_sync, save_path)
