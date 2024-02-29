@@ -14,19 +14,21 @@ def load_architecture(config, num_batches, num_epochs):
     return model
 
 
+def slice_data(data, slice_idx, axis):
+    if axis == 0:
+        return data[:, :, slice_idx, :, :]
+    elif axis == 1:
+        return data[:, :, :, slice_idx, :]
+    else:
+        return data[:, :, :, :, slice_idx]
+
+
 def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
     imgs, captions = [], []
     max_shape = [0, 0]
     for axis in range(3):
-        if axis == 0:
-            original_slice = data[:, :, slice_idx, :, :]
-            reconstructed_slice = outputs[:, :, slice_idx, :, :]
-        elif axis == 1:
-            original_slice = data[:, :, :, slice_idx, :]
-            reconstructed_slice = outputs[:, :, :, slice_idx, :]
-        else:
-            original_slice = data[:, :, :, :, slice_idx]
-            reconstructed_slice = outputs[:, :, :, :, slice_idx]
+        original_slice = slice_data(data, slice_idx, axis)
+        reconstructed_slice = slice_data(outputs, slice_idx, axis)
         img_comparison = make_grid(cat([original_slice[:n], reconstructed_slice[:n]]), nrow=n)
         imgs.append(img_comparison)
         captions.append(f'Epoch: {epoch} Axis: {axis}')
