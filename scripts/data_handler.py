@@ -10,8 +10,8 @@ from scripts.utils import num2vect, get_splits_files
 from scripts import constants
 
 
-def get_loader(dataset, batch_size, shuffle):
-    num_workers = min(cpu_count(), 12)
+def get_loader(dataset, batch_size, shuffle, num_workers):
+    num_workers = min(cpu_count(), num_workers)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
 
 

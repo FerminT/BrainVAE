@@ -5,17 +5,17 @@ from scripts.log import LogReconstructionsCallback
 from scripts import constants
 from torch.cuda import is_available
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch import Trainer, seed_everything
 import wandb
 import argparse
 
 
-def train(config, train_data, val_data, batch_size, epochs, log_interval, device, no_sync, save_path):
+def train(config, train_data, val_data, batch_size, epochs, log_interval, device, workers, no_sync, save_path):
     seed_everything(42, workers=True)
     model = load_architecture(config, len(train_data), epochs)
-    train_loader = get_loader(train_data, batch_size, shuffle=False)
-    val_loader = get_loader(val_data, batch_size, shuffle=False)
+    train_loader = get_loader(train_data, batch_size, shuffle=False, num_workers=workers)
+    val_loader = get_loader(val_data, batch_size, shuffle=False, num_workers=workers)
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
                                           mode='min', save_top_k=5)
@@ -46,6 +46,7 @@ if __name__ == '__main__':
     parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
     parser.add_argument('--device', type=str, default='gpu', help='device (gpu or cpu)')
+    parser.add_argument('--workers', type=int, default=12, help='number of workers for data loading')
     parser.add_argument('--run_name', type=str, default='', help='(optional) add prefix to default run name')
 
     args = parser.parse_args()
@@ -66,4 +67,4 @@ if __name__ == '__main__':
     if not save_path.exists():
         save_path.mkdir(parents=True)
     train(config, train_data, val_data, args.batch_size, args.epochs, args.log_interval,
-          args.device, args.no_sync, save_path)
+          args.device, args.workers, args.no_sync, save_path)
