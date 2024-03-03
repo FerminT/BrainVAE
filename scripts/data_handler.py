@@ -5,6 +5,7 @@ from torchio import Compose, RandomNoise, RandomFlip, RandomSwap
 from os import cpu_count
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
+from torch.nn.functional import one_hot
 from sklearn.model_selection import train_test_split
 from scripts.utils import num2vect, get_splits_files
 from scripts import constants
@@ -21,14 +22,14 @@ def load_metadata(datapath):
     return metadata, age_range
 
 
-def load_datasets(datapath, input_shape, conditional_dim, sample_size, val_size, test_size, redo_splits,
+def load_datasets(datapath, input_shape, conditional_dim, one_hot, sample_size, val_size, test_size, redo_splits,
                   shuffle, random_state):
     metadata, age_range = load_metadata(datapath)
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim, age_range, testing=False)
-    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim, age_range, testing=True)
-    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim, age_range, testing=True)
+    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim, age_range, one_hot, testing=False)
+    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim, age_range, one_hot, testing=True)
+    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim, age_range, one_hot, testing=True)
     return train_dataset, val_dataset, test_dataset
 
 
@@ -75,7 +76,8 @@ def transform(t1_img):
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, testing=False, transform=transform):
+    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, one_hot,
+                 testing=False, transform=transform):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
@@ -83,10 +85,14 @@ class T1Dataset(Dataset):
         self.soft_label = conditional_dim > 1
         self.testing = testing
         self.age_range = age_range
-        if self.soft_label and self.age_range[1] - self.age_range[0] != conditional_dim:
+        if (conditional_dim > 1 or one_hot) and self.age_range[1] - self.age_range[0] != conditional_dim:
             raise ValueError('conditional_dim should be equal to the number of bins in the age range')
-        self.age_step = 1
-        self.age_sigma = 1
+        if conditional_dim == 0:
+            self.age_mapping = lambda age: tensor(float(age)).unsqueeze(dim=0)
+        elif one_hot:
+            self.age_mapping = lambda age: one_hot(tensor(round(age) - self.age_range[0]), conditional_dim)
+        else:
+            self.age_mapping = lambda age: from_numpy(num2vect(age, self.age_range, 1, 1)[0])
 
     def __len__(self):
         return len(self.data)
@@ -94,7 +100,7 @@ class T1Dataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         t1_img, t1_transformed = self.load_and_process_img(sample)
-        age = self.load_and_process_age(sample)
+        age = self.age_mapping(sample['age_at_scan'])
         return t1_img, t1_transformed, age
 
     def get_subject(self, subject_id):
@@ -113,12 +119,3 @@ class T1Dataset(Dataset):
         t1_img = crop_center(t1_img, self.input_shape)
         t1_img = from_numpy(np.asarray([t1_img]))
         return t1_img
-
-    def load_and_process_age(self, sample):
-        age = sample['age_at_scan']
-        if not self.soft_label:
-            age = tensor(float(age)).unsqueeze(dim=0)
-        else:
-            age, _ = num2vect(age, self.age_range, self.age_step, self.age_sigma)
-            age = from_numpy(age)
-        return age
