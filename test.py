@@ -14,20 +14,20 @@ import wandb
 import argparse
 
 
-def test(weights_path, config_name, dataset, latent_dim, batch_size, epochs, device, no_sync, save_path):
+def test(weights_path, config_name, dataset, latent_dim, batch_size, epochs, device, workers, no_sync, save_path):
     seed_everything(42, workers=True)
     wandb_logger = WandbLogger(name=f'ageclassifier_{config_name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{train_mae:.2f}', monitor='train_mae',
                                  mode='min', save_top_k=5)
-    lr_monitor = LearningRateMonitor(logging_interval='step')
     early_stopping = EarlyStopping(monitor='train_mae', patience=10, mode='min')
     age_classifier = AgeClassifier(weights_path, input_dim=latent_dim)
-    dataloader = get_loader(dataset, batch_size=batch_size, shuffle=False)
+    # TODO: divide dataset into train and val
+    dataloader = get_loader(dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='16-mixed',
                       logger=wandb_logger,
-                      callbacks=[checkpoint, early_stopping, lr_monitor]
+                      callbacks=[checkpoint, early_stopping]
                       )
     trainer.fit(age_classifier, dataloader)
     wandb.finish()
@@ -40,7 +40,7 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
         sample['age_at_scan'] = age
     t1_img, _ = dataset.load_and_process_img(sample)
     t1_img = t1_img.unsqueeze(dim=0)
-    age = dataset.load_and_process_age(sample).unsqueeze(dim=0)
+    age = dataset.age_mapping(age).unsqueeze(dim=0)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     t1_img, age = t1_img.to(device), age.to(device)
     model = ICVAE.load_from_checkpoint(weights_path)
@@ -58,14 +58,24 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('weights', type=str, help='checkpoint file')
     parser.add_argument('--dataset', type=str, default='ukbb', help='dataset name')
-    parser.add_argument('--cfg', type=str, default='default', help='config file used for the trained model')
-    parser.add_argument('--device', type=str, default='gpu', help='device used for training and evaluation')
-    parser.add_argument('--batch_size', type=int, default=6, help='batch size used for training the age classifier')
-    parser.add_argument('--epochs', type=int, default=50, help='number of epochs used for training the age classifier')
-    parser.add_argument('--sample_size', type=int, default=-1, help='number of samples used for training the model')
-    parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
-    parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
-    parser.add_argument('--set', type=str, default='val', help='set to evaluate (val or test)')
+    parser.add_argument('--cfg', type=str, default='default',
+                        help='config file used for the trained model')
+    parser.add_argument('--device', type=str, default='gpu',
+                        help='device used for training and evaluation')
+    parser.add_argument('--batch_size', type=int, default=6,
+                        help='batch size used for training the age classifier')
+    parser.add_argument('--epochs', type=int, default=50,
+                        help='number of epochs used for training the age classifier')
+    parser.add_argument('--workers', type=int, default=12,
+                        help='number of workers used for data loading when training the age classifier')
+    parser.add_argument('--sample_size', type=int, default=-1,
+                        help='number of samples used for training the model')
+    parser.add_argument('--sample', type=int, default=0,
+                        help='subject id from which to reconstruct MRI data')
+    parser.add_argument('--age', type=float, default=0.0,
+                        help='age of the subject to resample to, if using ICVAE')
+    parser.add_argument('--set', type=str, default='val',
+                        help='set to evaluate (val or test)')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
 
     args = parser.parse_args()
@@ -81,10 +91,12 @@ if __name__ == '__main__':
     conditional_dim = 1 if args.age == 0.0 else config['conditional_dim']
     if args.set == 'val':
         data = read_csv(val_csv)
-        dataset = T1Dataset(config['input_shape'], datapath, data, conditional_dim, age_range, testing=True)
+        dataset = T1Dataset(config['input_shape'], datapath, data, conditional_dim, age_range, config['one_hot_age'],
+                            testing=True)
     else:
         data = read_csv(test_csv)
-        dataset = T1Dataset(config['input_shape'], datapath, data, conditional_dim, age_range, testing=True)
+        dataset = T1Dataset(config['input_shape'], datapath, data, conditional_dim, age_range, config['one_hot_age'],
+                            testing=True)
     weights = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
     save_path = Path(EVALUATION_PATH, args.dataset, args.cfg)
     if not save_path.exists():
@@ -94,4 +106,4 @@ if __name__ == '__main__':
         sample(weights, dataset, args.age, args.sample, args.device, save_path)
     else:
         test(weights, args.cfg, dataset, config['latent_dim'], args.batch_size, args.epochs,
-             args.device, args.no_sync, save_path)
+             args.device, args.workers, args.no_sync, save_path)
