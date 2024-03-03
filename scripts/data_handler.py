@@ -76,7 +76,7 @@ def transform(t1_img):
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, one_hot,
+    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, one_hot_age,
                  testing=False, transform=transform):
         self.input_shape = input_shape
         self.datapath = datapath
@@ -85,11 +85,11 @@ class T1Dataset(Dataset):
         self.soft_label = conditional_dim > 1
         self.testing = testing
         self.age_range = age_range
-        if (conditional_dim > 1 or one_hot) and self.age_range[1] - self.age_range[0] != conditional_dim:
+        if (conditional_dim > 1 or one_hot_age) and self.age_range[1] - self.age_range[0] != conditional_dim:
             raise ValueError('conditional_dim should be equal to the number of bins in the age range')
-        if conditional_dim == 0:
+        if conditional_dim <= 1:
             self.age_mapping = lambda age: tensor(float(age)).unsqueeze(dim=0)
-        elif one_hot:
+        elif one_hot_age:
             self.age_mapping = lambda age: one_hot(tensor(round(age) - self.age_range[0]), conditional_dim)
         else:
             self.age_mapping = lambda age: from_numpy(num2vect(age, self.age_range, 1, 1)[0])
