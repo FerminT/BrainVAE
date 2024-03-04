@@ -51,6 +51,13 @@ class AgeClassifier(lg.LightningModule):
         self.log('train_mae', loss)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        x, age = batch
+        prediction = self(x)
+        loss = nn.functional.l1_loss(prediction, age)
+        self.log('val_mae', loss)
+        return loss
+
 
 def create_fc_layers(input_dim, output_dim, hidden_dims):
     layers = list()
