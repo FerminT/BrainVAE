@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from torchio import Compose, RandomNoise, RandomFlip, RandomSwap
 from os import cpu_count
+from functools import partial
 from torch.utils.data import Dataset, DataLoader
 from torch import from_numpy, tensor
 from torch.nn.functional import one_hot
@@ -71,6 +72,31 @@ def crop_center(data, shape):
     return data[start_x:-start_x, start_y:-start_y, start_z:-start_z]
 
 
+def age_to_tensor(age):
+    return tensor(float(age)).unsqueeze(dim=0)
+
+
+def age_to_onehot(age, lower, num_classes):
+    return one_hot(tensor(round(age) - lower), num_classes)
+
+
+def soft_age(age, lower, upper, bin_step, bin_sigma):
+    return from_numpy(num2vect(age, [lower, upper], bin_step, bin_sigma)[0])
+
+
+def age_mapping_function(conditional_dim, age_range, one_hot_age):
+    num_bins = age_range[1] - age_range[0]
+    if (1 < conditional_dim != num_bins) or (one_hot_age and num_bins != conditional_dim + 1):
+        raise ValueError('conditional_dim does not match the bins/classes for the age range')
+    if conditional_dim <= 1:
+        age_mapping = age_to_tensor
+    elif one_hot_age:
+        age_mapping = partial(age_to_onehot, lower=age_range[0], num_classes=conditional_dim)
+    else:
+        age_mapping = partial(soft_age, lower=age_range[0], upper=age_range[1], bin_step=1, bin_sigma=1)
+    return age_mapping
+
+
 def transform(t1_img):
     return Compose([RandomSwap(p=0.5)])(t1_img)
 
@@ -82,17 +108,8 @@ class T1Dataset(Dataset):
         self.datapath = datapath
         self.data = data
         self.transform = transform
-        self.soft_label = conditional_dim > 1
         self.testing = testing
-        num_bins = age_range[1] - age_range[0]
-        if (1 < conditional_dim != num_bins) or (one_hot_age and num_bins != conditional_dim + 1):
-            raise ValueError('conditional_dim does not match the bins/classes for the age range')
-        if conditional_dim <= 1:
-            self.age_mapping = lambda age: tensor(float(age)).unsqueeze(dim=0)
-        elif one_hot_age:
-            self.age_mapping = lambda age: one_hot(tensor(round(age) - age_range[0]), conditional_dim)
-        else:
-            self.age_mapping = lambda age: from_numpy(num2vect(age, age_range, 1, 1)[0])
+        self.age_mapping = age_mapping_function(conditional_dim, age_range, one_hot_age)
 
     def __len__(self):
         return len(self.data)
