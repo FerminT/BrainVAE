@@ -85,8 +85,9 @@ class T1Dataset(Dataset):
         self.soft_label = conditional_dim > 1
         self.testing = testing
         self.age_range = age_range
-        if (conditional_dim > 1 or one_hot_age) and self.age_range[1] - self.age_range[0] != conditional_dim:
-            raise ValueError('conditional_dim should be equal to the number of bins in the age range')
+        num_bins = age_range[1] - age_range[0]
+        if (1 < conditional_dim != num_bins) or (one_hot_age and num_bins != conditional_dim + 1):
+            raise ValueError('conditional_dim does not match the bins for the age range')
         if conditional_dim <= 1:
             self.age_mapping = lambda age: tensor(float(age)).unsqueeze(dim=0)
         elif one_hot_age:
