@@ -86,7 +86,7 @@ def soft_age(age, lower, upper, bin_step, bin_sigma):
 
 def age_mapping_function(conditional_dim, age_range, one_hot_age):
     num_bins = age_range[1] - age_range[0]
-    if (1 < conditional_dim != num_bins) or (one_hot_age and num_bins + 1 != conditional_dim):
+    if (not one_hot_age and 1 < conditional_dim != num_bins) or (one_hot_age and num_bins + 1 != conditional_dim):
         raise ValueError('conditional_dim does not match the bins/classes for the age range')
     if conditional_dim <= 1:
         age_mapping = age_to_tensor
