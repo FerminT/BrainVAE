@@ -3,7 +3,7 @@
 
 import lightning as lg
 from models.icvae import ICVAE
-from models.utils import reparameterize
+from models.utils import reparameterize, init_optimizer
 from torch import nn, optim
 
 
@@ -33,14 +33,8 @@ class AgeClassifier(lg.LightningModule):
         return self.fc_layers(z)
 
     def configure_optimizers(self):
-        if self.optimizer == 'AdamW':
-            optimizer = optim.AdamW(self.parameters(), lr=self.lr, betas=(self.momentum, 0.999),
-                                    weight_decay=self.weight_decay)
-        elif self.optimizer == 'SGD':
-            optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=self.momentum, nesterov=True,
-                                  weight_decay=self.weight_decay)
-        else:
-            optimizer = getattr(optim, self.optimizer)(self.parameters(), lr=self.lr)
+        optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
+                                   weight_decay=self.weight_decay)
         lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=0.1)
         return [optimizer], [lr_scheduler]
 

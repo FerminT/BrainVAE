@@ -1,7 +1,7 @@
 import lightning as lg
 from models.decoder import Decoder
 from models.encoder import Encoder
-from models.utils import reparameterize
+from models.utils import reparameterize, init_optimizer
 from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights
 from torch import optim, zeros
 
@@ -51,14 +51,8 @@ class ICVAE(lg.LightningModule):
         return x_reconstructed, mu, logvar
 
     def configure_optimizers(self):
-        if self.optimizer == 'AdamW':
-            optimizer = optim.AdamW(self.parameters(), lr=self.lr, betas=(self.momentum, 0.999),
+        optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                     weight_decay=self.weight_decay)
-        elif self.optimizer == 'SGD':
-            optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=self.momentum, nesterov=True,
-                                  weight_decay=self.weight_decay)
-        else:
-            optimizer = getattr(optim, self.optimizer)(self.parameters(), lr=self.lr)
         lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.max_lr, total_steps=self.num_steps)
         return [optimizer], [lr_scheduler]
 

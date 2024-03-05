@@ -1,5 +1,5 @@
 import numpy as np
-from torch import exp, randn_like, nn as nn
+from torch import optim, exp, randn_like, nn as nn
 
 
 def reparameterize(mu, logvar):
@@ -40,3 +40,13 @@ def tconv_block(in_channels, out_channels, kernel_size, padding, stride):
     layers.append(nn.BatchNorm3d(out_channels))
     layers.append(nn.ReLU())
     return nn.Sequential(*layers)
+
+
+def init_optimizer(optimizer, parameters, lr, momentum, weight_decay):
+    if optimizer == 'AdamW':
+        optimizer = optim.AdamW(parameters, lr=lr, betas=(momentum, 0.999), weight_decay=weight_decay)
+    elif optimizer == 'SGD':
+        optimizer = optim.SGD(parameters, lr=lr, momentum=momentum, nesterov=True, weight_decay=weight_decay)
+    else:
+        optimizer = getattr(optim, optimizer)(parameters, lr=lr)
+    return optimizer
