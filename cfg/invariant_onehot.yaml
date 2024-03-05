@@ -1,5 +1,5 @@
 input_shape: [160, 192, 160]
-latent_dim: 354
+latent_dim: 708
 kernel_size: 3
 stride: 2
 padding: 1
@@ -8,7 +8,7 @@ pool_stride: 0
 last_kernel_size: 1
 last_padding: 0
 last_stride: 1
-channels: [32, 64, 128, 256, 256, 64]
+channels: [32, 64, 128, 256, 512, 128]
 conditional_dim: 40
 one_hot_age: True
 lr: 0.1
