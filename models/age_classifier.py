@@ -13,8 +13,8 @@ class AgeClassifier(lg.LightningModule):
                  encoder_path,
                  input_dim=354,
                  output_dim=1,
-                 hidden_dims=(128, 64, 32, 32),
-                 lr=0.01,
+                 hidden_dims=(128, 64, 32),
+                 lr=0.1,
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
@@ -35,7 +35,7 @@ class AgeClassifier(lg.LightningModule):
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                    weight_decay=self.weight_decay)
-        lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=0.1)
+        lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01, total_steps=100)
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
