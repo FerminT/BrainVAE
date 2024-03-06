@@ -15,7 +15,7 @@ class AgeClassifier(lg.LightningModule):
                  output_dim=1,
                  hidden_dims=(128, 64, 32),
                  lr=0.1,
-                 optimizer='SGD',
+                 optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
                  step_size=5):
