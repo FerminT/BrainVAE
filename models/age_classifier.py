@@ -13,12 +13,12 @@ class AgeClassifier(lg.LightningModule):
                  encoder_path,
                  input_dim=354,
                  output_dim=1,
-                 hidden_dims=(128, 64, 32),
-                 lr=0.1,
+                 hidden_dims=(128, 64, 32, 32),
+                 lr=0.01,
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
-                 step_size=5):
+                 step_size=2):
         super(AgeClassifier, self).__init__()
         self.save_hyperparameters()
         self.vae = ICVAE.load_from_checkpoint(encoder_path)

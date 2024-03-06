@@ -20,8 +20,8 @@ def train_classifier(weights_path, config_name, train_data, val_data, latent_dim
     seed_everything(42, workers=True)
     wandb_logger = WandbLogger(name=f'ageclassifier_{config_name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{train_mae:.2f}', monitor='val_mae',
-                                 mode='min', save_top_k=5)
-    early_stopping = EarlyStopping(monitor='train_mae', patience=3, mode='min')
+                                 mode='min', save_top_k=2)
+    early_stopping = EarlyStopping(monitor='train_mae', patience=5, mode='min')
     age_classifier = AgeClassifier(weights_path, input_dim=latent_dim)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False, num_workers=workers)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False, num_workers=workers)
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                         help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=16,
                         help='batch size used for training the age classifier')
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=15,
                         help='number of epochs used for training the age classifier')
     parser.add_argument('--workers', type=int, default=12,
                         help='number of workers used for data loading when training the age classifier')
