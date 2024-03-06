@@ -4,7 +4,7 @@
 import lightning as lg
 from models.icvae import ICVAE
 from models.utils import reparameterize, init_optimizer
-from torch import nn, optim
+from torch import nn, optim, no_grad
 
 
 class AgeClassifier(lg.LightningModule):
@@ -22,13 +22,14 @@ class AgeClassifier(lg.LightningModule):
         super(AgeClassifier, self).__init__()
         self.save_hyperparameters()
         self.encoder = ICVAE.load_from_checkpoint(encoder_path).encoder
-        self.encoder.freeze()
+        self.encoder.eval()
         self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
         self.lr, self.optimizer = lr, optimizer
         self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size
 
     def forward(self, x):
-        mu, logvar = self.encoder(x)
+        with no_grad():
+            mu, logvar = self.encoder(x)
         z = reparameterize(mu, logvar)
         return self.fc_layers(z)
 
