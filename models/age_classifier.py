@@ -39,14 +39,14 @@ class AgeClassifier(lg.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
-        x, age = batch
+        x, _, age = batch
         prediction = self(x)
         loss = nn.functional.l1_loss(prediction, age)
         self.log('train_mae', loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, age = batch
+        x, _, age = batch
         prediction = self(x)
         loss = nn.functional.l1_loss(prediction, age)
         self.log('val_mae', loss)
