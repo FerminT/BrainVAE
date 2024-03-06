@@ -4,7 +4,7 @@
 import lightning as lg
 from models.icvae import ICVAE
 from models.utils import reparameterize, init_optimizer
-from torch import nn, optim, no_grad
+from torch import nn, optim
 
 
 class AgeClassifier(lg.LightningModule):
