@@ -10,7 +10,7 @@ from torch import nn, optim
 class AgeClassifier(lg.LightningModule):
 
     def __init__(self,
-                 encoder,
+                 encoder_path,
                  input_dim=354,
                  output_dim=1,
                  hidden_dims=(128, 64, 32),
@@ -21,7 +21,8 @@ class AgeClassifier(lg.LightningModule):
                  step_size=5):
         super(AgeClassifier, self).__init__()
         self.save_hyperparameters()
-        self.encoder = encoder
+        self.encoder = ICVAE.load_from_checkpoint(encoder_path).encoder
+        self.encoder.freeze()
         self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
         self.lr, self.optimizer = lr, optimizer
         self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size

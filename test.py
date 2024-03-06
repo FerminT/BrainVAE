@@ -18,13 +18,11 @@ import argparse
 def train_classifier(weights_path, config_name, train_data, val_data, latent_dim, batch_size, epochs, device, workers,
                      no_sync, save_path):
     seed_everything(42, workers=True)
-    encoder = ICVAE.load_from_checkpoint(weights_path).encoder
-    encoder.eval()
     wandb_logger = WandbLogger(name=f'ageclassifier_{config_name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{train_mae:.2f}', monitor='val_mae',
                                  mode='min', save_top_k=5)
     early_stopping = EarlyStopping(monitor='train_mae', patience=10, mode='min')
-    age_classifier = AgeClassifier(encoder, input_dim=latent_dim)
+    age_classifier = AgeClassifier(weights_path, input_dim=latent_dim)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False, num_workers=workers)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False, num_workers=workers)
     trainer = Trainer(max_epochs=epochs,
