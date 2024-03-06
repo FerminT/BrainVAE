@@ -33,7 +33,7 @@ class AgeClassifier(lg.LightningModule):
         return self.fc_layers(z)
 
     def configure_optimizers(self):
-        optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
+        optimizer = init_optimizer(self.optimizer, self.fc_layers.parameters(), lr=self.lr, momentum=self.momentum,
                                    weight_decay=self.weight_decay)
         lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=0.1)
         return [optimizer], [lr_scheduler]
