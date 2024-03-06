@@ -1,14 +1,49 @@
 input_shape: [160, 192, 160]
-latent_dim: 708
-kernel_size: 3
-stride: 2
-padding: 1
-pool_size: 0
-pool_stride: 0
-last_kernel_size: 1
-last_padding: 0
-last_stride: 1
-channels: [32, 64, 128, 256, 512, 128]
+latent_dim: 354
+layers:
+ conv1:
+  channels: 32
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+ conv2:
+  channels: 64
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+ conv3:
+  channels: 128
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+ conv4:
+  channels: 256
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+ conv5:
+  channels: 256
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+ conv6:
+  channels: 64
+  kernel_size: 1
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+
 conditional_dim: 40
 one_hot_age: True
 lr: 0.1

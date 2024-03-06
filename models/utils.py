@@ -8,6 +8,15 @@ def reparameterize(mu, logvar):
     return mu + eps * std
 
 
+def features_shape(input_shape, layers):
+    final_dim = np.array(input_shape)
+    for layer in layers:
+        layer_cfg = layers[layer]
+        final_dim = conv_shape(final_dim, layer_cfg['kernel_size'], layer_cfg['padding'], layer_cfg['stride'],
+                               layer_cfg['pool_size'], layer_cfg['pool_stride'])
+    return final_dim
+
+
 def conv_shape(input_shape, kernel_size, padding, stride, pool_size=0, pool_stride=0):
     output_size = (np.array(input_shape) - kernel_size + 2 * padding) // stride + 1
     if pool_size > 0:

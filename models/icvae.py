@@ -10,15 +10,7 @@ class ICVAE(lg.LightningModule):
     def __init__(self,
                  input_shape=(160, 192, 160),
                  latent_dim=354,
-                 kernel_size=3,
-                 stride=2,
-                 padding=1,
-                 pool_size=0,
-                 pool_stride=0,
-                 last_kernel_size=1,
-                 last_padding=0,
-                 last_stride=1,
-                 channels=(32, 64, 128, 256, 256, 64),
+                 layers=None,
                  conditional_dim=0,
                  lr=0.1,
                  max_lr=0.01,
@@ -36,13 +28,10 @@ class ICVAE(lg.LightningModule):
         check_weights(losses_weights)
         self.losses_weights = losses_weights
         self.num_steps = num_steps
-        channels = list(channels)
-        self.encoder = Encoder(input_shape, latent_dim, kernel_size, stride, padding, pool_size, pool_stride,
-                                 last_kernel_size, last_padding, last_stride, channels)
-        features_shape = self.encoder.features_shape(input_shape)
-        channels.reverse()
-        self.decoder = Decoder(features_shape, latent_dim, kernel_size, stride, padding,
-                               last_kernel_size, last_padding, last_stride, channels, conditional_dim)
+        self.encoder = Encoder(input_shape, latent_dim, layers)
+        features_shape = self.encoder.final_shape
+        reversed_layers = dict(reversed(layers.items()))
+        self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
 
     def forward(self, x_transformed, condition=None):
         mu, logvar = self.encoder(x_transformed)
