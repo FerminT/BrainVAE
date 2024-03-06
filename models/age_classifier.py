@@ -21,15 +21,14 @@ class AgeClassifier(lg.LightningModule):
                  step_size=5):
         super(AgeClassifier, self).__init__()
         self.save_hyperparameters()
-        self.encoder = ICVAE.load_from_checkpoint(encoder_path).encoder
-        self.encoder.eval()
+        self.vae = ICVAE.load_from_checkpoint(encoder_path)
+        self.vae.freeze()
         self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
         self.lr, self.optimizer = lr, optimizer
         self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size
 
     def forward(self, x):
-        with no_grad():
-            mu, logvar = self.encoder(x)
+        mu, logvar = self.vae(x)
         z = reparameterize(mu, logvar)
         return self.fc_layers(z)
 
@@ -40,7 +39,7 @@ class AgeClassifier(lg.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
-        assert not self.encoder.training
+        assert not self.vae.training
         x, _, age = batch
         prediction = self(x)
         loss = nn.functional.l1_loss(prediction, age)
