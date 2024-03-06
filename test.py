@@ -28,6 +28,7 @@ def train_classifier(weights_path, config_name, train_data, val_data, latent_dim
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='16-mixed',
+                      strategy='ddp_find_unused_parameters_true',
                       logger=wandb_logger,
                       callbacks=[checkpoint, early_stopping]
                       )
