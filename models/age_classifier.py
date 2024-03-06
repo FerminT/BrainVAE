@@ -10,7 +10,7 @@ from torch import nn, optim
 class AgeClassifier(lg.LightningModule):
 
     def __init__(self,
-                 encoder_path,
+                 encoder,
                  input_dim=354,
                  output_dim=1,
                  hidden_dims=(128, 64, 32),
@@ -21,14 +21,12 @@ class AgeClassifier(lg.LightningModule):
                  step_size=5):
         super(AgeClassifier, self).__init__()
         self.save_hyperparameters()
-        self.encoder = ICVAE.load_from_checkpoint(encoder_path).encoder
-        self.encoder.eval()
+        self.encoder = encoder
         self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
         self.lr, self.optimizer = lr, optimizer
         self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size
 
     def forward(self, x):
-        self.encoder.eval()
         mu, logvar = self.encoder(x)
         z = reparameterize(mu, logvar)
         return self.fc_layers(z)
@@ -40,10 +38,9 @@ class AgeClassifier(lg.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
-        x, _, age = batch
-        self.encoder.eval()
-        prediction = self(x)
         assert not self.encoder.training
+        x, _, age = batch
+        prediction = self(x)
         loss = nn.functional.l1_loss(prediction, age)
         self.log('train_mae', loss, sync_dist=True)
         return loss
