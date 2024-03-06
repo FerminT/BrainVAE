@@ -28,6 +28,7 @@ class AgeClassifier(lg.LightningModule):
         self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size
 
     def forward(self, x):
+        self.encoder.eval()
         mu, logvar = self.encoder(x)
         z = reparameterize(mu, logvar)
         return self.fc_layers(z)
@@ -40,7 +41,9 @@ class AgeClassifier(lg.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, _, age = batch
+        self.encoder.eval()
         prediction = self(x)
+        assert not self.encoder.training
         loss = nn.functional.l1_loss(prediction, age)
         self.log('train_mae', loss, sync_dist=True)
         return loss
