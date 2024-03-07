@@ -9,7 +9,8 @@ from sklearn.model_selection import train_test_split
 from models.age_classifier import AgeClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
-from pandas import read_csv, DataFrame
+from scipy.stats import pearsonr
+from pandas import read_csv
 import torch
 import wandb
 import argparse
@@ -33,6 +34,7 @@ def train_classifier(weights_path, config_name, train_data, val_data, latent_dim
                       )
     trainer.fit(age_classifier, train_dataloader, val_dataloader)
     wandb.finish()
+    test_classifier(age_classifier, val_data, device)
 
 
 def sample(weights_path, dataset, age, subject_id, device, save_path):
@@ -54,21 +56,19 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     print(f'reconstructed MRI saved at {save_path}')
 
 
-def save_latent_representations(weights_path, dataset, device, save_path):
+def test_classifier(model, val_dataset, device):
     seed_everything(42, workers=True)
-    model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    latent_representations = {'z': [], 'age': []}
-    for idx in range(len(dataset)):
-        t1_img, _, age = dataset[idx]
-        t1_img = t1_img.unsqueeze(dim=0).to(device)
-        z = get_latent_representation(t1_img, model.encoder)
-        latent_representations['z'].append(z.detach().cpu().numpy().flatten())
-        latent_representations['age'].append(age.item())
-    lat_df = DataFrame(latent_representations)
-    lat_df.to_csv(save_path / 'latent_representations.csv', index=False)
-    print(f'latent representations saved at {save_path}')
+    predictions, ages = [], []
+    for idx in range(len(val_dataset)):
+        x, _, age = val_dataset[idx]
+        x = x.unsqueeze(dim=0).to(device)
+        prediction = model(x).item()
+        predictions.append(prediction)
+        ages.append(age.item())
+    corr, _ = pearsonr(predictions, ages)
+    print(f'correlation between predictions and ages: {corr}')
 
 
 if __name__ == '__main__':
@@ -95,7 +95,6 @@ if __name__ == '__main__':
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
                         help='size of the validation set constructed from the set to evaluate')
-    parser.add_argument('--save_latent', action='store_true', help='save latent representations and age to csv')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
 
     args = parser.parse_args()
@@ -118,14 +117,17 @@ if __name__ == '__main__':
         dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
                             config['one_hot_age'], testing=True)
         sample(weights, dataset, args.age, args.sample, args.device, save_path)
-    elif args.save_latent:
-        dataset = T1Dataset(config['input_shape'], datapath, data, 0, age_range, one_hot_age=False, testing=True)
-        save_latent_representations(weights, dataset, args.device, save_path)
     else:
         train, val = train_test_split(data, test_size=args.val_size, random_state=42)
         train_dataset = T1Dataset(config['input_shape'], datapath, train, 0, age_range, one_hot_age=False,
                                   testing=True)
         val_dataset = T1Dataset(config['input_shape'], datapath, val, 0, age_range, one_hot_age=False,
                                 testing=True)
-        train_classifier(weights, args.cfg, train_dataset, val_dataset, config['latent_dim'], args.batch_size,
-                         args.epochs, args.device, args.workers, args.no_sync, save_path)
+        checkpoints = sorted(save_path.glob('*.ckpt'))
+        if not checkpoints:
+            train_classifier(weights, args.cfg, train_dataset, val_dataset, config['latent_dim'], args.batch_size,
+                             args.epochs, args.device, args.workers, args.no_sync, save_path)
+        else:
+            print(f'age classifier already trained, using {checkpoints[-1]}')
+            model = AgeClassifier.load_from_checkpoint(checkpoints[-1])
+            test_classifier(model, val_dataset, args.device)
