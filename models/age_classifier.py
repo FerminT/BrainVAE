@@ -44,6 +44,7 @@ class AgeClassifier(lg.LightningModule):
         prediction = self(x)
         loss = nn.functional.l1_loss(prediction, age)
         self.log('train_mae', loss.item(), sync_dist=True)
+        self.log('train_prediction', prediction.mean().item(), sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -51,6 +52,7 @@ class AgeClassifier(lg.LightningModule):
         prediction = self(x)
         loss = nn.functional.l1_loss(prediction, age)
         self.log('val_mae', loss.item(), sync_dist=True)
+        self.log('val_prediction', prediction.mean().item(), sync_dist=True)
         return loss
 
 
