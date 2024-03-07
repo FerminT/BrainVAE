@@ -38,22 +38,26 @@ def train_classifier(weights_path, config_name, train_data, val_data, latent_dim
 def sample(weights_path, dataset, age, subject_id, device, save_path):
     seed_everything(42, workers=True)
     sample = dataset.get_subject(subject_id)
-    if age > 0.0:
-        sample['age_at_scan'] = age
-    t1_img, _ = dataset.load_and_process_img(sample)
-    t1_img = t1_img.unsqueeze(dim=0)
-    age = dataset.age_mapping(age).unsqueeze(dim=0)
-    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    t1_img, age = t1_img.to(device), age.to(device)
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
-    mu, logvar = model.encoder(t1_img)
-    z = reparameterize(mu, logvar)
-    reconstructed = model.decoder(z, age)
+    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    t1_img, _ = dataset.load_and_process_img(sample)
+    t1_img = t1_img.unsqueeze(dim=0).to(device)
+    z = get_latent_representation(t1_img, model.encoder)
+    if age > 0.0:
+        sample['age_at_scan'] = age
+    age = dataset.age_mapping(age).unsqueeze(dim=0)
+    reconstructed = model.decoder(z, age.to(device))
     comparison_grids = reconstruction_comparison_grid(t1_img, reconstructed, 1, 80, 0)
     for i, img in enumerate(comparison_grids[0]):
         wandb.Image(img).image.save(save_path / f'{subject_id}_age_{int(sample["age_at_scan"])}_axis_{i}.png')
     print(f'reconstructed MRI saved at {save_path}')
+
+
+def get_latent_representation(t1_img, encoder):
+    mu, logvar = encoder(t1_img)
+    z = reparameterize(mu, logvar)
+    return z
 
 
 if __name__ == '__main__':
