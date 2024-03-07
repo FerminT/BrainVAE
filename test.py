@@ -64,8 +64,8 @@ def save_latent_representations(weights_path, dataset, device, save_path):
         t1_img, _, age = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device)
         z = get_latent_representation(t1_img, model.encoder)
-        latent_representations['z'].append(z)
-        latent_representations['age'].append(age)
+        latent_representations['z'].append(z.detach().cpu().numpy().flatten())
+        latent_representations['age'].append(age.item())
     lat_df = DataFrame(latent_representations)
     lat_df.to_csv(save_path / 'latent_representations.csv', index=False)
     print(f'latent representations saved at {save_path}')
