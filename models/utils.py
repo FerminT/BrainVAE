@@ -59,3 +59,9 @@ def init_optimizer(optimizer, parameters, lr, momentum, weight_decay):
     else:
         optimizer = getattr(optim, optimizer)(parameters, lr=lr)
     return optimizer
+
+
+def get_latent_representation(t1_img, encoder):
+    mu, logvar = encoder(t1_img)
+    z = reparameterize(mu, logvar)
+    return z

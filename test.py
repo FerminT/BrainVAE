@@ -8,8 +8,8 @@ from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
 from models.age_classifier import AgeClassifier
 from models.icvae import ICVAE
-from models.utils import reparameterize
-from pandas import read_csv
+from models.utils import get_latent_representation
+from pandas import read_csv, DataFrame
 import torch
 import wandb
 import argparse
@@ -54,10 +54,21 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     print(f'reconstructed MRI saved at {save_path}')
 
 
-def get_latent_representation(t1_img, encoder):
-    mu, logvar = encoder(t1_img)
-    z = reparameterize(mu, logvar)
-    return z
+def save_latent_representations(weights_path, dataset, device, save_path):
+    seed_everything(42, workers=True)
+    model = ICVAE.load_from_checkpoint(weights_path)
+    model.eval()
+    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    latent_representations = {'z': [], 'age': []}
+    for idx in range(len(dataset)):
+        t1_img, _, age = dataset[idx]
+        t1_img = t1_img.unsqueeze(dim=0).to(device)
+        z = get_latent_representation(t1_img, model.encoder)
+        latent_representations['z'].append(z)
+        latent_representations['age'].append(age)
+    lat_df = DataFrame(latent_representations)
+    lat_df.to_csv(save_path / 'latent_representations.csv', index=False)
+    print(f'latent representations saved at {save_path}')
 
 
 if __name__ == '__main__':
@@ -84,6 +95,7 @@ if __name__ == '__main__':
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
                         help='size of the validation set constructed from the set to evaluate')
+    parser.add_argument('--save_latent', action='store_true', help='save latent representations and age to csv')
     parser.add_argument('--no_sync', action='store_true', help='do not sync to wandb')
 
     args = parser.parse_args()
@@ -106,11 +118,14 @@ if __name__ == '__main__':
         dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
                             config['one_hot_age'], testing=True)
         sample(weights, dataset, args.age, args.sample, args.device, save_path)
+    elif args.save_latent:
+        dataset = T1Dataset(config['input_shape'], datapath, data, 0, age_range, one_hot_age=False, testing=True)
+        save_latent_representations(weights, dataset, args.device, save_path)
     else:
         train, val = train_test_split(data, test_size=args.val_size, random_state=42)
-        train_dataset = T1Dataset(config['input_shape'], datapath, train, 1, age_range, one_hot_age=False,
+        train_dataset = T1Dataset(config['input_shape'], datapath, train, 0, age_range, one_hot_age=False,
                                   testing=True)
-        val_dataset = T1Dataset(config['input_shape'], datapath, val, 1, age_range, one_hot_age=False,
+        val_dataset = T1Dataset(config['input_shape'], datapath, val, 0, age_range, one_hot_age=False,
                                 testing=True)
         train_classifier(weights, args.cfg, train_dataset, val_dataset, config['latent_dim'], args.batch_size,
                          args.epochs, args.device, args.workers, args.no_sync, save_path)
