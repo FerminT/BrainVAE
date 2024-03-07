@@ -114,10 +114,14 @@ if __name__ == '__main__':
 
     data = read_csv(val_csv) if args.set == 'val' else read_csv(test_csv)
     if args.sample > 0:
+        save_path = save_path / 'samples'
+        save_path.mkdir(exist_ok=True)
         dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
                             config['one_hot_age'], testing=True)
         sample(weights, dataset, args.age, args.sample, args.device, save_path)
     else:
+        save_path = save_path / 'age_classifier'
+        save_path.mkdir(exist_ok=True)
         train, val = train_test_split(data, test_size=args.val_size, random_state=42)
         train_dataset = T1Dataset(config['input_shape'], datapath, train, 0, age_range, one_hot_age=False,
                                   testing=True)
