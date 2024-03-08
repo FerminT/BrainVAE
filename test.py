@@ -11,6 +11,7 @@ from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from pandas import read_csv
+from tqdm import tqdm
 import torch
 import wandb
 import argparse
@@ -61,7 +62,7 @@ def test_classifier(model, val_dataset, device):
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     model.eval().to(device)
     predictions, ages = [], []
-    for idx in range(len(val_dataset)):
+    for idx in tqdm(range(len(val_dataset))):
         x, _, age = val_dataset[idx]
         x = x.unsqueeze(dim=0).to(device)
         prediction = model(x).item()
