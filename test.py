@@ -68,8 +68,8 @@ def test_classifier(model, val_dataset, device):
         prediction = model(x).item()
         predictions.append(prediction)
         ages.append(age.item())
-    corr, _ = pearsonr(predictions, ages)
-    print(f'correlation between predictions and ages: {corr}')
+    corr, p_value = pearsonr(predictions, ages)
+    print(f'correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
 
 
 if __name__ == '__main__':
