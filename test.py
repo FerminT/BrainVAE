@@ -58,8 +58,8 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
 
 def test_classifier(model, val_dataset, device):
     seed_everything(42, workers=True)
-    model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    model.eval().to(device)
     predictions, ages = [], []
     for idx in range(len(val_dataset)):
         x, _, age = val_dataset[idx]
