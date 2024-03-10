@@ -30,6 +30,7 @@ def train(config, train_data, val_data, batch_size, epochs, log_interval, device
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
                       )
     checkpoints = sorted(save_path.glob('*.ckpt'))
+    wandb_logger.watch(model)
     trainer.fit(model, train_loader, val_loader, ckpt_path=checkpoints[-1] if checkpoints else None)
     wandb.finish()
 
