@@ -103,7 +103,7 @@ def transform(t1_img):
 
 class T1Dataset(Dataset):
     def __init__(self, input_shape, datapath, data, conditional_dim, age_range, one_hot_age,
-                 testing=False, transform=transform):
+                 testing=False, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
