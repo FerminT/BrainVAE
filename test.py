@@ -110,6 +110,8 @@ if __name__ == '__main__':
 
     weights = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
     save_path = Path(EVALUATION_PATH, args.dataset, args.cfg)
+    if args.sample_size > 0:
+        save_path = save_path / f'sample_{args.sample}'
     if not save_path.exists():
         save_path.mkdir(parents=True)
 
