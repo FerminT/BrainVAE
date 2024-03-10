@@ -104,8 +104,8 @@ if __name__ == '__main__':
     _, age_range = load_metadata(datapath)
     if args.age > 0 and not age_range[0] < args.age < age_range[1]:
         print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
-    _, val_csv, test_csv = get_splits_files(datapath, args.sample_size)
-    if not val_csv.exists() or not test_csv.exists():
+    train_csv, val_csv, test_csv = get_splits_files(datapath, args.sample_size)
+    if not (train_csv.exists() and val_csv.exists() and test_csv.exists()):
         raise ValueError(f'splits files for a sample size of {args.sample_size} do not exist')
 
     weights = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
@@ -113,7 +113,12 @@ if __name__ == '__main__':
     if not save_path.exists():
         save_path.mkdir(parents=True)
 
-    data = read_csv(val_csv) if args.set == 'val' else read_csv(test_csv)
+    if args.set == 'val':
+        data = read_csv(val_csv)
+    elif args.set == 'test':
+        data = read_csv(test_csv)
+    else:
+        data = read_csv(train_csv)
     if args.sample > 0:
         save_path = save_path / 'samples'
         save_path.mkdir(exist_ok=True)
