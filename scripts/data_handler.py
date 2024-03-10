@@ -50,17 +50,19 @@ def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuf
 
 
 def generate_splits(data, sample_size, val_size, test_size, shuffle, random_state):
-    data = preprocess(data, sample_size)
+    data = preprocess(data)
     train, val_test = train_test_split(data, test_size=val_size + test_size, shuffle=shuffle, random_state=random_state)
     val, test = train_test_split(val_test, test_size=test_size / (val_size + test_size), shuffle=shuffle,
                                  random_state=random_state)
+    if 0 < sample_size < len(data):
+        train = train.sample(sample_size, random_state=random_state)
+        val = val.sample(sample_size, random_state=random_state)
+        test = test.sample(sample_size, random_state=random_state)
     return train, val, test
 
 
-def preprocess(data, sample_size):
+def preprocess(data):
     data = data.drop_duplicates(subset='subject_id')
-    if 0 < sample_size < len(data):
-        data = data.sample(n=sample_size, random_state=42)
     return data
 
 
