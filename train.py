@@ -5,7 +5,7 @@ from scripts.log import LogReconstructionsCallback
 from scripts import constants
 from torch.cuda import is_available
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from lightning.pytorch import Trainer, seed_everything
 import wandb
 import argparse
@@ -20,12 +20,13 @@ def train(config, train_data, val_data, batch_size, epochs, log_interval, device
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
                                           mode='min', save_top_k=5)
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, mode='min')
+    lr_monitor = LearningRateMonitor(logging_interval='step')
     reconstruction = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='16-mixed',
                       logger=wandb_logger,
-                      callbacks=[checkpoint, reconstruction, early_stopping],
+                      callbacks=[checkpoint, reconstruction, early_stopping, lr_monitor],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
                       )
     checkpoints = sorted(save_path.glob('*.ckpt'))
