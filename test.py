@@ -49,7 +49,7 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     z = get_latent_representation(t1_img, model.encoder)
     if age > 0.0:
         sample['age_at_scan'] = age
-    age = dataset.age_mapping(age).unsqueeze(dim=0)
+    age = dataset.age_mapping(sample['age_at_scan']).unsqueeze(dim=0)
     reconstructed = model.decoder(z, age.to(device))
     comparison_grids = reconstruction_comparison_grid(t1_img, reconstructed, 1, 80, 0)
     for i, img in enumerate(comparison_grids[0]):
