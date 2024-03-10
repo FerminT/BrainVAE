@@ -11,7 +11,8 @@ import wandb
 import argparse
 
 
-def train(config, train_data, val_data, batch_size, epochs, log_interval, device, workers, no_sync, save_path):
+def train(config, train_data, val_data, batch_size, epochs, precision, log_interval,
+          device, workers, no_sync, save_path):
     seed_everything(42, workers=True)
     model = load_architecture(config, len(train_data), epochs)
     train_loader = get_loader(train_data, batch_size, shuffle=False, num_workers=workers)
@@ -19,12 +20,12 @@ def train(config, train_data, val_data, batch_size, epochs, log_interval, device
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
                                           mode='min', save_top_k=5)
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, mode='min')
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='min')
     lr_monitor = LearningRateMonitor(logging_interval='step')
     reconstruction = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
-                      precision='16-mixed',
+                      precision=precision,
                       logger=wandb_logger,
                       callbacks=[checkpoint, reconstruction, early_stopping, lr_monitor],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
@@ -41,6 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, default='default.yaml', help='config file')
     parser.add_argument('--batch_size', type=int, default=6, help='batch size')
     parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
+    parser.add_argument('--precision', type=str, default='16-mixed', help='precision (16-mixed or 32)')
     parser.add_argument('--log_interval', type=int, default=50, help='log interval')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
     parser.add_argument('--val_size', type=float, default=0.1, help='validation size')
@@ -69,5 +71,5 @@ if __name__ == '__main__':
     save_path = save_path / run_name
     if not save_path.exists():
         save_path.mkdir(parents=True)
-    train(config, train_data, val_data, args.batch_size, args.epochs, args.log_interval,
+    train(config, train_data, val_data, args.batch_size, args.epochs, args.precision, args.log_interval,
           args.device, args.workers, args.no_sync, save_path)
