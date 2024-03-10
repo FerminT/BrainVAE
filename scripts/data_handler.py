@@ -55,9 +55,9 @@ def generate_splits(data, sample_size, val_size, test_size, shuffle, random_stat
     val, test = train_test_split(val_test, test_size=test_size / (val_size + test_size), shuffle=shuffle,
                                  random_state=random_state)
     if 0 < sample_size < len(data):
-        train = train.sample(sample_size, random_state=random_state)
-        val = val.sample(sample_size, random_state=random_state)
-        test = test.sample(sample_size, random_state=random_state)
+        train = train.sample(int(sample_size * (1 - val_size - test_size)), random_state=random_state)
+        val = val.sample(int(sample_size * val_size), random_state=random_state)
+        test = test.sample(int(sample_size * test_size), random_state=random_state)
     return train, val, test
 
 
