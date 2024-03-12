@@ -109,9 +109,7 @@ if __name__ == '__main__':
         raise ValueError(f'splits files for a sample size of {args.sample_size} do not exist')
 
     weights = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
-    save_path = Path(EVALUATION_PATH, args.dataset, args.cfg)
-    if args.sample_size > 0:
-        save_path = save_path / f'sample_{args.sample_size}'
+    save_path = Path(EVALUATION_PATH, args.dataset, args.cfg) / weights.parent.name
     if not save_path.exists():
         save_path.mkdir(parents=True)
 
