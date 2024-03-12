@@ -22,7 +22,8 @@ class Encoder(nn.Module):
                                                padding=conv_layer['padding'],
                                                stride=conv_layer['stride'],
                                                pool_size=conv_layer['pool_size'],
-                                               pool_stride=conv_layer['pool_stride']))
+                                               pool_stride=conv_layer['pool_stride'],
+                                               batch_norm=conv_layer['batch_norm']))
             prev_channels = conv_layer['channels']
         self.conv_blocks = nn.Sequential(*self.conv_blocks)
 

@@ -24,21 +24,22 @@ def conv_shape(input_shape, kernel_size, padding, stride, pool_size=0, pool_stri
     return output_size
 
 
-def conv_block(in_channels, out_channels, kernel_size, padding, stride, pool_size=0, pool_stride=0):
+def conv_block(in_channels, out_channels, kernel_size, padding, stride, pool_size=0, pool_stride=0, batch_norm=True):
     layers = list()
     layers.append(nn.Conv3d(in_channels,
                             out_channels,
                             kernel_size=kernel_size,
                             padding=padding,
                             stride=stride))
-    layers.append(nn.BatchNorm3d(out_channels))
+    if batch_norm:
+        layers.append(nn.BatchNorm3d(out_channels))
     if pool_size > 0:
         layers.append(nn.MaxPool3d(kernel_size=pool_size, stride=pool_stride))
     layers.append(nn.ReLU())
     return nn.Sequential(*layers)
 
 
-def tconv_block(in_channels, out_channels, kernel_size, padding, stride):
+def tconv_block(in_channels, out_channels, kernel_size, padding, stride, batch_norm=True):
     layers = list()
     layers.append(nn.ConvTranspose3d(in_channels,
                                      out_channels,
@@ -46,7 +47,8 @@ def tconv_block(in_channels, out_channels, kernel_size, padding, stride):
                                      padding=padding,
                                      stride=stride,
                                      output_padding=padding))
-    layers.append(nn.BatchNorm3d(out_channels))
+    if batch_norm:
+        layers.append(nn.BatchNorm3d(out_channels))
     layers.append(nn.ReLU())
     return nn.Sequential(*layers)
 
