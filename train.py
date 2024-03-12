@@ -20,14 +20,13 @@ def train(config, train_data, val_data, batch_size, epochs, precision, log_inter
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
                                           mode='min', save_top_k=5)
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10, mode='min')
     lr_monitor = LearningRateMonitor(logging_interval='step')
     reconstruction = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision=precision,
                       logger=wandb_logger,
-                      callbacks=[checkpoint, reconstruction, early_stopping, lr_monitor],
+                      callbacks=[checkpoint, reconstruction, lr_monitor],
                       log_every_n_steps=min(log_interval, len(train_loader) // 10)
                       )
     checkpoints = sorted(save_path.glob('*.ckpt'))
