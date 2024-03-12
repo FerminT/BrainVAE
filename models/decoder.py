@@ -1,6 +1,6 @@
 import numpy as np
 from torch import nn as nn
-from torch import cat
+from torch import cat, relu
 from models.utils import tconv_block
 
 
@@ -22,7 +22,7 @@ class Decoder(nn.Module):
             if condition is None or condition.shape[-1] != self.conditional_dim:
                 raise ValueError('Conditional dimension does not match the input dimension')
             x = cat([x, condition], dim=1)
-        x = nn.ReLU(self.fc_input(x))
+        x = relu(self.fc_input(x))
         x = x.view(-1, *self.input_shape)
         x = self.tconv_blocks(x)
         return x
