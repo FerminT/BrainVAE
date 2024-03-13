@@ -98,8 +98,8 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
     ax.set_title('PCA of latent representations')
     ax.set_xlabel('Principal Component 1')
     ax.set_ylabel('Principal Component 2')
-    plt.show()
     plt.savefig(save_path / 'pca_latent_representations.png')
+    plt.show()
     print(f'PCA of latent representations saved at {save_path}')
 
 
