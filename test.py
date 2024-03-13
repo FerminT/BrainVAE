@@ -81,17 +81,20 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
     model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     pca = PCA(n_components=2)
-    latent_representations = []
+    latent_representations, subjects_ids = [], []
     for idx in tqdm(range(len(dataset))):
         t1_img, _, _ = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device)
         z = get_latent_representation(t1_img, model.encoder)
         latent_representations.append(z.cpu().detach().numpy())
+        subjects_ids.append(dataset.get_metadata(idx)['subject_id'])
     latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
     pca.fit(latent_representations)
     transformed = pca.transform(latent_representations)
     fig, ax = plt.subplots()
-    ax.scatter(transformed[:, 0], transformed[:, 1])
+    for i, subject_id in enumerate(subjects_ids):
+        ax.scatter(transformed[i, 0], transformed[i, 1])
+        ax.annotate(subject_id, (transformed[i, 0], transformed[i, 1]))
     ax.set_title('PCA of latent representations')
     ax.set_xlabel('Principal Component 1')
     ax.set_ylabel('Principal Component 2')
