@@ -11,7 +11,10 @@ from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from pandas import read_csv
+from numpy import array
+from sklearn.decomposition import PCA
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 import torch
 import wandb
 import argparse
@@ -38,6 +41,21 @@ def train_classifier(weights_path, config_name, train_data, val_data, latent_dim
     test_classifier(age_classifier, val_data, device)
 
 
+def test_classifier(model, val_dataset, device):
+    seed_everything(42, workers=True)
+    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    model.eval().to(device)
+    predictions, ages = [], []
+    for idx in tqdm(range(len(val_dataset))):
+        x, _, age = val_dataset[idx]
+        x = x.unsqueeze(dim=0).to(device)
+        prediction = model(x).item()
+        predictions.append(prediction)
+        ages.append(age.item())
+    corr, p_value = pearsonr(predictions, ages)
+    print(f'correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
+
+
 def sample(weights_path, dataset, age, subject_id, device, save_path):
     seed_everything(42, workers=True)
     sample = dataset.get_subject(subject_id)
@@ -57,19 +75,29 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     print(f'reconstructed MRI saved at {save_path}')
 
 
-def test_classifier(model, val_dataset, device):
+def pca_latent_dimension(weights_path, dataset, device, save_path):
     seed_everything(42, workers=True)
+    model = ICVAE.load_from_checkpoint(weights_path)
+    model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    model.eval().to(device)
-    predictions, ages = [], []
-    for idx in tqdm(range(len(val_dataset))):
-        x, _, age = val_dataset[idx]
-        x = x.unsqueeze(dim=0).to(device)
-        prediction = model(x).item()
-        predictions.append(prediction)
-        ages.append(age.item())
-    corr, p_value = pearsonr(predictions, ages)
-    print(f'correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
+    pca = PCA(n_components=2)
+    latent_representations = []
+    for idx in tqdm(range(len(dataset))):
+        t1_img, _, _ = dataset[idx]
+        t1_img = t1_img.unsqueeze(dim=0).to(device)
+        z = get_latent_representation(t1_img, model.encoder)
+        latent_representations.append(z.cpu().detach().numpy())
+    latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
+    pca.fit(latent_representations)
+    transformed = pca.transform(latent_representations)
+    fig, ax = plt.subplots()
+    ax.scatter(transformed[:, 0], transformed[:, 1])
+    ax.set_title('PCA of latent representations')
+    ax.set_xlabel('Principal Component 1')
+    ax.set_ylabel('Principal Component 2')
+    plt.show()
+    plt.savefig(save_path / 'pca_latent_representations.png')
+    print(f'PCA of latent representations saved at {save_path}')
 
 
 if __name__ == '__main__':
@@ -92,6 +120,7 @@ if __name__ == '__main__':
                         help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0,
                         help='age of the subject to resample to, if using ICVAE')
+    parser.add_argument('--pca', action='store_true', help='perform PCA on the latent representations')
     parser.add_argument('--set', type=str, default='val',
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
@@ -125,6 +154,10 @@ if __name__ == '__main__':
         dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
                             config['one_hot_age'], testing=True)
         sample(weights, dataset, args.age, args.sample, args.device, save_path)
+    elif args.pca:
+        dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
+                            config['one_hot_age'], testing=True)
+        pca_latent_dimension(weights, dataset, args.device, save_path)
     else:
         save_path = save_path / 'age_classifier'
         save_path.mkdir(exist_ok=True)
