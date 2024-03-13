@@ -125,6 +125,9 @@ class T1Dataset(Dataset):
     def get_subject(self, subject_id):
         return self.data[self.data['subject_id'] == subject_id].iloc[0]
 
+    def get_metadata(self, idx):
+        return self.data.iloc[idx]
+
     def load_and_process_img(self, sample):
         t1_img = nib.load(self.datapath / sample['image_path'])
         t1_transformed = self.transform(t1_img) if self.transform and not self.testing else t1_img
