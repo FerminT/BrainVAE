@@ -9,6 +9,7 @@ layers:
   pool_size: 0
   pool_stride: 0
   batch_norm: yes
+  activation: 'relu'
  conv2:
   channels: 64
   kernel_size: 3
@@ -17,6 +18,7 @@ layers:
   pool_size: 0
   pool_stride: 0
   batch_norm: yes
+  activation: 'relu'
  conv3:
   channels: 128
   kernel_size: 3
@@ -25,6 +27,7 @@ layers:
   pool_size: 0
   pool_stride: 0
   batch_norm: yes
+  activation: 'relu'
  conv4:
   channels: 256
   kernel_size: 3
@@ -33,6 +36,7 @@ layers:
   pool_size: 0
   pool_stride: 0
   batch_norm: yes
+  activation: 'relu'
  conv5:
   channels: 256
   kernel_size: 3
@@ -41,6 +45,7 @@ layers:
   pool_size: 0
   pool_stride: 0
   batch_norm: yes
+  activation: 'relu'
  conv6:
   channels: 64
   kernel_size: 1
@@ -49,6 +54,7 @@ layers:
   pool_size: 0
   pool_stride: 0
   batch_norm: yes
+  activation: 'relu'
 
 conditional_dim: 0
 one_hot_age: no
