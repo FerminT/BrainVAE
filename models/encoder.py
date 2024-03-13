@@ -12,25 +12,8 @@ class Encoder(nn.Module):
                  latent_dim,
                  blocks):
         super(Encoder, self).__init__()
-        self.conv_blocks = nn.ModuleList()
-        prev_channels = 1
-        for block in blocks:
-            conv_layer = blocks[block]
-            self.conv_blocks.append(conv_block(in_channels=prev_channels,
-                                               out_channels=conv_layer['channels'],
-                                               kernel_size=conv_layer['kernel_size'],
-                                               padding=conv_layer['padding'],
-                                               stride=conv_layer['stride'],
-                                               pool_size=conv_layer['pool_size'],
-                                               pool_stride=conv_layer['pool_stride'],
-                                               bias=conv_layer['bias'],
-                                               batch_norm=conv_layer['batch_norm'],
-                                               activation=conv_layer['activation']))
-            prev_channels = conv_layer['channels']
-        self.conv_blocks = nn.Sequential(*self.conv_blocks)
-
-        self.final_shape = features_shape(input_shape, blocks)
-        self.final_shape = np.insert(self.final_shape, 0, prev_channels)
+        self.conv_blocks, final_channels = build_modules(blocks)
+        self.final_shape = np.insert(features_shape(input_shape, blocks), 0, final_channels)
         self.fc_mu = nn.Linear(np.prod(self.final_shape), latent_dim)
         self.fc_logvar = nn.Linear(np.prod(self.final_shape), latent_dim)
 
@@ -40,3 +23,22 @@ class Encoder(nn.Module):
         mu, logvar = self.fc_mu(x), self.fc_logvar(x)
 
         return mu, logvar
+
+
+def build_modules(blocks):
+    modules = nn.ModuleList()
+    prev_channels = 1
+    for block in blocks:
+        conv_layer = blocks[block]
+        modules.append(conv_block(in_channels=prev_channels,
+                                  out_channels=conv_layer['channels'],
+                                  kernel_size=conv_layer['kernel_size'],
+                                  padding=conv_layer['padding'],
+                                  stride=conv_layer['stride'],
+                                  pool_size=conv_layer['pool_size'],
+                                  pool_stride=conv_layer['pool_stride'],
+                                  bias=conv_layer['bias'],
+                                  batch_norm=conv_layer['batch_norm'],
+                                  activation=conv_layer['activation']))
+        prev_channels = conv_layer['channels']
+    return nn.Sequential(*modules), prev_channels
