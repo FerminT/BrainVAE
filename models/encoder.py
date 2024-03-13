@@ -23,6 +23,7 @@ class Encoder(nn.Module):
                                                stride=conv_layer['stride'],
                                                pool_size=conv_layer['pool_size'],
                                                pool_stride=conv_layer['pool_stride'],
+                                               bias=conv_layer['bias'],
                                                batch_norm=conv_layer['batch_norm'],
                                                activation=conv_layer['activation']))
             prev_channels = conv_layer['channels']

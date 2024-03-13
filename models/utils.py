@@ -24,14 +24,15 @@ def conv_shape(input_shape, kernel_size, padding, stride, pool_size=0, pool_stri
     return output_size
 
 
-def conv_block(in_channels, out_channels, kernel_size, padding, stride, pool_size=0, pool_stride=0, batch_norm=True,
-               activation='relu'):
+def conv_block(in_channels, out_channels, kernel_size, padding, stride, pool_size=0, pool_stride=0,
+               bias=True, batch_norm=True, activation='relu'):
     layers = list()
     layers.append(nn.Conv3d(in_channels,
                             out_channels,
                             kernel_size=kernel_size,
                             padding=padding,
-                            stride=stride))
+                            stride=stride,
+                            bias=bias))
     if batch_norm:
         layers.append(nn.BatchNorm3d(out_channels))
     if pool_size > 0:
@@ -40,14 +41,15 @@ def conv_block(in_channels, out_channels, kernel_size, padding, stride, pool_siz
     return nn.Sequential(*layers)
 
 
-def tconv_block(in_channels, out_channels, kernel_size, padding, stride, batch_norm=True, activation='relu'):
+def tconv_block(in_channels, out_channels, kernel_size, padding, stride, bias=True, batch_norm=True, activation='relu'):
     layers = list()
     layers.append(nn.ConvTranspose3d(in_channels,
                                      out_channels,
                                      kernel_size=kernel_size,
                                      padding=padding,
                                      stride=stride,
-                                     output_padding=padding))
+                                     output_padding=padding,
+                                     bias=bias))
     if batch_norm:
         layers.append(nn.BatchNorm3d(out_channels))
     add_activation_layer(layers, activation)

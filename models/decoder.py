@@ -39,6 +39,7 @@ def build_modules(blocks):
                                    kernel_size=tconv_layer['kernel_size'],
                                    padding=tconv_layer['padding'],
                                    stride=tconv_layer['stride'],
+                                   bias=tconv_layer['bias'],
                                    batch_norm=tconv_layer['batch_norm'],
                                    activation=tconv_layer['activation']))
     return nn.Sequential(*modules)

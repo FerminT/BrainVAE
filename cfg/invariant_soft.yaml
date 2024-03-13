@@ -8,6 +8,7 @@ layers:
   padding: 1
   pool_size: 0
   pool_stride: 0
+  bias: yes
   batch_norm: yes
   activation: 'relu'
  conv2:
@@ -17,6 +18,7 @@ layers:
   padding: 1
   pool_size: 0
   pool_stride: 0
+  bias: yes
   batch_norm: yes
   activation: 'relu'
  conv3:
@@ -26,6 +28,7 @@ layers:
   padding: 1
   pool_size: 0
   pool_stride: 0
+  bias: yes
   batch_norm: yes
   activation: 'relu'
  conv4:
@@ -35,6 +38,7 @@ layers:
   padding: 1
   pool_size: 0
   pool_stride: 0
+  bias: yes
   batch_norm: yes
   activation: 'relu'
  conv5:
@@ -44,6 +48,7 @@ layers:
   padding: 1
   pool_size: 0
   pool_stride: 0
+  bias: yes
   batch_norm: yes
   activation: 'relu'
  conv6:
@@ -53,6 +58,7 @@ layers:
   padding: 0
   pool_size: 0
   pool_stride: 0
+  bias: yes
   batch_norm: yes
   activation: 'relu'
 
