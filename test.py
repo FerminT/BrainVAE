@@ -140,8 +140,10 @@ if __name__ == '__main__':
     if not (train_csv.exists() and val_csv.exists() and test_csv.exists()):
         raise ValueError(f'splits files for a sample size of {args.sample_size} do not exist')
 
-    weights = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
-    save_path = Path(EVALUATION_PATH, args.dataset, args.cfg) / weights.parent.name
+    weights_path = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
+    weights = next(weights_path.parent.glob(f'{weights_path.name}*'))
+
+    save_path = Path(EVALUATION_PATH, args.dataset, args.cfg) / weights_path.parent.name
     if not save_path.exists():
         save_path.mkdir(parents=True)
 
