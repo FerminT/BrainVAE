@@ -89,9 +89,9 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
         sample['age_at_scan'] = age
     age = dataset.age_mapping(sample['age_at_scan']).unsqueeze(dim=0)
     reconstructed = model.decoder(z, age.to(device))
-    comparison_grids = reconstruction_comparison_grid(t1_img, reconstructed, 1, 30, 0)
-    for i, img in enumerate(comparison_grids[0]):
-        wandb.Image(img).image.save(save_path / f'{subject_id}_age_{int(sample["age_at_scan"])}_axis_{i}.png')
+    axes_comparisons, _ = reconstruction_comparison_grid(t1_img, reconstructed, 1, 30, 0)
+    comparison = torch.cat(axes_comparisons, dim=2)
+    wandb.Image(comparison).image.save(save_path / f'{subject_id}_age_{int(sample["age_at_scan"])}.png')
     print(f'reconstructed MRI saved at {save_path}')
 
 
