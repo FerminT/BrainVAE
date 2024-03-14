@@ -91,7 +91,11 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     reconstructed = model.decoder(z, age.to(device))
     axes_comparisons, _ = reconstruction_comparison_grid(t1_img, reconstructed, 1, 30, 0)
     comparison = torch.cat(axes_comparisons, dim=2)
-    wandb.Image(comparison).image.save(save_path / f'{subject_id}_age_{int(sample["age_at_scan"])}.png')
+    comparison_img = wandb.Image(comparison).image
+    comparison_img.save(save_path / f'{subject_id}_age_{int(sample["age_at_scan"])}.png')
+    plt.imshow(comparison_img)
+    plt.axis('off'), plt.xticks([]), plt.yticks([])
+    plt.show()
     print(f'reconstructed MRI saved at {save_path}')
 
 
@@ -116,8 +120,7 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
         ax.scatter(transformed[i, 0], transformed[i, 1])
         ax.annotate(subject_id, (transformed[i, 0], transformed[i, 1]))
     ax.set_title('PCA of latent representations')
-    ax.set_xlabel('Principal Component 1')
-    ax.set_ylabel('Principal Component 2')
+    ax.set_xlabel('Principal Component 1'), ax.set_ylabel('Principal Component 2')
     plt.savefig(save_path / 'pca_latent_representations.png')
     plt.show()
     print(f'PCA of latent representations saved at {save_path}')
