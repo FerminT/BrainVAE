@@ -104,7 +104,6 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    pca = PCA(n_components=2)
     latent_representations, subjects_ids = [], []
     for idx in tqdm(range(len(dataset))):
         t1_img, _, _ = dataset[idx]
@@ -113,8 +112,10 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
         latent_representations.append(z.cpu().detach().numpy())
         subjects_ids.append(dataset.get_metadata(idx)['subject_id'])
     latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
+    pca = PCA(n_components=10)
     pca.fit(latent_representations)
     transformed = pca.transform(latent_representations)
+    print(f'explained variance: {pca.explained_variance_ratio_}')
     fig, ax = plt.subplots()
     for i, subject_id in enumerate(subjects_ids):
         ax.scatter(transformed[i, 0], transformed[i, 1])
