@@ -1,5 +1,6 @@
 import yaml
 import numpy as np
+from pandas import read_csv
 from torch import cat
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
@@ -91,3 +92,16 @@ def num2vect(x, bin_range, bin_step=1, sigma=1):
                     cdfs = norm.cdf([x1, x2], loc=x[j], scale=sigma)
                     v[j, i] = cdfs[1] - cdfs[0]
             return v, bin_centers
+
+
+def load_set(datapath, sample_size, split):
+    train_csv, val_csv, test_csv = get_splits_files(datapath, sample_size)
+    if not (train_csv.exists() and val_csv.exists() and test_csv.exists()):
+        raise ValueError(f'splits files for a sample size of {sample_size} do not exist')
+    if split == 'val':
+        data = read_csv(val_csv)
+    elif split == 'test':
+        data = read_csv(test_csv)
+    else:
+        data = read_csv(train_csv)
+    return data

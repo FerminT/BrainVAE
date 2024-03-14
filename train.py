@@ -11,8 +11,8 @@ import wandb
 import argparse
 
 
-def train(config, train_data, val_data, batch_size, epochs, precision, log_interval,
-          device, workers, no_sync, save_path):
+def train(config, train_data, val_data, batch_size, epochs, precision, log_interval, device, workers,
+          no_sync, save_path):
     seed_everything(42, workers=True)
     train_loader = get_loader(train_data, batch_size, shuffle=False, num_workers=workers)
     val_loader = get_loader(val_data, batch_size, shuffle=False, num_workers=workers)
