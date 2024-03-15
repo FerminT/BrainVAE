@@ -11,6 +11,10 @@ def mse(recon_x, x):
     return nn.functional.mse_loss(recon_x, x, reduction='mean')
 
 
+def l1(recon_x, x):
+    return nn.functional.l1_loss(recon_x, x, reduction='mean')
+
+
 def kl_divergence(mu, logvar):
     return -0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).sum(axis=1)
 
