@@ -1,8 +1,9 @@
 from pathlib import Path
 from scripts.data_handler import get_loader, load_datasets
-from scripts.utils import load_yaml, load_architecture
+from scripts.utils import load_yaml
 from scripts.log import LogReconstructionsCallback
 from scripts import constants
+from models.icvae import ICVAE
 from torch.cuda import is_available
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
@@ -16,7 +17,7 @@ def train(config, train_data, val_data, batch_size, epochs, precision, log_inter
     seed_everything(42, workers=True)
     train_loader = get_loader(train_data, batch_size, shuffle=False, num_workers=workers)
     val_loader = get_loader(val_data, batch_size, shuffle=False, num_workers=workers)
-    model = load_architecture(config, len(train_loader), epochs)
+    model = ICVAE(**config)
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_loss:.2f}', monitor='val_loss',
                                           mode='min', save_top_k=5)

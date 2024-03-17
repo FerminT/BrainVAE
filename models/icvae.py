@@ -17,8 +17,7 @@ class ICVAE(lg.LightningModule):
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
-                 losses_weights=None,
-                 num_steps=None
+                 losses_weights=None
                  ):
         super(ICVAE, self).__init__()
         self.save_hyperparameters()
@@ -27,7 +26,6 @@ class ICVAE(lg.LightningModule):
         self.momentum, self.weight_decay = momentum, weight_decay
         check_weights(losses_weights)
         self.losses_weights = losses_weights
-        self.num_steps = num_steps
         self.encoder = Encoder(input_shape, latent_dim, layers)
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
@@ -42,7 +40,8 @@ class ICVAE(lg.LightningModule):
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                     weight_decay=self.weight_decay)
-        lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.max_lr, total_steps=self.num_steps)
+        lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.max_lr,
+                                                     total_steps=self.trainer.estimated_stepping_batches)
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):

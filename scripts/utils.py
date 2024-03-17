@@ -5,14 +5,7 @@ from torch import cat
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from scipy.stats import norm
-from models.icvae import ICVAE
 from scripts.constants import SPLITS_PATH
-
-
-def load_architecture(config, num_batches, num_epochs):
-    config['num_steps'] = num_batches * num_epochs
-    model = ICVAE(**config)
-    return model
 
 
 def slice_data(data, slice_idx, axis):
