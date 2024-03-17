@@ -1,4 +1,6 @@
 from torch import matmul, unsqueeze
+from numpy import ones
+from math import pi, cos
 import torch.nn as nn
 
 
@@ -34,3 +36,18 @@ def pairwise_gaussian_kl(mu, logvar, latent_dim):
     third_term = unsqueeze(det_sigma, dim=1) - unsqueeze(det_sigma, dim=1).transpose(0, 1)
 
     return 0.5 * (first_term + second_term + third_term - latent_dim)
+
+
+def frange_cycle(start, stop, total_steps, n_cycle, ratio, mode='linear'):
+    beta_at_steps = ones(total_steps)
+    period = total_steps / n_cycle
+    step = (stop - start) / (period * ratio)
+    for c in range(n_cycle):
+        v, i = start, 0
+        while v <= stop:
+            if mode == 'linear':
+                beta_at_steps[int(i + c * period)] = v
+            else:
+                beta_at_steps[int(i + c * period)] = 0.5 - .5 * cos(v * pi)
+            v += step
+            i += 1

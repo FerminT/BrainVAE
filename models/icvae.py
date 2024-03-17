@@ -2,7 +2,7 @@ import lightning as lg
 from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer
-from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights
+from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle
 from torch import optim, zeros
 
 
@@ -30,6 +30,7 @@ class ICVAE(lg.LightningModule):
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
         self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
+        self.beta_at_steps = None
 
     def forward(self, x_transformed, condition=None):
         mu, logvar = self.encoder(x_transformed)
@@ -58,9 +59,15 @@ class ICVAE(lg.LightningModule):
         self.log_dict(loss_dict, sync_dist=True)
         return x_reconstructed
 
+    def on_train_start(self):
+        self.beta_at_steps = frange_cycle(0.0, 1.0, self.trainer.estimated_stepping_batches, 4, 0.5, mode='cosine')
+
     def _loss(self, recon_x, x, mu, logvar, mode='train'):
         recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
         prior_loss = kl_divergence(mu, logvar).mean() * self.losses_weights['prior']
+        if self.beta_at_steps:
+            beta = self.beta_at_steps[self.trainer.global_step]
+            prior_loss *= beta
         loss = recon_loss + prior_loss
         marginal_loss = zeros(1)
         if self.hparams.conditional_dim > 0:
