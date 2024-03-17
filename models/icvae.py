@@ -68,6 +68,7 @@ class ICVAE(lg.LightningModule):
         if self.beta_at_steps:
             beta = self.beta_at_steps[self.trainer.global_step]
             prior_loss *= beta
+            self.log('beta', beta)
         loss = recon_loss + prior_loss
         marginal_loss = zeros(1)
         if self.hparams.conditional_dim > 0:
