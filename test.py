@@ -13,6 +13,8 @@ from scipy.stats import pearsonr
 from numpy import array
 from sklearn.decomposition import PCA
 from tqdm import tqdm
+import pandas as pd
+from seaborn import scatterplot, move_legend
 import matplotlib.pyplot as plt
 import torch
 import wandb
@@ -104,22 +106,23 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    latent_representations, subjects_ids = [], []
+    latent_representations, subjects = [], []
     for idx in tqdm(range(len(dataset))):
         t1_img, _, _ = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device)
         z = get_latent_representation(t1_img, model.encoder)
         latent_representations.append(z.cpu().detach().numpy())
-        subjects_ids.append(dataset.get_metadata(idx)['subject_id'])
+        subjects.append(dataset.get_metadata(idx))
     latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
+    subjects_df = pd.DataFrame(subjects)
+    subjects_df['age_bin'] = pd.cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
     pca = PCA(n_components=10)
-    pca.fit(latent_representations)
-    transformed = pca.transform(latent_representations)
+    embeddings = pca.fit_transform(latent_representations)
+    subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
     print(f'explained variance: {pca.explained_variance_ratio_}')
     fig, ax = plt.subplots()
-    for i, subject_id in enumerate(subjects_ids):
-        ax.scatter(transformed[i, 0], transformed[i, 1])
-        ax.annotate(subject_id, (transformed[i, 0], transformed[i, 1]))
+    scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)
+    move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
     ax.set_title('PCA of latent representations')
     ax.set_xlabel('Principal Component 1'), ax.set_ylabel('Principal Component 2')
     plt.savefig(save_path / 'pca_latent_representations.png')
