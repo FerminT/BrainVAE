@@ -103,6 +103,7 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
 
 def pca_latent_dimension(weights_path, dataset, device, save_path):
     seed_everything(42, workers=True)
+    save_path.mkdir(parents=True, exist_ok=True)
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
