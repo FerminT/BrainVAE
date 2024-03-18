@@ -107,6 +107,9 @@ def load_set(datapath, sample_size, split):
 
 
 def subjects_embeddings(dataset, model, device, save_path):
+    filename = save_path / 'subjects_embeddings.pkl'
+    if filename.exists():
+        return pd.read_pickle(filename)
     subjects = []
     for idx in tqdm(range(len(dataset))):
         t1_img, _, _ = dataset[idx]
@@ -115,8 +118,8 @@ def subjects_embeddings(dataset, model, device, save_path):
         subject_metadata = dataset.get_metadata(idx).copy()
         subject_metadata['embedding'] = z.cpu().detach().squeeze().numpy()
         subjects.append(subject_metadata)
-    # latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
     subjects_df = pd.DataFrame(subjects).set_index('subject_id')
+    subjects_df.to_pickle(filename)
     return subjects_df
 
 
@@ -126,7 +129,7 @@ def init_embedding(method):
                         random_state=42)
     elif method == 'tsne':
         embedding = TSNE(n_components=2,
-                         perplexity=5,
+                         perplexity=30,
                          init='pca',
                          random_state=42)
     elif method == 'isomap':
