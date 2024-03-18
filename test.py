@@ -1,7 +1,7 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import load_metadata, T1Dataset, get_loader
-from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_representations
+from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_embeddings
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch import Trainer, seed_everything
@@ -11,7 +11,8 @@ from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
-import pandas as pd
+from numpy import array
+from pandas import cut
 from seaborn import scatterplot
 import matplotlib.pyplot as plt
 import torch
@@ -105,9 +106,9 @@ def plot_latent_dimensions(weights_path, dataset, method, device, save_path, dra
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    latent_representations, subjects_df = subjects_representations(dataset, model, device)
-    subjects_df['age_bin'] = pd.cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
-    embeddings = init_embedding(method).fit_transform(latent_representations)
+    subjects_df = subjects_embeddings(dataset, model, device, save_path)
+    subjects_df['age_bin'] = cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
+    embeddings = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
     subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
     fig, ax = plt.subplots(constrained_layout=True)
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)

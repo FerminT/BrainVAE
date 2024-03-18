@@ -1,7 +1,6 @@
 import pandas as pd
 import yaml
 import numpy as np
-from numpy import array
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
 from pandas import read_csv
@@ -13,27 +12,6 @@ from tqdm import tqdm
 
 from models.utils import get_latent_representation
 from scripts.constants import SPLITS_PATH
-
-
-def init_embedding(method):
-    if method == 'mds':
-        embedding = MDS(n_components=2,
-                        random_state=42)
-    elif method == 'tsne':
-        embedding = TSNE(n_components=2,
-                         perplexity=20,
-                         init='pca',
-                         random_state=42)
-    elif method == 'isomap':
-        embedding = Isomap(n_components=2,
-                           n_neighbors=10,
-                           n_jobs=-1)
-    elif method == 'pca':
-        embedding = PCA(n_components=2)
-    else:
-        raise NotImplementedError(f'Method {method} not implemented')
-
-    return embedding
 
 
 def slice_data(data, slice_idx, axis):
@@ -128,14 +106,36 @@ def load_set(datapath, sample_size, split):
     return data
 
 
-def subjects_representations(dataset, model, device):
-    latent_representations, subjects = [], []
+def subjects_embeddings(dataset, model, device, save_path):
+    subjects = []
     for idx in tqdm(range(len(dataset))):
         t1_img, _, _ = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device)
         z = get_latent_representation(t1_img, model.encoder)
-        latent_representations.append(z.cpu().detach().numpy())
-        subjects.append(dataset.get_metadata(idx))
-    latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
+        subject_metadata = dataset.get_metadata(idx).copy()
+        subject_metadata['embedding'] = z.cpu().detach().squeeze().numpy()
+        subjects.append(subject_metadata)
+    # latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
     subjects_df = pd.DataFrame(subjects).set_index('subject_id')
-    return latent_representations, subjects_df
+    return subjects_df
+
+
+def init_embedding(method):
+    if method == 'mds':
+        embedding = MDS(n_components=2,
+                        random_state=42)
+    elif method == 'tsne':
+        embedding = TSNE(n_components=2,
+                         perplexity=5,
+                         init='pca',
+                         random_state=42)
+    elif method == 'isomap':
+        embedding = Isomap(n_components=2,
+                           n_neighbors=10,
+                           n_jobs=-1)
+    elif method == 'pca':
+        embedding = PCA(n_components=2)
+    else:
+        raise NotImplementedError(f'Method {method} not implemented')
+
+    return embedding
