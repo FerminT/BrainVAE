@@ -101,7 +101,7 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     print(f'reconstructed MRI saved at {save_path}')
 
 
-def pca_latent_dimension(weights_path, dataset, device, save_path):
+def pca_latent_dimension(weights_path, dataset, device, save_path, draw_labels=False):
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
     model = ICVAE.load_from_checkpoint(weights_path)
@@ -115,7 +115,7 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
         latent_representations.append(z.cpu().detach().numpy())
         subjects.append(dataset.get_metadata(idx))
     latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
-    subjects_df = pd.DataFrame(subjects)
+    subjects_df = pd.DataFrame(subjects).set_index('subject_id')
     subjects_df['age_bin'] = pd.cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
     pca = PCA(n_components=10)
     embeddings = pca.fit_transform(latent_representations)
@@ -123,6 +123,9 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
     print(f'explained variance: {pca.explained_variance_ratio_}')
     fig, ax = plt.subplots(constrained_layout=True)
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)
+    if draw_labels:
+        for i, subject_id in enumerate(subjects_df.index):
+            ax.annotate(subject_id, (embeddings[i, 0], embeddings[i, 1]), alpha=0.6)
     ax.set_title('PCA of latent representations')
     ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
     plt.savefig(save_path / 'pca_latent_representations.png')
