@@ -37,7 +37,7 @@ def predict_age_from_latent_representations(weights, data, datapath, cfg, input_
     else:
         print(f'age classifier already trained, using {checkpoints[-1]}')
         model = AgeClassifier.load_from_checkpoint(checkpoints[-1])
-        test_classifier(model, val_dataset, args.device)
+        test_classifier(model, val_dataset, device)
 
 
 def train_classifier(weights_path, config_name, train_data, val_data, latent_dim, batch_size, epochs, device, workers,
