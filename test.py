@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     weights_path = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
     weights = next(weights_path.parent.glob(f'{weights_path.name}*'))
-    save_path = Path(EVALUATION_PATH, args.dataset, args.cfg) / weights_path.parent.name
+    save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
     data = load_set(datapath, args.sample_size, args.set)
     if args.sample == 0 and not args.manifold:
         predict_age_from_latent_representations(weights, data, datapath, args.cfg, config['input_shape'], age_range,
