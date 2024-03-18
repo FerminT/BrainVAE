@@ -1,7 +1,7 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import load_metadata, T1Dataset, get_loader
-from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding
+from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_representations
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch import Trainer, seed_everything
@@ -10,7 +10,6 @@ from models.age_classifier import AgeClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
-from numpy import array
 from tqdm import tqdm
 import pandas as pd
 from seaborn import scatterplot
@@ -34,7 +33,7 @@ def predict_age_from_latent_representations(weights, data, datapath, cfg, input_
         train_classifier(weights, cfg, train_dataset, val_dataset, latent_dim, batch_size,
                          epochs, device, workers, no_sync, save_path)
     else:
-        print(f'age classifier already trained, using {checkpoints[-1]}')
+        print(f'Age classifier already trained, using {checkpoints[-1]}')
         model = AgeClassifier.load_from_checkpoint(checkpoints[-1])
         test_classifier(model, val_dataset, device)
 
@@ -72,7 +71,7 @@ def test_classifier(model, val_dataset, device):
         predictions.append(prediction)
         ages.append(age.item())
     corr, p_value = pearsonr(predictions, ages)
-    print(f'correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
+    print(f'Correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
 
 
 def sample(weights_path, dataset, age, subject_id, device, save_path):
@@ -97,7 +96,7 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     plt.imshow(comparison_img)
     plt.axis('off'), plt.xticks([]), plt.yticks([])
     plt.show()
-    print(f'reconstructed MRI saved at {save_path}')
+    print(f'Reconstructed MRI saved at {save_path}')
 
 
 def plot_latent_dimensions(weights_path, dataset, method, device, save_path, draw_labels=False):
@@ -106,18 +105,9 @@ def plot_latent_dimensions(weights_path, dataset, method, device, save_path, dra
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    latent_representations, subjects = [], []
-    for idx in tqdm(range(len(dataset))):
-        t1_img, _, _ = dataset[idx]
-        t1_img = t1_img.unsqueeze(dim=0).to(device)
-        z = get_latent_representation(t1_img, model.encoder)
-        latent_representations.append(z.cpu().detach().numpy())
-        subjects.append(dataset.get_metadata(idx))
-    latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
-    subjects_df = pd.DataFrame(subjects).set_index('subject_id')
+    latent_representations, subjects_df = subjects_representations(dataset, model, device)
     subjects_df['age_bin'] = pd.cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
-    embedding = init_embedding(method)
-    embeddings = embedding.fit_transform(latent_representations)
+    embeddings = init_embedding(method).fit_transform(latent_representations)
     subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
     fig, ax = plt.subplots(constrained_layout=True)
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)

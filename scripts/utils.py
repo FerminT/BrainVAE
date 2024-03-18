@@ -1,5 +1,7 @@
+import pandas as pd
 import yaml
 import numpy as np
+from numpy import array
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
 from pandas import read_csv
@@ -7,6 +9,9 @@ from torch import cat
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from scipy.stats import norm
+from tqdm import tqdm
+
+from models.utils import get_latent_representation
 from scripts.constants import SPLITS_PATH
 
 
@@ -121,3 +126,16 @@ def load_set(datapath, sample_size, split):
     else:
         data = read_csv(train_csv)
     return data
+
+
+def subjects_representations(dataset, model, device):
+    latent_representations, subjects = [], []
+    for idx in tqdm(range(len(dataset))):
+        t1_img, _, _ = dataset[idx]
+        t1_img = t1_img.unsqueeze(dim=0).to(device)
+        z = get_latent_representation(t1_img, model.encoder)
+        latent_representations.append(z.cpu().detach().numpy())
+        subjects.append(dataset.get_metadata(idx))
+    latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
+    subjects_df = pd.DataFrame(subjects).set_index('subject_id')
+    return latent_representations, subjects_df
