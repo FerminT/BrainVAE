@@ -51,3 +51,4 @@ def frange_cycle(start, stop, total_steps, n_cycle, ratio, mode='linear'):
                 beta_at_steps[int(i + c * period)] = 0.5 - .5 * cos(v * pi)
             v += step
             i += 1
+    return beta_at_steps
