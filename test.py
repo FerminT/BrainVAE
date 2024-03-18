@@ -110,7 +110,7 @@ def plot_latent_dimensions(weights_path, dataset, method, device, save_path, dra
     subjects_df['age_bin'] = cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
     embeddings = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
     subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
-    fig, ax = plt.subplots(constrained_layout=True)
+    fig, ax = plt.subplots()
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)
     if draw_labels:
         for i, subject_id in enumerate(subjects_df.index):
