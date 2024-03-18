@@ -1,11 +1,34 @@
 import yaml
 import numpy as np
+from sklearn.manifold import MDS, TSNE, Isomap
+from sklearn.decomposition import PCA
 from pandas import read_csv
 from torch import cat
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from scipy.stats import norm
 from scripts.constants import SPLITS_PATH
+
+
+def init_embedding(method):
+    if method == 'mds':
+        embedding = MDS(n_components=2,
+                        random_state=42)
+    elif method == 'tsne':
+        embedding = TSNE(n_components=2,
+                         perplexity=20,
+                         init='pca',
+                         random_state=42)
+    elif method == 'isomap':
+        embedding = Isomap(n_components=2,
+                           n_neighbors=10,
+                           n_jobs=-1)
+    elif method == 'pca':
+        embedding = PCA(n_components=2)
+    else:
+        raise NotImplementedError(f'Method {method} not implemented')
+
+    return embedding
 
 
 def slice_data(data, slice_idx, axis):

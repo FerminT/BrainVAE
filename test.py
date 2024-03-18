@@ -1,7 +1,7 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import load_metadata, T1Dataset, get_loader
-from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set
+from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch import Trainer, seed_everything
@@ -11,7 +11,6 @@ from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from numpy import array
-from sklearn.decomposition import PCA
 from tqdm import tqdm
 import pandas as pd
 from seaborn import scatterplot
@@ -101,7 +100,7 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     print(f'reconstructed MRI saved at {save_path}')
 
 
-def pca_latent_dimension(weights_path, dataset, device, save_path, draw_labels=False):
+def plot_latent_dimensions(weights_path, dataset, method, device, save_path, draw_labels=False):
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
     model = ICVAE.load_from_checkpoint(weights_path)
@@ -117,20 +116,19 @@ def pca_latent_dimension(weights_path, dataset, device, save_path, draw_labels=F
     latent_representations = array(latent_representations).reshape(len(latent_representations), -1)
     subjects_df = pd.DataFrame(subjects).set_index('subject_id')
     subjects_df['age_bin'] = pd.cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
-    pca = PCA(n_components=10)
-    embeddings = pca.fit_transform(latent_representations)
+    embedding = init_embedding(method)
+    embeddings = embedding.fit_transform(latent_representations)
     subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
-    print(f'explained variance: {pca.explained_variance_ratio_}')
     fig, ax = plt.subplots(constrained_layout=True)
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)
     if draw_labels:
         for i, subject_id in enumerate(subjects_df.index):
             ax.annotate(subject_id, (embeddings[i, 0], embeddings[i, 1]), alpha=0.6)
-    ax.set_title('PCA of latent representations')
+    ax.set_title(f'Latent representations {method.upper()} embeddings')
     ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
-    plt.savefig(save_path / 'pca_latent_representations.png')
+    plt.savefig(save_path / f'latents_{method}.png')
     plt.show()
-    print(f'PCA of latent representations saved at {save_path}')
+    print(f'Figure saved at {save_path}')
 
 
 if __name__ == '__main__':
@@ -155,8 +153,8 @@ if __name__ == '__main__':
                         help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0,
                         help='age of the subject to resample to, if using ICVAE')
-    parser.add_argument('--pca', action='store_true',
-                        help='perform PCA on the latent representations')
+    parser.add_argument('--manifold', type=str, default=None,
+                        help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
     parser.add_argument('--set', type=str, default='val',
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
@@ -175,7 +173,7 @@ if __name__ == '__main__':
     weights = next(weights_path.parent.glob(f'{weights_path.name}*'))
     save_path = Path(EVALUATION_PATH, args.dataset, args.cfg) / weights_path.parent.name
     data = load_set(datapath, args.sample_size, args.set)
-    if args.sample == 0 and not args.pca:
+    if args.sample == 0 and not args.manifold:
         predict_age_from_latent_representations(weights, data, datapath, args.cfg, config['input_shape'], age_range,
                                                 args.val_size, config['latent_dim'], args.batch_size, args.epochs,
                                                 args.workers, args.no_sync, args.device, save_path)
@@ -184,5 +182,5 @@ if __name__ == '__main__':
                             config['one_hot_age'], testing=True)
         if args.sample > 0:
             sample(weights, dataset, args.age, args.sample, args.device, save_path)
-        elif args.pca:
-            pca_latent_dimension(weights, dataset, args.device, save_path)
+        elif args.manifold:
+            plot_latent_dimensions(weights, dataset, args.manifold.lower(), args.device, save_path)
