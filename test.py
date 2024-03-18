@@ -14,7 +14,7 @@ from numpy import array
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 import pandas as pd
-from seaborn import scatterplot, move_legend
+from seaborn import scatterplot
 import matplotlib.pyplot as plt
 import torch
 import wandb
@@ -121,11 +121,10 @@ def pca_latent_dimension(weights_path, dataset, device, save_path):
     embeddings = pca.fit_transform(latent_representations)
     subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
     print(f'explained variance: {pca.explained_variance_ratio_}')
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(constrained_layout=True)
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)
-    move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
     ax.set_title('PCA of latent representations')
-    ax.set_xlabel('Principal Component 1'), ax.set_ylabel('Principal Component 2')
+    ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
     plt.savefig(save_path / 'pca_latent_representations.png')
     plt.show()
     print(f'PCA of latent representations saved at {save_path}')
