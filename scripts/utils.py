@@ -9,9 +9,9 @@ from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from scipy.stats import norm
 from tqdm import tqdm
-
 from models.utils import get_latent_representation
 from scripts.constants import SPLITS_PATH
+import umap
 
 
 def slice_data(data, slice_idx, axis):
@@ -138,6 +138,9 @@ def init_embedding(method):
                            n_jobs=-1)
     elif method == 'pca':
         embedding = PCA(n_components=2)
+    elif method == 'umap':
+        embedding = umap.UMAP(n_components=2,
+                              random_state=42)
     else:
         raise NotImplementedError(f'Method {method} not implemented')
 
