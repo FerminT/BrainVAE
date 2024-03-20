@@ -11,9 +11,10 @@ from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
-from numpy import array
+from scipy.stats import gaussian_kde
+from numpy import array, mgrid, vstack, reshape
 from pandas import cut
-from seaborn import scatterplot
+from seaborn import scatterplot, kdeplot
 import matplotlib.pyplot as plt
 import torch
 import wandb
@@ -100,7 +101,7 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     print(f'Reconstructed MRI saved at {save_path}')
 
 
-def plot_latent_dimensions(weights_path, dataset, method, device, save_path, draw_labels=False):
+def plot_latent_dimensions(weights_path, dataset, method, device, save_path, hue='age', draw_labels=False):
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
     model = ICVAE.load_from_checkpoint(weights_path)
@@ -108,10 +109,12 @@ def plot_latent_dimensions(weights_path, dataset, method, device, save_path, dra
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     subjects_df = subjects_embeddings(dataset, model, device, save_path)
     subjects_df['age_bin'] = cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
+    hue = 'age_bin' if hue == 'age' else hue
     embeddings = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
     subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
     fig, ax = plt.subplots()
-    scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue='age_bin', style='gender', ax=ax)
+    scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, ax=ax, alpha=0.6)
+    kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, fill=False, ax=ax)
     if draw_labels:
         for i, subject_id in enumerate(subjects_df.index):
             ax.annotate(subject_id, (embeddings[i, 0], embeddings[i, 1]), alpha=0.6)
