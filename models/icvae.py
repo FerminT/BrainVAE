@@ -64,13 +64,13 @@ class ICVAE(lg.LightningModule):
 
     def on_train_start(self):
         if self.beta_strategy == 'cyclical':
-            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.max_epochs, 4, 1.0,
+            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.estimated_stepping_batches, 4, 1.0,
                                             mode='cosine')
         elif self.beta_strategy == 'monotonic':
-            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.max_epochs, 1, 1.0,
+            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.estimated_stepping_batches, 1, 1.0,
                                             mode='cosine')
         elif self.beta_strategy == 'constant':
-            self.beta_values = array([self.beta] * self.trainer.max_epochs)
+            self.beta_values = array([self.beta] * self.trainer.estimated_stepping_batches)
         else:
             self.beta_values = None
 
@@ -78,7 +78,7 @@ class ICVAE(lg.LightningModule):
         recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
         prior_loss = kl_divergence(mu, logvar).mean() * self.losses_weights['prior']
         if self.beta_values is not None:
-            beta = self.beta_values[self.trainer.current_epoch]
+            beta = self.beta_values[self.trainer.global_step]
             prior_loss *= beta
             self.log('beta', beta, sync_dist=True)
         loss = recon_loss + prior_loss
