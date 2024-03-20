@@ -149,6 +149,8 @@ if __name__ == '__main__':
                         help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--manifold', type=str, default=None,
                         help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
+    parser.add_argument('--hue', type=str, default='age',
+                        help='hue used for plotting latent representations (age or gender)')
     parser.add_argument('--set', type=str, default='val',
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
@@ -177,4 +179,4 @@ if __name__ == '__main__':
         if args.sample > 0:
             sample(weights, dataset, args.age, args.sample, args.device, save_path)
         elif args.manifold:
-            plot_latent_dimensions(weights, dataset, args.manifold.lower(), args.device, save_path)
+            plot_latent_dimensions(weights, dataset, args.manifold.lower(), args.device, save_path, args.hue)
