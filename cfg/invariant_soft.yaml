@@ -69,6 +69,8 @@ max_lr: 0.01
 optimizer: 'AdamW'
 momentum: 0.9
 weight_decay: 0.0005
+beta: 0.001
+beta_strategy: 'constant'
 losses_weights:
   reconstruction: 1.0
   prior: 1.0

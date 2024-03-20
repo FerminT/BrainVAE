@@ -4,6 +4,7 @@ from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer
 from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle
 from torch import optim, zeros
+from numpy import array
 
 
 class ICVAE(lg.LightningModule):
@@ -17,6 +18,8 @@ class ICVAE(lg.LightningModule):
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
+                 beta=0.001,
+                 beta_strategy='constant',
                  losses_weights=None
                  ):
         super(ICVAE, self).__init__()
@@ -30,7 +33,7 @@ class ICVAE(lg.LightningModule):
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
         self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
-        self.beta_at_steps = None
+        self.beta, self.beta_strategy, self.beta_values = beta, beta_strategy, None
 
     def forward(self, x_transformed, condition=None):
         mu, logvar = self.encoder(x_transformed)
@@ -60,13 +63,22 @@ class ICVAE(lg.LightningModule):
         return x_reconstructed
 
     def on_train_start(self):
-        self.beta_at_steps = frange_cycle(0.0, 1.0, self.trainer.estimated_stepping_batches, 4, 0.5, mode='cosine')
+        if self.beta_strategy == 'cyclical':
+            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.max_epochs, 4, 1.0,
+                                            mode='cosine')
+        elif self.beta_strategy == 'monotonic':
+            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.max_epochs, 1, 1.0,
+                                            mode='cosine')
+        elif self.beta_strategy == 'constant':
+            self.beta_values = array([self.beta] * self.trainer.max_epochs)
+        else:
+            self.beta_values = None
 
     def _loss(self, recon_x, x, mu, logvar, mode='train'):
         recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
         prior_loss = kl_divergence(mu, logvar).mean() * self.losses_weights['prior']
-        if self.beta_at_steps is not None:
-            beta = self.beta_at_steps[self.trainer.global_step]
+        if self.beta_values is not None:
+            beta = self.beta_values[self.trainer.current_epoch]
             prior_loss *= beta
             self.log('beta', beta, sync_dist=True)
         loss = recon_loss + prior_loss
