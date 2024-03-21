@@ -1,6 +1,6 @@
 from torch import matmul, unsqueeze
 from numpy import ones
-from math import pi, cos
+from math import pi, cos, exp as mexp
 import torch.nn as nn
 
 
@@ -45,10 +45,12 @@ def frange_cycle(start, stop, total_steps, n_cycle, ratio, mode='linear'):
     for c in range(n_cycle):
         v, i = start, 0
         while v <= stop:
-            if mode == 'linear':
-                beta_at_steps[int(i + c * period)] = v
-            else:
-                beta_at_steps[int(i + c * period)] = 0.5 - .5 * cos(v * pi)
+            beta = v
+            if mode == 'cosine':
+                beta = .5 - .5 * cos(v * pi)
+            elif mode == 'sigmoid':
+                beta = 1.0 / (1.0 + mexp(-(v * 12. - 6.)))
+            beta_at_steps[int(i + c * period)] = beta
             v += step
             i += 1
     return beta_at_steps
