@@ -33,13 +33,17 @@ def build_modules(blocks):
     channels = [blocks[layer]['channels'] for layer in blocks]
     for i, block in enumerate(blocks):
         tconv_layer = blocks[block]
-        out_channels = 1 if i == len(blocks) - 1 else channels[i + 1]
+        batch_norm, activation = tconv_layer['batch_norm'], tconv_layer['activation']
+        out_channels = channels[i + 1]
+        if i == len(blocks) - 1:
+            batch_norm, activation = None, None
+            out_channels = 1
         modules.append(tconv_block(in_channels=tconv_layer['channels'],
                                    out_channels=out_channels,
                                    kernel_size=tconv_layer['kernel_size'],
                                    padding=tconv_layer['padding'],
                                    stride=tconv_layer['stride'],
                                    bias=tconv_layer['bias'],
-                                   batch_norm=tconv_layer['batch_norm'],
-                                   activation=tconv_layer['activation']))
+                                   batch_norm=batch_norm,
+                                   activation=activation))
     return nn.Sequential(*modules)
