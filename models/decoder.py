@@ -33,11 +33,12 @@ def build_modules(blocks):
     channels = [blocks[layer]['channels'] for layer in blocks]
     for i, block in enumerate(blocks):
         tconv_layer = blocks[block]
-        batch_norm, activation = tconv_layer['batch_norm'], tconv_layer['activation']
-        out_channels = channels[i + 1]
         if i == len(blocks) - 1:
             batch_norm, activation = None, None
             out_channels = 1
+        else:
+            batch_norm, activation = tconv_layer['batch_norm'], tconv_layer['activation']
+            out_channels = channels[i + 1]
         modules.append(tconv_block(in_channels=tconv_layer['channels'],
                                    out_channels=out_channels,
                                    kernel_size=tconv_layer['kernel_size'],
