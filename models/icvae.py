@@ -78,7 +78,7 @@ class ICVAE(lg.LightningModule):
         recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
         prior_loss = kl_divergence(mu, logvar).mean() * self.losses_weights['prior']
         if self.beta_values is not None:
-            beta = self.beta_values[self.trainer.global_step]
+            beta = self.beta_values[self.trainer.global_step - 1]
             prior_loss *= beta
             self.log('beta', beta, sync_dist=True)
         loss = recon_loss + prior_loss
