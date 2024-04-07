@@ -64,10 +64,10 @@ class ICVAE(lg.LightningModule):
 
     def on_train_start(self):
         if self.beta_strategy == 'cyclical':
-            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.max_epochs, 4, .99,
+            self.beta_values = frange_cycle(self.beta, .5, self.trainer.max_epochs, 4, .99,
                                             mode='cosine')
         elif self.beta_strategy == 'monotonic':
-            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.max_epochs, 1, .99,
+            self.beta_values = frange_cycle(self.beta, .5, self.trainer.max_epochs, 1, .99,
                                             mode='cosine')
         elif self.beta_strategy == 'constant':
             self.beta_values = array([self.beta] * self.trainer.max_epochs)
