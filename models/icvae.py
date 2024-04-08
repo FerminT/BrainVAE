@@ -80,7 +80,7 @@ class ICVAE(lg.LightningModule):
         if self.beta_values is not None:
             beta = self.beta_values[self.trainer.estimated_stepping_batches - 1]
             prior_loss *= beta
-            self.log('beta', beta, sync_dist=True)
+            self.log('beta', beta * self.losses_weights['prior'], sync_dist=True)
         loss = recon_loss + prior_loss
         marginal_loss = zeros(1)
         if self.hparams.conditional_dim > 0:
