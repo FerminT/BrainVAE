@@ -136,7 +136,7 @@ if __name__ == '__main__':
                         help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=16,
                         help='batch size used for training the age classifier')
-    parser.add_argument('--epochs', type=int, default=15,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='number of epochs used for training the age classifier')
     parser.add_argument('--workers', type=int, default=12,
                         help='number of workers used for data loading when training the age classifier')
