@@ -11,8 +11,7 @@ from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
-from scipy.stats import gaussian_kde
-from numpy import array, mgrid, vstack, reshape
+from numpy import array
 from pandas import cut
 from seaborn import scatterplot, kdeplot
 import matplotlib.pyplot as plt
