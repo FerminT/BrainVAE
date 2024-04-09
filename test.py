@@ -112,16 +112,17 @@ def plot_latent_dimensions(weights_path, dataset, method, device, save_path, hue
     embeddings = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
     subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
     fig, ax = plt.subplots()
-    scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, ax=ax, alpha=0.6)
+    scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, ax=ax, alpha=0.3, size=.3)
     kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, fill=False, ax=ax)
     if draw_labels:
         for i, subject_id in enumerate(subjects_df.index):
             ax.annotate(subject_id, (embeddings[i, 0], embeddings[i, 1]), alpha=0.6)
     ax.set_title(f'Latent representations {method.upper()} embeddings')
     ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
-    plt.savefig(save_path / f'latents_{method}.png')
+    filename = save_path / f'latents_{method}_{hue}.png'
+    plt.savefig(filename)
     plt.show()
-    print(f'Figure saved at {save_path}')
+    print(f'Figure saved at {filename}')
 
 
 if __name__ == '__main__':
