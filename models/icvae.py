@@ -2,9 +2,8 @@ import lightning as lg
 from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer
-from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle
+from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle, step_cycle
 from torch import optim, zeros
-from numpy import array
 
 
 class ICVAE(lg.LightningModule):
@@ -69,8 +68,8 @@ class ICVAE(lg.LightningModule):
         elif self.beta_strategy == 'monotonic':
             self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.estimated_stepping_batches, 1, .99,
                                             mode='cosine')
-        elif self.beta_strategy == 'constant':
-            self.beta_values = array([self.beta] * self.trainer.estimated_stepping_batches)
+        elif self.beta_strategy == 'stepwise':
+            self.beta_values = step_cycle([self.beta], self.trainer.estimated_stepping_batches)
         else:
             self.beta_values = None
 
