@@ -58,5 +58,5 @@ def frange_cycle(start, stop, total_steps, n_cycle, ratio, mode='linear'):
 
 def step_cycle(values_at_each_step, total_steps):
     values_at_each_step = array(values_at_each_step)
-    bin_size = total_steps // len(values_at_each_step)
+    bin_size = round(total_steps / len(values_at_each_step))
     return repeat(values_at_each_step, bin_size)

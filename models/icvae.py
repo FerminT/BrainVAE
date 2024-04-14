@@ -69,7 +69,7 @@ class ICVAE(lg.LightningModule):
             self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.estimated_stepping_batches, 1, .99,
                                             mode='cosine')
         elif self.beta_strategy == 'stepwise':
-            self.beta_values = step_cycle([self.beta], self.trainer.estimated_stepping_batches)
+            self.beta_values = step_cycle(self.beta, self.trainer.estimated_stepping_batches)
         else:
             self.beta_values = None
 
