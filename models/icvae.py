@@ -75,18 +75,21 @@ class ICVAE(lg.LightningModule):
 
     def _loss(self, recon_x, x, mu, logvar, mode='train'):
         recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
-        prior_loss = kl_divergence(mu, logvar).mean() * self.losses_weights['prior']
+        prior_loss = kl_divergence(mu, logvar).mean()
+        prior_loss_value = prior_loss.item()
+        prior_loss *= self.losses_weights['prior']
         if self.beta_values is not None:
             beta = self.beta_values[min(len(self.beta_values) - 1, self.trainer.global_step)]
             prior_loss *= beta
             self.log('beta', beta * self.losses_weights['prior'], sync_dist=True)
         loss = recon_loss + prior_loss
-        marginal_loss = zeros(1)
+        marginal_loss_value = 0.0
         if self.hparams.conditional_dim > 0:
-            marginal_loss = (pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean()
-                             * self.losses_weights['marginal'])
+            marginal_loss = (pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean())
+            marginal_loss_value = marginal_loss.item()
+            marginal_loss *= self.losses_weights['marginal']
             loss += marginal_loss
-        return loss, self._log_dict(mode, recon_loss.item(), prior_loss.item(), marginal_loss.item())
+        return loss, self._log_dict(mode, recon_loss.item(), prior_loss_value, marginal_loss_value)
 
     def _log_dict(self, mode, recon_loss, prior_loss, marginal_loss):
         state = {f'{mode}_recon_loss': recon_loss,
