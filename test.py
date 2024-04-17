@@ -20,8 +20,8 @@ import wandb
 import argparse
 
 
-def predict_age_from_latent_representations(weights, data, datapath, cfg, input_shape, age_range, val_size,
-                                            latent_dim, batch_size, epochs, workers, no_sync, device, save_path):
+def predict_from_embeddings(weights, data, datapath, cfg, input_shape, age_range, val_size,
+                            latent_dim, batch_size, epochs, workers, no_sync, device, save_path):
     save_path = save_path / 'age_classifier'
     save_path.mkdir(parents=True, exist_ok=True)
     train, val = train_test_split(data, test_size=val_size, random_state=42)
@@ -75,13 +75,11 @@ def test_classifier(model, val_dataset, device):
     print(f'Correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
 
 
-def sample(weights_path, dataset, age, subject_id, device, save_path):
+def sample(model, dataset, age, subject_id, device, save_path):
     seed_everything(42, workers=True)
     save_path = save_path / 'samples'
     save_path.mkdir(parents=True, exist_ok=True)
     sample = dataset.get_subject(subject_id)
-    model = ICVAE.load_from_checkpoint(weights_path)
-    model.eval()
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     t1_img, _ = dataset.load_and_process_img(sample)
     t1_img = t1_img.unsqueeze(dim=0).to(device)
@@ -100,23 +98,19 @@ def sample(weights_path, dataset, age, subject_id, device, save_path):
     print(f'Reconstructed MRI saved at {save_path}')
 
 
-def plot_latent_dimensions(weights_path, dataset, method, device, save_path, hue='age', draw_labels=False):
+def plot_embeddings(subjects_df, method, save_path, hue='age', draw_labels=False):
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
-    model = ICVAE.load_from_checkpoint(weights_path)
-    model.eval()
-    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    subjects_df = subjects_embeddings(dataset, model, device, save_path)
     subjects_df['age_bin'] = cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
     hue = 'age_bin' if hue == 'age' else hue
-    embeddings = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
-    subjects_df['emb_x'], subjects_df['emb_y'] = embeddings[:, 0], embeddings[:, 1]
+    components = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
+    subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
     fig, ax = plt.subplots()
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, ax=ax, alpha=0.3, size=.3)
     kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, fill=False, ax=ax)
     if draw_labels:
         for i, subject_id in enumerate(subjects_df.index):
-            ax.annotate(subject_id, (embeddings[i, 0], embeddings[i, 1]), alpha=0.6)
+            ax.annotate(subject_id, (components[i, 0], components[i, 1]), alpha=0.6)
     ax.set_title(f'Latent representations {method.upper()} embeddings')
     ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
     filename = save_path / f'latents_{method}_{hue}.png'
@@ -169,14 +163,22 @@ if __name__ == '__main__':
     weights = next(weights_path.parent.glob(f'{weights_path.name}*'))
     save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
     data = load_set(datapath, args.sample_size, args.set)
+    dataset = T1Dataset(config['input_shape'], datapath, data, conditional_dim=0, age_range=age_range,
+                        one_hot_age=False, testing=True)
+
+    save_path.mkdir(parents=True, exist_ok=True)
+    model = ICVAE.load_from_checkpoint(weights_path)
+    model.eval()
+    device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    subjects_df = subjects_embeddings(dataset, model, device, save_path)
     if args.sample == 0 and not args.manifold:
-        predict_age_from_latent_representations(weights, data, datapath, args.cfg, config['input_shape'], age_range,
-                                                args.val_size, config['latent_dim'], args.batch_size, args.epochs,
-                                                args.workers, args.no_sync, args.device, save_path)
+        predict_from_embeddings(weights, data, datapath, args.cfg, config['input_shape'], age_range,
+                                args.val_size, config['latent_dim'], args.batch_size, args.epochs,
+                                args.workers, args.no_sync, args.device, save_path)
     else:
-        dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
-                            config['one_hot_age'], testing=True)
         if args.sample > 0:
-            sample(weights, dataset, args.age, args.sample, args.device, save_path)
+            dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
+                                config['one_hot_age'], testing=True)
+            sample(model, dataset, args.age, args.sample, args.device, save_path)
         elif args.manifold:
-            plot_latent_dimensions(weights, dataset, args.manifold.lower(), args.device, save_path, args.hue)
+            plot_embeddings(subjects_df, args.manifold.lower(), save_path, args.hue)
