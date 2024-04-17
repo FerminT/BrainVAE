@@ -74,9 +74,9 @@ class ICVAE(lg.LightningModule):
             self.beta_values = None
 
     def _loss(self, recon_x, x, mu, logvar, mode='train'):
-        recon_loss = mse(recon_x, x) * self.losses_weights['reconstruction']
-        prior_loss = kl_divergence(mu, logvar).mean()
-        prior_loss_value = prior_loss.item()
+        recon_loss, prior_loss = mse(recon_x, x), kl_divergence(mu, logvar).mean()
+        recon_loss_value, prior_loss_value = recon_loss.item(), prior_loss.item()
+        recon_loss *= self.losses_weights['reconstruction']
         prior_loss *= self.losses_weights['prior']
         if self.beta_values is not None:
             beta = self.beta_values[min(len(self.beta_values) - 1, self.trainer.global_step)]
@@ -85,7 +85,7 @@ class ICVAE(lg.LightningModule):
         loss = recon_loss + prior_loss
         marginal_loss_value = 0.0
         if self.hparams.conditional_dim > 0:
-            marginal_loss = (pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean())
+            marginal_loss = pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean()
             marginal_loss_value = marginal_loss.item()
             marginal_loss *= self.losses_weights['marginal']
             loss += marginal_loss
