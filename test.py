@@ -96,22 +96,24 @@ def sample(model, dataset, age, subject_id, device, save_path):
     print(f'Reconstructed MRI saved at {save_path}')
 
 
-def plot_embeddings(subjects_df, method, save_path, hue='age', draw_labels=False):
+def plot_embeddings(subjects_df, method, label, data_type, save_path, annotate_ids=False):
+    if label not in subjects_df:
+        raise ValueError(f'{label} not found in the dataframe')
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
-    subjects_df['age_bin'] = cut(subjects_df['age_at_scan'], bins=3, labels=['young', 'middle', 'old'])
-    hue = 'age_bin' if hue == 'age' else hue
+    if data_type == 'continuous':
+        subjects_df[label] = cut(subjects_df[label], bins=3, labels=['low', 'middle', 'high'])
     components = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
     subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
     fig, ax = plt.subplots()
-    scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, ax=ax, alpha=0.3, size=.3)
-    kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=hue, fill=False, ax=ax)
-    if draw_labels:
+    scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, ax=ax, alpha=0.3, size=.3)
+    kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax)
+    if annotate_ids:
         for i, subject_id in enumerate(subjects_df.index):
             ax.annotate(subject_id, (components[i, 0], components[i, 1]), alpha=0.6)
     ax.set_title(f'Latent representations {method.upper()} embeddings')
     ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
-    filename = save_path / f'latents_{method}_{hue}.png'
+    filename = save_path / f'latents_{method}_{label}.png'
     plt.savefig(filename)
     plt.show()
     print(f'Figure saved at {filename}')
@@ -141,8 +143,10 @@ if __name__ == '__main__':
                         help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--manifold', type=str, default=None,
                         help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
-    parser.add_argument('--hue', type=str, default='age',
-                        help='hue used for plotting latent representations (age or gender)')
+    parser.add_argument('--label', type=str, default='age',
+                        help='label used for plotting latent representations (age; gender; bmi)'),
+    parser.add_argument('--data_type', type=str, default='continuous',
+                        help='data type: either continuous or discrete')
     parser.add_argument('--set', type=str, default='val',
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
@@ -178,4 +182,4 @@ if __name__ == '__main__':
                                 config['one_hot_age'], testing=True)
             sample(model, dataset, args.age, args.sample, args.device, save_path)
         elif args.manifold:
-            plot_embeddings(embeddings_df, args.manifold.lower(), save_path, args.hue)
+            plot_embeddings(embeddings_df, args.manifold.lower(), args.label, args.data_type, save_path)
