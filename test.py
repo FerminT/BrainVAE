@@ -1,6 +1,6 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import load_metadata, T1Dataset, get_loader
+from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader
 from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_embeddings
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
@@ -20,33 +20,31 @@ import wandb
 import argparse
 
 
-def predict_from_embeddings(weights, data, datapath, cfg, input_shape, age_range, val_size,
-                            latent_dim, batch_size, epochs, workers, no_sync, device, save_path):
+def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, batch_size, epochs, workers,
+                            no_sync, device, save_path):
     save_path = save_path / 'age_classifier'
     save_path.mkdir(parents=True, exist_ok=True)
-    train, val = train_test_split(data, test_size=val_size, random_state=42)
-    train_dataset = T1Dataset(input_shape, datapath, train, 0, age_range, one_hot_age=False,
-                              testing=True)
-    val_dataset = T1Dataset(input_shape, datapath, val, 0, age_range, one_hot_age=False,
-                            testing=True)
+    train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
+    train_dataset = EmbeddingDataset(train, target='age_at_scan')
+    val_dataset = EmbeddingDataset(val, target='age_at_scan')
     checkpoints = sorted(save_path.glob('*.ckpt'))
     if not checkpoints:
-        train_classifier(weights, cfg, train_dataset, val_dataset, latent_dim, batch_size,
-                         epochs, device, workers, no_sync, save_path)
+        train_classifier(train_dataset, val_dataset, cfg, latent_dim, batch_size, epochs, device, workers,
+                         no_sync, save_path)
     else:
         print(f'Age classifier already trained, using {checkpoints[-1]}')
         model = AgeClassifier.load_from_checkpoint(checkpoints[-1])
         test_classifier(model, val_dataset, device)
 
 
-def train_classifier(weights_path, config_name, train_data, val_data, latent_dim, batch_size, epochs, device, workers,
+def train_classifier(train_data, val_data, config_name, latent_dim, batch_size, epochs, device, workers,
                      no_sync, save_path):
     seed_everything(42, workers=True)
     wandb_logger = WandbLogger(name=f'ageclassifier_{config_name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_mae:.2f}', monitor='val_mae',
-                                 mode='min', save_top_k=2)
+                                 mode='min', save_top_k=2, save_last=True)
     early_stopping = EarlyStopping(monitor='val_mae', patience=5, mode='min')
-    age_classifier = AgeClassifier(weights_path, input_dim=latent_dim)
+    age_classifier = AgeClassifier(input_dim=latent_dim)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False, num_workers=workers)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False, num_workers=workers)
     trainer = Trainer(max_epochs=epochs,
@@ -64,14 +62,14 @@ def test_classifier(model, val_dataset, device):
     seed_everything(42, workers=True)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     model.eval().to(device)
-    predictions, ages = [], []
+    predictions, labels = [], []
     for idx in tqdm(range(len(val_dataset))):
-        x, _, age = val_dataset[idx]
-        x = x.unsqueeze(dim=0).to(device)
-        prediction = model(x).item()
+        z, target = val_dataset[idx]
+        z = z.unsqueeze(dim=0).to(device)
+        prediction = model(z).item()
         predictions.append(prediction)
-        ages.append(age.item())
-    corr, p_value = pearsonr(predictions, ages)
+        labels.append(target.item())
+    corr, p_value = pearsonr(predictions, labels)
     print(f'Correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
 
 
@@ -170,15 +168,14 @@ if __name__ == '__main__':
     model = ICVAE.load_from_checkpoint(weights_path)
     model.eval()
     device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    subjects_df = subjects_embeddings(dataset, model, device, save_path)
+    embeddings_df = subjects_embeddings(dataset, model, device, save_path)
     if args.sample == 0 and not args.manifold:
-        predict_from_embeddings(weights, data, datapath, args.cfg, config['input_shape'], age_range,
-                                args.val_size, config['latent_dim'], args.batch_size, args.epochs,
-                                args.workers, args.no_sync, args.device, save_path)
+        predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.batch_size,
+                                args.epochs, args.workers, args.no_sync, args.device, save_path)
     else:
         if args.sample > 0:
             dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
                                 config['one_hot_age'], testing=True)
             sample(model, dataset, args.age, args.sample, args.device, save_path)
         elif args.manifold:
-            plot_embeddings(subjects_df, args.manifold.lower(), save_path, args.hue)
+            plot_embeddings(embeddings_df, args.manifold.lower(), save_path, args.hue)

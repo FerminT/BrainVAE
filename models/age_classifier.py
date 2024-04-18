@@ -10,7 +10,6 @@ from torch import nn, optim
 class AgeClassifier(lg.LightningModule):
 
     def __init__(self,
-                 encoder_path,
                  input_dim=354,
                  output_dim=1,
                  hidden_dims=(128, 64, 32),
@@ -21,15 +20,11 @@ class AgeClassifier(lg.LightningModule):
                  step_size=2):
         super(AgeClassifier, self).__init__()
         self.save_hyperparameters()
-        self.vae = ICVAE.load_from_checkpoint(encoder_path)
-        self.vae.freeze()
         self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
         self.lr, self.optimizer = lr, optimizer
         self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size
 
-    def forward(self, x):
-        mu, logvar = self.vae.encoder(x)
-        z = reparameterize(mu, logvar)
+    def forward(self, z):
         return self.fc_layers(z)
 
     def configure_optimizers(self):
@@ -40,17 +35,16 @@ class AgeClassifier(lg.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
-        assert not self.vae.training
-        x, _, age = batch
-        prediction = self(x)
+        z, age = batch
+        prediction = self(z)
         loss = nn.functional.l1_loss(prediction, age)
         self.log('train_mae', loss.item(), sync_dist=True)
         self.log('train_prediction', prediction.mean().item(), sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, _, age = batch
-        prediction = self(x)
+        z, age = batch
+        prediction = self(z)
         loss = nn.functional.l1_loss(prediction, age)
         self.log('val_mae', loss.item(), sync_dist=True)
         self.log('val_prediction', prediction.mean().item(), sync_dist=True)

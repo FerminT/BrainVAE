@@ -103,6 +103,25 @@ def transform(t1_img):
     return Compose([RandomSwap(p=0.5)])(t1_img)
 
 
+class EmbeddingDataset(Dataset):
+    def __init__(self, data, target, transform_fn=None):
+        if target not in data.columns:
+            raise ValueError(f'{target} is not a column in the dataset')
+        self.data = data
+        self.target = target
+        self.transform_fn = transform_fn
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        sample = self.data.iloc[idx]
+        target = sample[self.target]
+        if self.transform_fn:
+            target = self.transform_fn(target)
+        return sample['embedding'], target
+
+
 class T1Dataset(Dataset):
     def __init__(self, input_shape, datapath, data, conditional_dim, age_range, one_hot_age,
                  testing=False, transform=None):
