@@ -89,7 +89,7 @@ class ICVAE(lg.LightningModule):
             marginal_loss_value = marginal_loss.item()
             marginal_loss *= self.losses_weights['marginal']
             loss += marginal_loss
-        return loss, self._log_dict(mode, recon_loss.item(), prior_loss_value, marginal_loss_value)
+        return loss, self._log_dict(mode, recon_loss_value, prior_loss_value, marginal_loss_value)
 
     def _log_dict(self, mode, recon_loss, prior_loss, marginal_loss):
         state = {f'{mode}_recon_loss': recon_loss,
