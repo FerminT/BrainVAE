@@ -74,4 +74,4 @@ beta_strategy: 'monotonic'
 losses_weights:
   reconstruction: 1.0
   prior: 0.001
-  marginal: 0.01
+  marginal: 1.0
