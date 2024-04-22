@@ -64,7 +64,7 @@ layers:
 
 conditional_dim: 40
 one_hot_age: yes
-lr: 0.1
+lr: 0.01
 max_lr: 0.01
 optimizer: 'AdamW'
 momentum: 0.9
@@ -74,4 +74,4 @@ beta_strategy: 'stepwise'
 losses_weights:
   reconstruction: 1.0
   prior: 1.0
-  marginal: 0.001
+  marginal: 0.0001
