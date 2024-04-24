@@ -127,7 +127,7 @@ if __name__ == '__main__':
                         help='dataset name')
     parser.add_argument('--cfg', type=str, default='default',
                         help='config file used for the trained model')
-    parser.add_argument('--device', type=str, default='gpu',
+    parser.add_argument('--device', type=str, default='cpu',
                         help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=16,
                         help='batch size used for training the age classifier')
@@ -171,7 +171,7 @@ if __name__ == '__main__':
     save_path.mkdir(parents=True, exist_ok=True)
     model = ICVAE.load_from_checkpoint(weights)
     model.eval()
-    device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     embeddings_df = subjects_embeddings(dataset, model, device, save_path)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.batch_size,
