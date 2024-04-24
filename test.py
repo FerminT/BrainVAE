@@ -43,15 +43,14 @@ def train_classifier(train_data, val_data, config_name, latent_dim, batch_size, 
     wandb_logger = WandbLogger(name=f'ageclassifier_{config_name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_mae:.2f}', monitor='val_mae',
                                  mode='min', save_top_k=2, save_last=True)
-    early_stopping = EarlyStopping(monitor='val_mae', patience=5, mode='min')
     age_classifier = AgeClassifier(input_dim=latent_dim)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False, num_workers=workers)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False, num_workers=workers)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
-                      precision='16-mixed',
+                      precision='32',
                       logger=wandb_logger,
-                      callbacks=[checkpoint, early_stopping]
+                      callbacks=[checkpoint]
                       )
     trainer.fit(age_classifier, train_dataloader, val_dataloader)
     wandb.finish()
