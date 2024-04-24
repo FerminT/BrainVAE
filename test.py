@@ -1,6 +1,6 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader
+from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader, age_to_tensor
 from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_embeddings
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
@@ -25,8 +25,8 @@ def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, batch_size
     save_path = save_path / 'age_classifier'
     save_path.mkdir(parents=True, exist_ok=True)
     train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
-    train_dataset = EmbeddingDataset(train, target='age_at_scan')
-    val_dataset = EmbeddingDataset(val, target='age_at_scan')
+    train_dataset = EmbeddingDataset(train, target='age_at_scan', transform_fn=age_to_tensor)
+    val_dataset = EmbeddingDataset(val, target='age_at_scan', transform_fn=age_to_tensor)
     checkpoints = sorted(save_path.glob('*.ckpt'))
     if not checkpoints:
         train_classifier(train_dataset, val_dataset, cfg, latent_dim, batch_size, epochs, device, workers,
@@ -106,6 +106,7 @@ def plot_embeddings(subjects_df, method, label, data_type, save_path, annotate_i
     components = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
     subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
     fig, ax = plt.subplots()
+    # usar hexbin
     scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, ax=ax, alpha=0.3, size=.3)
     kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax)
     if annotate_ids:

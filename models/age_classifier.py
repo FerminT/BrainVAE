@@ -43,7 +43,7 @@ class AgeClassifier(lg.LightningModule):
     def _step(self, batch, mode):
         z, age = batch
         prediction = self(z)
-        loss = nn.functional.l1_loss(prediction, age.unsqueeze(dim=1))
+        loss = nn.functional.l1_loss(prediction, age)
         self.log(f'{mode}_mae', loss.item(), sync_dist=True)
         self.log(f'{mode}_prediction', prediction.mean().item(), sync_dist=True)
         return loss
