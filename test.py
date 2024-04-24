@@ -169,7 +169,7 @@ if __name__ == '__main__':
                         one_hot_age=False, testing=True)
 
     save_path.mkdir(parents=True, exist_ok=True)
-    model = ICVAE.load_from_checkpoint(weights_path)
+    model = ICVAE.load_from_checkpoint(weights)
     model.eval()
     device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
     embeddings_df = subjects_embeddings(dataset, model, device, save_path)
