@@ -124,23 +124,23 @@ def subjects_embeddings(dataset, model, device, save_path):
     return subjects_df
 
 
-def init_embedding(method):
+def init_embedding(method, n_components=2):
     if method == 'mds':
-        embedding = MDS(n_components=2,
+        embedding = MDS(n_components=n_components,
                         random_state=42)
     elif method == 'tsne':
-        embedding = TSNE(n_components=2,
+        embedding = TSNE(n_components=n_components,
                          perplexity=30,
                          init='pca',
                          random_state=42)
     elif method == 'isomap':
-        embedding = Isomap(n_components=2,
+        embedding = Isomap(n_components=n_components,
                            n_neighbors=10,
                            n_jobs=-1)
     elif method == 'pca':
-        embedding = PCA(n_components=2)
+        embedding = PCA(n_components=n_components)
     elif method == 'umap':
-        embedding = umap.UMAP(n_components=2,
+        embedding = umap.UMAP(n_components=n_components,
                               random_state=42)
     else:
         raise NotImplementedError(f'Method {method} not implemented')

@@ -3,17 +3,18 @@ from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_P
 from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader, age_to_tensor
 from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_embeddings
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
 from models.age_classifier import AgeClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, normaltest
 from tqdm import tqdm
 from numpy import array
 from pandas import cut
 from seaborn import scatterplot, kdeplot
+from pingouin import multivariate_normality
 import matplotlib.pyplot as plt
 import torch
 import wandb
@@ -70,6 +71,16 @@ def test_classifier(model, val_dataset, device):
         labels.append(target.item())
     corr, p_value = pearsonr(predictions, labels)
     print(f'Correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
+
+
+def test_multivariate_normality(embeddings_df):
+    embeddings = array(embeddings_df['embedding'].to_list())
+    hz, p_value, is_normal = multivariate_normality(embeddings, alpha=0.05)
+    print(f'Multivariate (Henze-Zirkler) normality test: {hz:.5f}, p-value: {p_value:.5f}. Is normal: {is_normal}')
+    components = init_embedding('pca', n_components=5).fit_transform(embeddings)
+    for i in range(components.shape[1]):
+        stat, p_value = normaltest(components[:, i])
+        print(f'Component {i}: stat: {stat:.5f}, p-value: {p_value:.5f}')
 
 
 def sample(model, dataset, age, subject_id, device, save_path):
@@ -173,6 +184,7 @@ if __name__ == '__main__':
     model.eval()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     embeddings_df = subjects_embeddings(dataset, model, device, save_path)
+    test_multivariate_normality(embeddings_df)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.batch_size,
                                 args.epochs, args.workers, args.no_sync, args.device, save_path)
