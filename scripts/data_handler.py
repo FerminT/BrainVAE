@@ -116,10 +116,11 @@ class EmbeddingDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
+        embedding = from_numpy(sample['embedding'])
         target = sample[self.target]
         if self.transform_fn:
             target = self.transform_fn(target)
-        return sample['embedding'], target
+        return embedding, target
 
 
 class T1Dataset(Dataset):
