@@ -111,6 +111,7 @@ def subjects_embeddings(dataset, model, device, save_path):
     if filename.exists():
         return pd.read_pickle(filename)
     subjects = []
+    print('Computing embeddings...')
     for idx in tqdm(range(len(dataset))):
         t1_img, _, _ = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device)
