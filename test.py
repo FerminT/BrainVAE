@@ -159,6 +159,8 @@ if __name__ == '__main__':
                         help='label used for plotting latent representations (age; gender; bmi)'),
     parser.add_argument('--data_type', type=str, default='continuous',
                         help='data type: either continuous or discrete')
+    parser.add_argument('--normality', action='store_true',
+                        help='test for multivariate normality')
     parser.add_argument('--set', type=str, default='val',
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
@@ -185,7 +187,8 @@ if __name__ == '__main__':
     model.eval()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     embeddings_df = subjects_embeddings(dataset, model, device, save_path)
-    test_multivariate_normality(embeddings_df)
+    if args.normality:
+        test_multivariate_normality(embeddings_df)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.batch_size,
                                 args.epochs, args.workers, args.no_sync, args.device, save_path)
