@@ -96,14 +96,15 @@ def sample(model, dataset, age, subject_id, device, save_path):
         sample['age_at_scan'] = age
     age = dataset.age_mapping(sample['age_at_scan']).unsqueeze(dim=0)
     reconstructed = model.decoder(z, age.to(device))
-    axes_comparisons, _ = reconstruction_comparison_grid(t1_img, reconstructed, 1, 80, 0)
+    axes_comparisons, _ = reconstruction_comparison_grid(t1_img, reconstructed, 1, 50, 0)
     comparison = torch.cat(axes_comparisons, dim=2)
     comparison_img = wandb.Image(comparison).image
-    comparison_img.save(save_path / f'{subject_id}_age_{int(sample["age_at_scan"])}.png')
+    comparison_img_name = f'{subject_id}_age_{int(sample["age_at_scan"])}.png'
+    comparison_img.save(save_path / comparison_img_name)
     plt.imshow(comparison_img)
     plt.axis('off'), plt.xticks([]), plt.yticks([])
     plt.show()
-    print(f'Reconstructed MRI saved at {save_path}')
+    print(f'Reconstructed MRI saved at {save_path / comparison_img_name}')
 
 
 def plot_embeddings(subjects_df, method, label, data_type, save_path, annotate_ids=False):
