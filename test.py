@@ -100,7 +100,7 @@ def sample(model, dataset, age, subject_id, device, save_path):
     axes_comparisons, _ = reconstruction_comparison_grid(t1_img, reconstructed, 1, 50, 0)
     comparison = torch.cat(axes_comparisons, dim=2)
     comparison_img = wandb.Image(comparison).image
-    draw, font = ImageDraw.Draw(comparison_img), ImageFont.truetype("arial.ttf", 25)
+    draw, font = ImageDraw.Draw(comparison_img), ImageFont.truetype("LiberationSans-Regular.ttf", 25)
     draw.text((225, 183), f'Age: {int(sample["age_at_scan"])}', (255, 255, 255), font=font)
     comparison_img_name = f'{subject_id}_age_{int(sample["age_at_scan"])}.png'
     comparison_img.save(save_path / comparison_img_name)
