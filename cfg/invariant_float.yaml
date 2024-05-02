@@ -62,8 +62,8 @@ layers:
   batch_norm: yes
   activation: 'relu'
 
-conditional_dim: 40
-one_hot_age: yes
+conditional_dim: 1
+one_hot_age: no
 lr: 0.01
 max_lr: 0.01
 optimizer: 'AdamW'
