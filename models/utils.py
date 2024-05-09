@@ -69,7 +69,7 @@ def add_activation_layer(layers, activation):
 
 def init_optimizer(optimizer, parameters, lr, momentum, weight_decay):
     if optimizer == 'AdamW':
-        optimizer = optim.AdamW(parameters, lr=lr, betas=(momentum, 0.999), weight_decay=weight_decay)
+        optimizer = optim.AdamW(parameters, lr=lr, betas=(momentum, 0.999), weight_decay=weight_decay, eps=1e-4)
     elif optimizer == 'SGD':
         optimizer = optim.SGD(parameters, lr=lr, momentum=momentum, nesterov=True, weight_decay=weight_decay)
     else:
