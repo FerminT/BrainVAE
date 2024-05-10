@@ -24,6 +24,8 @@ def kl_divergence(mu, logvar):
 def pairwise_gaussian_kl(mu, logvar, latent_dim):
     """ Pairwise Gaussian KL divergence, from Moyer et al. 2018
         Used as an approximation of KL[(q(z|x) || q(z))] """
+    og_dtype = mu.dtype
+    mu, logvar = mu.float(), logvar.float()
     sigma_sq = logvar.exp()
     sigma_sq_inv = 1.0 / sigma_sq
     first_term = matmul(sigma_sq, sigma_sq_inv.transpose(0, 1))
@@ -34,8 +36,9 @@ def pairwise_gaussian_kl(mu, logvar, latent_dim):
     second_term = r - second_term + r2
     det_sigma = logvar.sum(axis=1)
     third_term = unsqueeze(det_sigma, dim=1) - unsqueeze(det_sigma, dim=1).transpose(0, 1)
+    res = 0.5 * (first_term + second_term + third_term - latent_dim)
 
-    return 0.5 * (first_term + second_term + third_term - latent_dim)
+    return res.to(og_dtype)
 
 
 def frange_cycle(start, stop, total_steps, n_cycle, ratio, mode='linear'):

@@ -85,9 +85,7 @@ class ICVAE(lg.LightningModule):
         loss = recon_loss + prior_loss
         marginal_loss_value = 0.0
         if self.hparams.conditional_dim > 0:
-            mu_float32, logvar_float32 = mu.float(), logvar.float()
-            marginal_loss = pairwise_gaussian_kl(mu_float32, logvar_float32, self.hparams.latent_dim).mean()
-            marginal_loss = marginal_loss.to(mu.dtype)
+            marginal_loss = pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean()
             marginal_loss_value = marginal_loss.item()
             marginal_loss *= self.losses_weights['marginal']
             if self.beta_values is not None:
