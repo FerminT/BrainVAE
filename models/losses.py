@@ -24,7 +24,6 @@ def kl_divergence(mu, logvar):
 def pairwise_gaussian_kl(mu, logvar, latent_dim):
     """ Pairwise Gaussian KL divergence, from Moyer et al. 2018
         Used as an approximation of KL[(q(z|x) || q(z))] """
-    mu, logvar = mu.float(), logvar.float()
     sigma_sq = logvar.exp()
     sigma_sq_inv = 1.0 / sigma_sq
     first_term = matmul(sigma_sq, sigma_sq_inv.transpose(0, 1))
