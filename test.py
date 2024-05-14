@@ -169,8 +169,8 @@ if __name__ == '__main__':
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
                         help='size of the validation set constructed from the set to evaluate')
-    parser.add_argument('--no_sync', action='store_true',
-                        help='do not sync to wandb')
+    parser.add_argument('--sync', action='store_false',
+                        help='sync to wandb')
     args = parser.parse_args()
 
     datapath = Path(DATA_PATH, args.dataset)
@@ -195,7 +195,7 @@ if __name__ == '__main__':
         test_multivariate_normality(embeddings_df)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.batch_size,
-                                args.epochs, args.workers, args.no_sync, args.device, save_path)
+                                args.epochs, args.workers, args.sync, args.device, save_path)
     else:
         if args.sample > 0:
             dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
