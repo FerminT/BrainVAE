@@ -74,4 +74,4 @@ beta_strategy: 'stepwise'
 losses_weights:
   reconstruction: 1.0
   prior: 1.0
-  marginal: 1.0
+  marginal: 10.0
