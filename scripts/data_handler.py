@@ -12,7 +12,7 @@ from scripts.utils import num2vect, get_splits_files
 from scripts import constants
 
 
-def get_loader(dataset, batch_size, shuffle, num_workers):
+def get_loader(dataset, batch_size, shuffle, num_workers=4):
     num_workers = min(cpu_count(), num_workers)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
@@ -76,6 +76,11 @@ def crop_center(data, shape):
 
 def age_to_tensor(age):
     return tensor(float(age)).unsqueeze(dim=0)
+
+
+def gender_to_onehot(gender):
+    label = 0 if gender == 'male' else 1
+    return tensor(label).unsqueeze(dim=0)
 
 
 def age_to_onehot(age, lower, num_classes):

@@ -2,12 +2,11 @@
     and predicts the age of the subject as output."""
 
 import lightning as lg
-from models.icvae import ICVAE
-from models.utils import reparameterize, init_optimizer
+from models.utils import init_optimizer
 from torch import nn, optim
 
 
-class AgeClassifier(lg.LightningModule):
+class EmbeddingClassifier(lg.LightningModule):
 
     def __init__(self,
                  input_dim=354,
@@ -17,12 +16,13 @@ class AgeClassifier(lg.LightningModule):
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
-                 step_size=2):
-        super(AgeClassifier, self).__init__()
+                 data_type='continuous'):
+        super(EmbeddingClassifier, self).__init__()
         self.save_hyperparameters()
-        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
+        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims, data_type)
         self.lr, self.optimizer = lr, optimizer
-        self.momentum, self.weight_decay, self.step_size = momentum, weight_decay, step_size
+        self.data_type = data_type
+        self.momentum, self.weight_decay = momentum, weight_decay
 
     def forward(self, z):
         return self.fc_layers(z)
@@ -41,19 +41,26 @@ class AgeClassifier(lg.LightningModule):
         return self._step(batch, 'val')
 
     def _step(self, batch, mode):
-        z, age = batch
+        z, target = batch
         prediction = self(z)
-        loss = nn.functional.l1_loss(prediction, age)
-        self.log(f'{mode}_mae', loss.item(), sync_dist=True)
-        self.log(f'{mode}_prediction', prediction.mean().item(), sync_dist=True)
+        if self.data_type == 'categorical':
+            loss = nn.functional.binary_cross_entropy(prediction, target)
+            self.log(f'{mode}_bce', loss.item(), sync_dist=True)
+            self.log(f'{mode}_accuracy', ((prediction > 0.5) == target).float().mean().item(), sync_dist=True)
+        else:
+            loss = nn.functional.l1_loss(prediction, target)
+            self.log(f'{mode}_mae', loss.item(), sync_dist=True)
+            self.log(f'{mode}_prediction', prediction.mean().item(), sync_dist=True)
         return loss
 
 
-def create_fc_layers(input_dim, output_dim, hidden_dims):
+def create_fc_layers(input_dim, output_dim, hidden_dims, data_type):
     layers = list()
     dims = [input_dim] + list(hidden_dims) + [output_dim]
     for i in range(len(dims) - 1):
         layers.append(nn.Linear(dims[i], dims[i + 1]))
         if i < len(dims) - 2:
             layers.append(nn.ReLU())
+        if data_type == 'categorical' and i == len(dims) - 2:
+            layers.append(nn.Sigmoid())
     return nn.Sequential(*layers)

@@ -1,12 +1,13 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader, age_to_tensor
+from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader, age_to_tensor, gender_to_onehot
 from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_embeddings
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
-from models.age_classifier import AgeClassifier
+from sklearn.metrics import f1_score
+from models.embedding_classifier import EmbeddingClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr, normaltest
@@ -22,44 +23,45 @@ import wandb
 import argparse
 
 
-def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, batch_size, epochs, workers,
+def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, data_type, batch_size, epochs,
                             no_sync, device, save_path):
     save_path = save_path / 'age_classifier'
     save_path.mkdir(parents=True, exist_ok=True)
     train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
-    train_dataset = EmbeddingDataset(train, target='age_at_scan', transform_fn=age_to_tensor)
-    val_dataset = EmbeddingDataset(val, target='age_at_scan', transform_fn=age_to_tensor)
+    transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
+    train_dataset = EmbeddingDataset(train, target=target, transform_fn=transform_fn)
+    val_dataset = EmbeddingDataset(val, target=target, transform_fn=transform_fn)
     checkpoints = sorted(save_path.glob('*.ckpt'))
     if not checkpoints:
-        train_classifier(train_dataset, val_dataset, cfg, latent_dim, batch_size, epochs, device, workers,
+        train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs, device,
                          no_sync, save_path)
     else:
         print(f'Age classifier already trained, using {checkpoints[-1]}')
-        model = AgeClassifier.load_from_checkpoint(checkpoints[-1])
-        test_classifier(model, val_dataset, device)
+        model = EmbeddingClassifier.load_from_checkpoint(checkpoints[-1])
+        test_classifier(model, val_dataset, data_type, device)
 
 
-def train_classifier(train_data, val_data, config_name, latent_dim, batch_size, epochs, device, workers,
+def train_classifier(train_data, val_data, config_name, latent_dim, data_type, batch_size, epochs, device,
                      no_sync, save_path):
     seed_everything(42, workers=True)
-    wandb_logger = WandbLogger(name=f'ageclassifier_{config_name}', project='BrainVAE', offline=no_sync)
+    wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
     checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_mae:.2f}', monitor='val_mae',
                                  mode='min', save_top_k=2, save_last=True)
-    age_classifier = AgeClassifier(input_dim=latent_dim)
-    train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False, num_workers=workers)
-    val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False, num_workers=workers)
+    classifier = EmbeddingClassifier(input_dim=latent_dim, data_type=data_type)
+    train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False)
+    val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='32',
                       logger=wandb_logger,
                       callbacks=[checkpoint]
                       )
-    trainer.fit(age_classifier, train_dataloader, val_dataloader)
+    trainer.fit(classifier, train_dataloader, val_dataloader)
     wandb.finish()
-    test_classifier(age_classifier, val_data, device)
+    test_classifier(classifier, val_data, data_type, device)
 
 
-def test_classifier(model, val_dataset, device):
+def test_classifier(model, val_dataset, data_type, device):
     seed_everything(42, workers=True)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     model.eval().to(device)
@@ -68,10 +70,15 @@ def test_classifier(model, val_dataset, device):
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
         prediction = model(z).item()
+        prediction = (prediction > 0.5) if data_type == 'categorical' else prediction
         predictions.append(prediction)
         labels.append(target.item())
-    corr, p_value = pearsonr(predictions, labels)
-    print(f'Correlation between predictions and ages: {corr} (p-value: {p_value:.5f})')
+    if data_type == 'categorical':
+        f1 = f1_score(labels, predictions)
+        print(f'F1 score of prediction and target: {f1:.5f}')
+    else:
+        corr, p_value = pearsonr(predictions, labels)
+        print(f'Correlation between predictions and target: {corr} (p-value: {p_value:.5f})')
 
 
 def test_multivariate_normality(embeddings_df):
@@ -149,8 +156,6 @@ if __name__ == '__main__':
                         help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=10,
                         help='number of epochs used for training the age classifier')
-    parser.add_argument('--workers', type=int, default=12,
-                        help='number of workers used for data loading when training the age classifier')
     parser.add_argument('--sample_size', type=int, default=-1,
                         help='number of samples used for training the model')
     parser.add_argument('--sample', type=int, default=0,
@@ -160,9 +165,9 @@ if __name__ == '__main__':
     parser.add_argument('--manifold', type=str, default=None,
                         help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
     parser.add_argument('--label', type=str, default='age',
-                        help='label used for plotting latent representations (age; gender; bmi)'),
+                        help='label used for prediction and plotting latent representations (age; gender; bmi)'),
     parser.add_argument('--data_type', type=str, default='continuous',
-                        help='data type: either continuous or discrete')
+                        help='data type: either continuous or categorical')
     parser.add_argument('--normality', action='store_true',
                         help='test for multivariate normality')
     parser.add_argument('--set', type=str, default='val',
@@ -194,8 +199,8 @@ if __name__ == '__main__':
     if args.normality:
         test_multivariate_normality(embeddings_df)
     if args.sample == 0 and not args.manifold:
-        predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.batch_size,
-                                args.epochs, args.workers, args.sync, args.device, save_path)
+        predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
+                                args.data_type, args.batch_size, args.epochs, args.sync, args.device, save_path)
     else:
         if args.sample > 0:
             dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
