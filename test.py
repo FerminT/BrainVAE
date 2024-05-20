@@ -3,7 +3,6 @@ from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_P
 from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader, age_to_tensor, gender_to_onehot
 from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_embeddings
 from lightning.pytorch.loggers import WandbLogger
-from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
@@ -31,22 +30,14 @@ def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, da
     transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
     train_dataset = EmbeddingDataset(train, target=target, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=target, transform_fn=transform_fn)
-    checkpoints = sorted(save_path.glob('*.ckpt'))
-    if not checkpoints:
-        train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs, device,
-                         no_sync, save_path)
-    else:
-        print(f'Age classifier already trained, using {checkpoints[-1]}')
-        model = EmbeddingClassifier.load_from_checkpoint(checkpoints[-1])
-        test_classifier(model, val_dataset, data_type, device)
+    train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs, device,
+                     no_sync, save_path)
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, data_type, batch_size, epochs, device,
                      no_sync, save_path):
     seed_everything(42, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
-    checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_mae:.2f}', monitor='val_mae',
-                                 mode='min', save_top_k=2, save_last=True)
     classifier = EmbeddingClassifier(input_dim=latent_dim, data_type=data_type)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
@@ -54,7 +45,6 @@ def train_classifier(train_data, val_data, config_name, latent_dim, data_type, b
                       accelerator=device,
                       precision='32',
                       logger=wandb_logger,
-                      callbacks=[checkpoint]
                       )
     trainer.fit(classifier, train_dataloader, val_dataloader)
     wandb.finish()
