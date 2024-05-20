@@ -9,12 +9,11 @@ from sklearn.metrics import f1_score
 from models.embedding_classifier import EmbeddingClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
-from scipy.stats import pearsonr, normaltest
+from scipy.stats import pearsonr
 from tqdm import tqdm
 from numpy import array
 from pandas import cut
 from seaborn import scatterplot, kdeplot
-from pingouin import multivariate_normality
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 import torch
@@ -31,11 +30,11 @@ def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, da
     train_dataset = EmbeddingDataset(train, target=target, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=target, transform_fn=transform_fn)
     train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs, device,
-                     no_sync, save_path)
+                     no_sync)
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, data_type, batch_size, epochs, device,
-                     no_sync, save_path):
+                     no_sync):
     seed_everything(42, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
     classifier = EmbeddingClassifier(input_dim=latent_dim, data_type=data_type)
@@ -69,16 +68,6 @@ def test_classifier(model, val_dataset, data_type, device):
     else:
         corr, p_value = pearsonr(predictions, labels)
         print(f'Correlation between predictions and target: {corr} (p-value: {p_value:.5f})')
-
-
-def test_multivariate_normality(embeddings_df):
-    embeddings = array(embeddings_df['embedding'].to_list())
-    hz, p_value, is_normal = multivariate_normality(embeddings, alpha=0.05)
-    print(f'Multivariate (Henze-Zirkler) normality test: {hz:.5f}, p-value: {p_value:.5f}. Is normal: {is_normal}')
-    components = init_embedding('pca', n_components=5).fit_transform(embeddings)
-    for i in range(components.shape[1]):
-        stat, p_value = normaltest(components[:, i])
-        print(f'Component {i}: stat: {stat:.5f}, p-value: {p_value:.5f}')
 
 
 def sample(model, dataset, age, subject_id, device, save_path):
@@ -158,8 +147,6 @@ if __name__ == '__main__':
                         help='label used for prediction and plotting latent representations (age; gender; bmi)'),
     parser.add_argument('--data_type', type=str, default='continuous',
                         help='data type: either continuous or categorical')
-    parser.add_argument('--normality', action='store_true',
-                        help='test for multivariate normality')
     parser.add_argument('--set', type=str, default='val',
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
@@ -186,8 +173,6 @@ if __name__ == '__main__':
     model.eval()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     embeddings_df = subjects_embeddings(dataset, model, device, save_path)
-    if args.normality:
-        test_multivariate_normality(embeddings_df)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
                                 args.data_type, args.batch_size, args.epochs, args.sync, args.device, save_path)
