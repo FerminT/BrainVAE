@@ -1,5 +1,5 @@
 input_shape: [160, 192, 160]
-latent_dim: 708
+latent_dim: 354
 layers:
  conv1:
   channels: 32
@@ -42,7 +42,7 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv5:
-  channels: 256
+  channels: 512
   kernel_size: 3
   stride: 2
   padding: 1
@@ -52,7 +52,7 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv6:
-  channels: 64
+  channels: 128
   kernel_size: 1
   stride: 1
   padding: 0
