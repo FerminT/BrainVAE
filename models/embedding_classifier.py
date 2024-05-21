@@ -32,7 +32,7 @@ class EmbeddingClassifier(lg.LightningModule):
                                    weight_decay=self.weight_decay)
         lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
                                                      total_steps=self.trainer.estimated_stepping_batches)
-        return [optimizer], [lr_scheduler]
+        return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
 
     def training_step(self, batch, batch_idx):
         return self._step(batch, 'train')
