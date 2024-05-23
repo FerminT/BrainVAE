@@ -3,7 +3,7 @@ from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer
 from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle, step_cycle
-from torch import optim, zeros
+from torch import optim
 
 
 class ICVAE(lg.LightningModule):
@@ -43,9 +43,8 @@ class ICVAE(lg.LightningModule):
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                     weight_decay=self.weight_decay)
-        lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.max_lr,
-                                                     total_steps=self.trainer.estimated_stepping_batches)
-        return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
+        lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.trainer.max_epochs // 5, gamma=0.5)
+        return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
         x, x_transformed, condition = batch
