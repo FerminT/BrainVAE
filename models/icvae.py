@@ -43,7 +43,7 @@ class ICVAE(lg.LightningModule):
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                     weight_decay=self.weight_decay)
-        lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.trainer.max_epochs // 5, gamma=0.5)
+        lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.trainer.max_epochs, gamma=0.5)
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
