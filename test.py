@@ -141,7 +141,7 @@ if __name__ == '__main__':
                         help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--manifold', type=str, default=None,
                         help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
-    parser.add_argument('--label', type=str, default='age',
+    parser.add_argument('--label', type=str, default='age_at_scan',
                         help='label used for prediction and plotting latent representations (age; gender; bmi)'),
     parser.add_argument('--data_type', type=str, default='continuous',
                         help='data type: either continuous or categorical')
