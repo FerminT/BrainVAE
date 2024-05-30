@@ -1,5 +1,5 @@
 input_shape: [160, 192, 160]
-latent_dim: 708
+latent_dim: 354
 layers:
  conv1:
   channels: 32
@@ -52,7 +52,27 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv6:
+  channels: 256
+  kernel_size: 1
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv7:
   channels: 128
+  kernel_size: 1
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv8:
+  channels: 64
   kernel_size: 1
   stride: 1
   padding: 0
@@ -64,8 +84,8 @@ layers:
 
 conditional_dim: 0
 one_hot_age: no
-lr: 0.01
-max_lr: 0.01
+lr: 0.0004
+max_lr: 0.0004
 optimizer: 'AdamW'
 momentum: 0.9
 weight_decay: 0.0005
