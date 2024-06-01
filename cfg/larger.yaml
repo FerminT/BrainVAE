@@ -1,4 +1,4 @@
-input_shape: [160, 192, 160]
+input_shape: [176, 208, 176]
 latent_dim: 354
 layers:
  conv1:
@@ -32,10 +32,10 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv4:
-  channels: 256
+  channels: 128
   kernel_size: 3
-  stride: 2
-  padding: 1
+  stride: 1
+  padding: 0
   pool_size: 0
   pool_stride: 0
   bias: yes
@@ -46,6 +46,36 @@ layers:
   kernel_size: 3
   stride: 2
   padding: 1
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv6:
+  channels: 256
+  kernel_size: 3
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv7:
+  channels: 512
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv8:
+  channels: 512
+  kernel_size: 3
+  stride: 1
+  padding: 0
   pool_size: 0
   pool_stride: 0
   bias: yes
