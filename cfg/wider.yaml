@@ -1,5 +1,5 @@
 input_shape: [176, 208, 176]
-latent_dim: 512
+latent_dim: 256
 layers:
  conv1:
   channels: 32
