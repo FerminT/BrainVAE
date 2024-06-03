@@ -1,4 +1,4 @@
-input_shape: [176, 208, 176]
+input_shape: [172, 204, 172]
 latent_dim: 354
 layers:
  conv1:
@@ -12,6 +12,16 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv2:
+  channels: 32
+  kernel_size: 3
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv3:
   channels: 64
   kernel_size: 3
   stride: 2
@@ -21,18 +31,8 @@ layers:
   bias: yes
   batch_norm: yes
   activation: 'relu'
- conv3:
-  channels: 128
-  kernel_size: 3
-  stride: 2
-  padding: 1
-  pool_size: 0
-  pool_stride: 0
-  bias: yes
-  batch_norm: yes
-  activation: 'relu'
  conv4:
-  channels: 128
+  channels: 64
   kernel_size: 3
   stride: 1
   padding: 0
@@ -42,7 +42,7 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv5:
-  channels: 256
+  channels: 128
   kernel_size: 3
   stride: 2
   padding: 1
@@ -52,7 +52,7 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv6:
-  channels: 256
+  channels: 128
   kernel_size: 3
   stride: 1
   padding: 0
@@ -62,7 +62,7 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv7:
-  channels: 512
+  channels: 256
   kernel_size: 3
   stride: 2
   padding: 1
@@ -72,7 +72,27 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv8:
-  channels: 512
+  channels: 256
+  kernel_size: 3
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv9:
+  channels: 256
+  kernel_size: 3
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv10:
+  channels: 256
   kernel_size: 3
   stride: 1
   padding: 0
