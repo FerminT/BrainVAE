@@ -2,6 +2,7 @@ import lightning as lg
 from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer
+from scripts.t1_dataset import crop_brain
 from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle, step_cycle
 from torch import optim
 
@@ -73,7 +74,7 @@ class ICVAE(lg.LightningModule):
             self.beta_values = None
 
     def _loss(self, recon_x, x, mu, logvar, mode='train'):
-        recon_loss, prior_loss = mse(recon_x, x), kl_divergence(mu, logvar).mean()
+        recon_loss, prior_loss = mse(crop_brain(recon_x), crop_brain(x)), kl_divergence(mu, logvar).mean()
         recon_loss_value, prior_loss_value = recon_loss.item(), prior_loss.item()
         recon_loss *= self.losses_weights['reconstruction']
         prior_loss *= self.losses_weights['prior']
