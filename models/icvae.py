@@ -2,7 +2,7 @@ import lightning as lg
 from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer
-from scripts.t1_dataset import crop_brain
+from scripts.utils import crop_brain
 from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle, step_cycle
 from torch import optim
 

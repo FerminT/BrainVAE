@@ -5,7 +5,6 @@ from torch import from_numpy, tensor
 from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
 from torchio import Compose, RandomSwap
-from scripts.constants import BRAIN_MASK
 from scripts.utils import num2vect, crop_center
 
 
@@ -78,5 +77,3 @@ def transform(t1_img):
     return Compose([RandomSwap(p=0.5)])(t1_img)
 
 
-def crop_brain(img_batch):
-    return crop_center(img_batch, BRAIN_MASK)

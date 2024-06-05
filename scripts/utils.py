@@ -9,6 +9,7 @@ from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
 from models.utils import get_latent_representation
+from scripts.constants import BRAIN_MASK
 import umap
 
 
@@ -132,3 +133,7 @@ def crop_center(data, shape):
     start_z = (z - shape[2]) // 2
     cropped = data[..., start_x:start_x + shape[0], start_y:start_y + shape[1], start_z:start_z + shape[2]]
     return cropped
+
+
+def crop_brain(img_batch):
+    return crop_center(img_batch, BRAIN_MASK)
