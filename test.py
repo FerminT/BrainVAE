@@ -1,7 +1,9 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import load_metadata, T1Dataset, EmbeddingDataset, get_loader, age_to_tensor, gender_to_onehot
-from scripts.utils import load_yaml, reconstruction_comparison_grid, load_set, init_embedding, subjects_embeddings
+from scripts.data_handler import load_metadata, get_loader, gender_to_onehot, load_set
+from scripts.embedding_dataset import EmbeddingDataset
+from scripts.t1_dataset import T1Dataset, age_to_tensor
+from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split

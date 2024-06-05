@@ -1,14 +1,11 @@
-import nibabel as nib
-import numpy as np
 import pandas as pd
-from torchio import Compose, RandomNoise, RandomFlip, RandomSwap
 from os import cpu_count
-from functools import partial
-from torch.utils.data import Dataset, DataLoader
-from torch import from_numpy, tensor
+from pandas import read_csv
+from torch.utils.data import DataLoader
+from torch import tensor
 from torch.nn.functional import one_hot
 from sklearn.model_selection import train_test_split
-from scripts.utils import num2vect, get_splits_files
+from scripts.t1_dataset import T1Dataset
 from scripts import constants
 
 
@@ -66,103 +63,27 @@ def preprocess(data):
     return data
 
 
-def crop_center(data, shape):
-    x, y, z = data.shape
-    start_x = (x - shape[0]) // 2
-    start_y = (y - shape[1]) // 2
-    start_z = (z - shape[2]) // 2
-    return data[start_x:-start_x, start_y:-start_y, start_z:-start_z]
-
-
-def age_to_tensor(age):
-    return tensor(float(age)).unsqueeze(dim=0)
-
-
 def gender_to_onehot(gender):
     label = 0 if gender == 'male' else 1
     return tensor(label).unsqueeze(dim=0)
 
 
-def age_to_onehot(age, lower, num_classes):
-    return one_hot(tensor(round(age) - lower), num_classes)
+def get_splits_files(datapath, sample_size):
+    splits_path = datapath / constants.SPLITS_PATH
+    if sample_size != -1:
+        splits_path = splits_path / f'sample_{sample_size}'
+    train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
+    return train_csv, val_csv, test_csv
 
 
-def soft_age(age, lower, upper, bin_step, bin_sigma):
-    return from_numpy(num2vect(age, [lower, upper], bin_step, bin_sigma)[0])
-
-
-def age_mapping_function(conditional_dim, age_range, one_hot_age):
-    num_bins = age_range[1] - age_range[0]
-    if (not one_hot_age and 1 < conditional_dim != num_bins) or (one_hot_age and num_bins + 1 != conditional_dim):
-        raise ValueError('conditional_dim does not match the bins/classes for the age range')
-    if conditional_dim <= 1:
-        age_mapping = age_to_tensor
-    elif one_hot_age:
-        age_mapping = partial(age_to_onehot, lower=age_range[0], num_classes=conditional_dim)
+def load_set(datapath, sample_size, split):
+    train_csv, val_csv, test_csv = get_splits_files(datapath, sample_size)
+    if not (train_csv.exists() and val_csv.exists() and test_csv.exists()):
+        raise ValueError(f'splits files for a sample size of {sample_size} do not exist')
+    if split == 'val':
+        data = read_csv(val_csv)
+    elif split == 'test':
+        data = read_csv(test_csv)
     else:
-        age_mapping = partial(soft_age, lower=age_range[0], upper=age_range[1], bin_step=1, bin_sigma=1)
-    return age_mapping
-
-
-def transform(t1_img):
-    return Compose([RandomSwap(p=0.5)])(t1_img)
-
-
-class EmbeddingDataset(Dataset):
-    def __init__(self, data, target, transform_fn=None):
-        if target not in data.columns:
-            raise ValueError(f'{target} is not a column in the dataset')
-        self.data = data
-        self.target = target
-        self.transform_fn = transform_fn
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        sample = self.data.iloc[idx]
-        embedding = from_numpy(sample['embedding'])
-        target = sample[self.target]
-        if self.transform_fn:
-            target = self.transform_fn(target)
-        return embedding, target
-
-
-class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, one_hot_age,
-                 testing=False, transform=None):
-        self.input_shape = input_shape
-        self.datapath = datapath
-        self.data = data
-        self.transform = transform
-        self.testing = testing
-        self.age_mapping = age_mapping_function(conditional_dim, age_range, one_hot_age)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        sample = self.data.iloc[idx]
-        t1_img, t1_transformed = self.load_and_process_img(sample)
-        age = self.age_mapping(sample['age_at_scan'])
-        return t1_img, t1_transformed, age
-
-    def get_subject(self, subject_id):
-        return self.data[self.data['subject_id'] == subject_id].iloc[0]
-
-    def get_metadata(self, idx):
-        return self.data.iloc[idx]
-
-    def load_and_process_img(self, sample):
-        t1_img = nib.load(self.datapath / sample['image_path'])
-        t1_transformed = self.transform(t1_img) if self.transform and not self.testing else t1_img
-        t1_img = self.preprocess_img(t1_img)
-        t1_transformed = self.preprocess_img(t1_transformed)
-        return t1_img, t1_transformed
-
-    def preprocess_img(self, t1_img):
-        t1_img = t1_img.get_fdata(dtype=np.float32)
-        t1_img = t1_img / t1_img.mean()
-        t1_img = crop_center(t1_img, self.input_shape)
-        t1_img = from_numpy(np.asarray([t1_img]))
-        return t1_img
+        data = read_csv(train_csv)
+    return data

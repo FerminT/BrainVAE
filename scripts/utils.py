@@ -1,16 +1,14 @@
+import numpy as np
 import pandas as pd
 import yaml
-import numpy as np
+from scipy.stats import norm
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
-from pandas import read_csv
 from torch import cat
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
-from scipy.stats import norm
 from tqdm import tqdm
 from models.utils import get_latent_representation
-from scripts.constants import SPLITS_PATH
 import umap
 
 
@@ -39,17 +37,51 @@ def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
     return imgs, captions
 
 
-def get_splits_files(datapath, sample_size):
-    splits_path = datapath / SPLITS_PATH
-    if sample_size != -1:
-        splits_path = splits_path / f'sample_{sample_size}'
-    train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
-    return train_csv, val_csv, test_csv
-
-
 def load_yaml(filepath):
     with filepath.open('r') as file:
         return yaml.safe_load(file)
+
+
+def subjects_embeddings(dataset, model, device, save_path):
+    filename = save_path / 'subjects_embeddings.pkl'
+    if filename.exists():
+        return pd.read_pickle(filename)
+    subjects = []
+    print('Computing embeddings...')
+    for idx in tqdm(range(len(dataset))):
+        t1_img, _, _ = dataset[idx]
+        t1_img = t1_img.unsqueeze(dim=0).to(device)
+        z = get_latent_representation(t1_img, model.encoder)
+        subject_metadata = dataset.get_metadata(idx).copy()
+        subject_metadata['embedding'] = z.cpu().detach().squeeze().numpy()
+        subjects.append(subject_metadata)
+    subjects_df = pd.DataFrame(subjects).set_index('subject_id')
+    subjects_df.to_pickle(filename)
+    return subjects_df
+
+
+def init_embedding(method, n_components=2):
+    if method == 'mds':
+        embedding = MDS(n_components=n_components,
+                        random_state=42)
+    elif method == 'tsne':
+        embedding = TSNE(n_components=n_components,
+                         perplexity=30,
+                         init='pca',
+                         random_state=42)
+    elif method == 'isomap':
+        embedding = Isomap(n_components=n_components,
+                           n_neighbors=10,
+                           n_jobs=-1)
+    elif method == 'pca':
+        embedding = PCA(n_components=n_components)
+    elif method == 'umap':
+        embedding = umap.UMAP(n_components=n_components,
+                              random_state=42)
+    else:
+        raise NotImplementedError(f'Method {method} not implemented')
+
+    return embedding
 
 
 def num2vect(x, bin_range, bin_step=1, sigma=1):
@@ -93,56 +125,10 @@ def num2vect(x, bin_range, bin_step=1, sigma=1):
             return v, bin_centers
 
 
-def load_set(datapath, sample_size, split):
-    train_csv, val_csv, test_csv = get_splits_files(datapath, sample_size)
-    if not (train_csv.exists() and val_csv.exists() and test_csv.exists()):
-        raise ValueError(f'splits files for a sample size of {sample_size} do not exist')
-    if split == 'val':
-        data = read_csv(val_csv)
-    elif split == 'test':
-        data = read_csv(test_csv)
-    else:
-        data = read_csv(train_csv)
-    return data
-
-
-def subjects_embeddings(dataset, model, device, save_path):
-    filename = save_path / 'subjects_embeddings.pkl'
-    if filename.exists():
-        return pd.read_pickle(filename)
-    subjects = []
-    print('Computing embeddings...')
-    for idx in tqdm(range(len(dataset))):
-        t1_img, _, _ = dataset[idx]
-        t1_img = t1_img.unsqueeze(dim=0).to(device)
-        z = get_latent_representation(t1_img, model.encoder)
-        subject_metadata = dataset.get_metadata(idx).copy()
-        subject_metadata['embedding'] = z.cpu().detach().squeeze().numpy()
-        subjects.append(subject_metadata)
-    subjects_df = pd.DataFrame(subjects).set_index('subject_id')
-    subjects_df.to_pickle(filename)
-    return subjects_df
-
-
-def init_embedding(method, n_components=2):
-    if method == 'mds':
-        embedding = MDS(n_components=n_components,
-                        random_state=42)
-    elif method == 'tsne':
-        embedding = TSNE(n_components=n_components,
-                         perplexity=30,
-                         init='pca',
-                         random_state=42)
-    elif method == 'isomap':
-        embedding = Isomap(n_components=n_components,
-                           n_neighbors=10,
-                           n_jobs=-1)
-    elif method == 'pca':
-        embedding = PCA(n_components=n_components)
-    elif method == 'umap':
-        embedding = umap.UMAP(n_components=n_components,
-                              random_state=42)
-    else:
-        raise NotImplementedError(f'Method {method} not implemented')
-
-    return embedding
+def crop_center(data, shape):
+    x, y, z = data.shape[-3:]
+    start_x = (x - shape[0]) // 2
+    start_y = (y - shape[1]) // 2
+    start_z = (z - shape[2]) // 2
+    cropped = data[..., start_x:start_x + shape[0], start_y:start_y + shape[1], start_z:start_z + shape[2]]
+    return cropped
