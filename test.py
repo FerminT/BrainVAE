@@ -131,7 +131,7 @@ if __name__ == '__main__':
                         help='config file used for the trained model')
     parser.add_argument('--device', type=str, default='cpu',
                         help='device used for training and evaluation')
-    parser.add_argument('--batch_size', type=int, default=16,
+    parser.add_argument('--batch_size', type=int, default=8,
                         help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=10,
                         help='number of epochs used for training the age classifier')
