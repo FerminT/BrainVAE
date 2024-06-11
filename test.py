@@ -7,7 +7,7 @@ from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedd
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_score, recall_score
 from models.embedding_classifier import EmbeddingClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
@@ -64,7 +64,9 @@ def test_classifier(model, val_dataset, data_type, device):
         labels.append(target.item())
     if data_type == 'categorical':
         f1 = f1_score(labels, predictions)
-        print(f'F1 score of prediction and target: {f1:.5f}')
+        precision, recall = precision_score(labels, predictions), recall_score(labels, predictions)
+        print(f'Precision: {precision:.5f}, Recall: {recall:.5f}')
+        print(f'F1 score: {f1:.5f}')
     else:
         corr, p_value = pearsonr(predictions, labels)
         print(f'Correlation between predictions and target: {corr} (p-value: {p_value:.5f})')
