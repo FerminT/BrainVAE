@@ -64,7 +64,7 @@ def preprocess(data):
 
 
 def gender_to_onehot(gender):
-    label = 0 if gender == 'male' else 1
+    label = 0.0 if gender == 'male' else 1.0
     return tensor(label).unsqueeze(dim=0)
 
 
