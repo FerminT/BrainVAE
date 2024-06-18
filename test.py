@@ -25,6 +25,7 @@ import argparse
 
 def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, data_type, batch_size, epochs,
                             no_sync, device):
+    embeddings_df = embeddings_df[~embeddings_df[target].isna()]
     train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
     transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
     train_dataset = EmbeddingDataset(train, target=target, transform_fn=transform_fn)
