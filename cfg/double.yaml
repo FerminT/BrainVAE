@@ -1,0 +1,77 @@
+input_shape: [160, 192, 160]
+latent_dim: 354
+layers:
+ conv1:
+  channels: 64
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv2:
+  channels: 128
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv3:
+  channels: 256
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv4:
+  channels: 512
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv5:
+  channels: 512
+  kernel_size: 3
+  stride: 2
+  padding: 1
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+ conv6:
+  channels: 128
+  kernel_size: 1
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
+
+conditional_dim: 0
+one_hot_age: no
+lr: 0.0004
+max_lr: 0.0004
+optimizer: 'AdamW'
+momentum: 0.9
+weight_decay: 0.0005
+beta: [0.0001]
+beta_strategy: 'stepwise'
+losses_weights:
+  reconstruction: 1.0
+  prior: 1.0
+  marginal: 0.0
