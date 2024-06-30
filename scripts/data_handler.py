@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch import tensor
 from torch.nn.functional import one_hot
 from sklearn.model_selection import train_test_split
-from scripts.t1_dataset import T1Dataset, transform
+from scripts.t1_dataset import T1Dataset
 from scripts import constants
 
 
@@ -25,8 +25,7 @@ def load_datasets(datapath, input_shape, conditional_dim, one_hot, sample_size, 
     metadata, age_range = load_metadata(datapath)
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim, age_range, one_hot, testing=False,
-                              transform=transform)
+    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim, age_range, one_hot, testing=False)
     val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim, age_range, one_hot, testing=True)
     test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim, age_range, one_hot, testing=True)
     return train_dataset, val_dataset, test_dataset
