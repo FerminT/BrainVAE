@@ -75,5 +75,3 @@ def age_to_tensor(age):
 
 def transform(t1_img):
     return Compose([RandomSwap(p=0.5)])(t1_img)
-
-
