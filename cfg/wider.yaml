@@ -85,7 +85,7 @@ layers:
 conditional_dim: 0
 one_hot_age: no
 lr: 0.0005
-max_lr: 5
+max_lr: 0.0005
 optimizer: 'AdamW'
 momentum: 0.9
 weight_decay: 0.01
