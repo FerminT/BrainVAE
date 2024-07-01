@@ -71,6 +71,16 @@ layers:
   bias: yes
   batch_norm: yes
   activation: 'relu'
+ conv8:
+  channels: 128
+  kernel_size: 1
+  stride: 1
+  padding: 0
+  pool_size: 0
+  pool_stride: 0
+  bias: yes
+  batch_norm: yes
+  activation: 'relu'
 
 conditional_dim: 0
 one_hot_age: no
