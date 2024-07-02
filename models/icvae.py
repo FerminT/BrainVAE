@@ -44,7 +44,7 @@ class ICVAE(lg.LightningModule):
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                     weight_decay=self.weight_decay)
-        lr_scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=1/3.,
+        lr_scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=1.0,
                                                    total_iters=self.trainer.max_epochs)
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'epoch'}]
 
