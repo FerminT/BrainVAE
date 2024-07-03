@@ -105,8 +105,9 @@ def plot_embeddings(subjects_df, method, label, data_type, save_path, annotate_i
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
     if data_type == 'continuous':
-        subjects_df[label] = cut(subjects_df[label], bins=3, labels=['low', 'middle', 'high'])
-        subjects_df = subjects_df[subjects_df[label] != 'middle']
+        subjects_df[label] = cut(subjects_df[label], bins=3)
+        # remove middle category
+        subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
     components = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
     subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
     fig, ax = plt.subplots()
