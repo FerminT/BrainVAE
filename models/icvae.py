@@ -14,7 +14,7 @@ class ICVAE(lg.LightningModule):
                  layers=None,
                  conditional_dim=0,
                  lr=0.1,
-                 max_lr=0.01,
+                 min_lr=0.01,
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
@@ -25,7 +25,7 @@ class ICVAE(lg.LightningModule):
         super(ICVAE, self).__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
-        self.lr, self.max_lr = lr, max_lr
+        self.lr, self.min_lr = lr, min_lr
         self.momentum, self.weight_decay = momentum, weight_decay
         check_weights(losses_weights)
         self.losses_weights = losses_weights
@@ -44,7 +44,7 @@ class ICVAE(lg.LightningModule):
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                     weight_decay=self.weight_decay)
-        lr_scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=1.0,
+        lr_scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=(self.min_lr / self.lr),
                                                    total_iters=self.trainer.max_epochs)
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'epoch'}]
 
