@@ -7,14 +7,14 @@ from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedd
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.metrics import f1_score, precision_score, recall_score, mean_absolute_error
 from models.embedding_classifier import EmbeddingClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
-from numpy import array
-from pandas import cut
+from numpy import array, random
+from pandas import cut, DataFrame
 from seaborn import scatterplot, kdeplot
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
@@ -23,21 +23,32 @@ import wandb
 import argparse
 
 
-def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, data_type, batch_size, epochs,
-                            no_sync, device):
+def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, data_type, batch_size, epochs, n_iters,
+                            no_sync, device, save_path):
     embeddings_df = embeddings_df[~embeddings_df[target].isna()]
     train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
     transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
     train_dataset = EmbeddingDataset(train, target=target, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=target, transform_fn=transform_fn)
-    classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs, device,
-                                  no_sync)
-    test_classifier(classifier, val_dataset, data_type, device)
+    rnd_gen = random.default_rng(42)
+    random_seeds = [rnd_gen.integers(1, 100) for _ in range(n_iters)]
+    all_results = []
+    for seed in random_seeds:
+        classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs,
+                                      device, no_sync, seed)
+        results = test_classifier(classifier, val_dataset, data_type, device, seed)
+        all_results.append(results)
+    column_names = ['F1', 'Precision', 'Recall'] if data_type == 'categorical' else ['MAE', 'Corr', 'p_value']
+    results_df = DataFrame(all_results, columns=column_names)
+    results_df.to_csv(save_path / f'classifier_results.csv', index=False)
+    mean_df = results_df.mean(axis=0).to_frame(name='Mean')
+    mean_df['Std'] = results_df.std(axis=0)
+    print(mean_df)
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, data_type, batch_size, epochs, device,
-                     no_sync):
-    seed_everything(42, workers=True)
+                     no_sync, seed):
+    seed_everything(seed, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
     classifier = EmbeddingClassifier(input_dim=latent_dim, data_type=data_type)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
@@ -52,8 +63,8 @@ def train_classifier(train_data, val_data, config_name, latent_dim, data_type, b
     return classifier
 
 
-def test_classifier(model, val_dataset, data_type, device):
-    seed_everything(42, workers=True)
+def test_classifier(model, val_dataset, data_type, device, seed):
+    seed_everything(seed, workers=True)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     model.eval().to(device)
     predictions, labels = [], []
@@ -67,11 +78,11 @@ def test_classifier(model, val_dataset, data_type, device):
     if data_type == 'categorical':
         f1 = f1_score(labels, predictions)
         precision, recall = precision_score(labels, predictions), recall_score(labels, predictions)
-        print(f'Precision: {precision:.5f}, Recall: {recall:.5f}')
-        print(f'F1 score: {f1:.5f}')
+        return f1, precision, recall
     else:
+        mae = mean_absolute_error(labels, predictions)
         corr, p_value = pearsonr(predictions, labels)
-        print(f'Correlation between predictions and target: {corr} (p-value: {p_value:.5f})')
+        return mae, corr, p_value
 
 
 def sample(model, dataset, age, subject_id, device, save_path):
@@ -140,6 +151,8 @@ if __name__ == '__main__':
                         help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=10,
                         help='number of epochs used for training the age classifier')
+    parser.add_argument('--n_iters', type=int, default=10,
+                        help='number of iterations (with different seeds) to evaluate the age classifier')
     parser.add_argument('--sample_size', type=int, default=-1,
                         help='number of samples used for training the model')
     parser.add_argument('--sample', type=int, default=0,
@@ -180,7 +193,8 @@ if __name__ == '__main__':
     embeddings_df = subjects_embeddings(dataset, model, device, save_path)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
-                                args.data_type, args.batch_size, args.epochs, args.sync, args.device)
+                                args.data_type, args.batch_size, args.epochs, args.n_iters, args.sync, args.device,
+                                save_path)
     else:
         if args.sample > 0:
             dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
