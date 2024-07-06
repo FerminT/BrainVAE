@@ -30,8 +30,9 @@ def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, da
     transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
     train_dataset = EmbeddingDataset(train, target=target, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=target, transform_fn=transform_fn)
-    train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs, device,
-                     no_sync)
+    classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs, device,
+                                  no_sync)
+    test_classifier(classifier, val_dataset, data_type, device)
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, data_type, batch_size, epochs, device,
@@ -39,7 +40,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, data_type, b
     seed_everything(42, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
     classifier = EmbeddingClassifier(input_dim=latent_dim, data_type=data_type)
-    train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=False)
+    train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
@@ -48,7 +49,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, data_type, b
                       )
     trainer.fit(classifier, train_dataloader, val_dataloader)
     wandb.finish()
-    test_classifier(classifier, val_data, data_type, device)
+    return classifier
 
 
 def test_classifier(model, val_dataset, data_type, device):
