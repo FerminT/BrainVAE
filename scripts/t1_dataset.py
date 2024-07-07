@@ -52,13 +52,13 @@ def age_mapping_function(conditional_dim, latent_dim, age_range, invariant):
     num_bins = age_range[1] - age_range[0]
     if 1 < conditional_dim != num_bins:
         raise ValueError('conditional_dim does not match the bins/classes for the age range')
-    if conditional_dim == 1:
-        age_mapping = age_to_tensor
-    elif invariant:
-        encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
-        age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
-    else:
-        age_mapping = partial(soft_age, lower=age_range[0], upper=age_range[1], bin_step=1, bin_sigma=1)
+    age_mapping = age_to_tensor
+    if invariant:
+        if conditional_dim == 0:
+            encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
+            age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
+        elif conditional_dim > 1:
+            age_mapping = partial(soft_age, lower=age_range[0], upper=age_range[1], bin_step=1, bin_sigma=1)
     return age_mapping
 
 

@@ -52,6 +52,7 @@ class ICVAE(lg.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, x_transformed, condition = batch
+        condition = condition if self.invariant else None
         x_reconstructed, mu, logvar = self(x_transformed, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar)
         self.log_dict(loss_dict, sync_dist=True)
@@ -59,6 +60,7 @@ class ICVAE(lg.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, _, condition = batch
+        condition = condition if self.invariant else None
         x_reconstructed, mu, logvar = self(x, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar, mode='val')
         self.log_dict(loss_dict, sync_dist=True)

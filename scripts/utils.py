@@ -131,7 +131,7 @@ def position_encoding(num_ages, embed_dim, n=10000):
     Positional encoding for age
     """
     ages = np.arange(start=0, stop=num_ages, step=1)
-    encoding_matrix = np.zeros((num_ages, embed_dim))
+    encoding_matrix = np.zeros((num_ages, embed_dim), dtype=np.float32)
     for i in range(embed_dim):
         if i % 2 == 0:
             encoding_matrix[:, i] = np.sin(ages / n ** (i / embed_dim))
