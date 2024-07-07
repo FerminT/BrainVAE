@@ -58,10 +58,10 @@ if __name__ == '__main__':
     config = load_yaml(Path(constants.CFG_PATH, args.cfg))
     if args.device == 'gpu' and not is_available():
         raise ValueError('gpu is not available')
-    train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['conditional_dim'],
-                                                    config['one_hot_age'], args.sample_size, args.val_size,
-                                                    args.test_size, args.redo_splits, shuffle=True, random_state=42)
-    config.pop('one_hot_age', None)
+    train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['latent_dim'],
+                                                    config['conditional_dim'], config['invariant'], args.sample_size,
+                                                    args.val_size, args.test_size, args.redo_splits, shuffle=True,
+                                                    random_state=42)
     save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg.split('.')[0])
     run_name = f'e{args.epochs}'
     if args.sample_size != -1:

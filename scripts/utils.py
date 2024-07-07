@@ -126,6 +126,20 @@ def num2vect(x, bin_range, bin_step=1, sigma=1):
             return v, bin_centers
 
 
+def position_encoding(num_ages, embed_dim, n=10000):
+    """
+    Positional encoding for age
+    """
+    ages = np.arange(start=0, stop=num_ages, step=1)
+    encoding_matrix = np.zeros((num_ages, embed_dim))
+    for i in range(embed_dim):
+        if i % 2 == 0:
+            encoding_matrix[:, i] = np.sin(ages / n ** (i / embed_dim))
+        else:
+            encoding_matrix[:, i] = np.cos(ages / n ** ((i - 1) / embed_dim))
+    return encoding_matrix
+
+
 def crop_center(data, shape):
     x, y, z = data.shape[-3:]
     start_x = (x - shape[0]) // 2

@@ -18,10 +18,10 @@ class Decoder(nn.Module):
         self.tconv_blocks = build_modules(blocks)
 
     def forward(self, x, condition):
-        if self.conditional_dim > 0:
-            if condition is None or condition.shape[-1] != self.conditional_dim:
+        if condition is not None:
+            if 0 < self.conditional_dim != condition.shape[-1]:
                 raise ValueError('Conditional dimension does not match the input dimension')
-            x = cat([x, condition], dim=1)
+            x = cat([x, condition], dim=1) if self.conditional_dim > 0 else x + condition
         x = relu(self.fc_input(x))
         x = x.view(-1, *self.input_shape)
         x = self.tconv_blocks(x)

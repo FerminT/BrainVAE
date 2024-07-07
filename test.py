@@ -183,8 +183,8 @@ if __name__ == '__main__':
     weights = next(weights_path.parent.glob(f'{weights_path.name}*'))
     save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
     data = load_set(datapath, args.sample_size, args.set)
-    dataset = T1Dataset(config['input_shape'], datapath, data, conditional_dim=0, age_range=age_range,
-                        one_hot_age=False, testing=True)
+    dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], conditional_dim=0,
+                        age_range=age_range, invariant=False, testing=True)
 
     save_path.mkdir(parents=True, exist_ok=True)
     model = ICVAE.load_from_checkpoint(weights)
@@ -197,8 +197,8 @@ if __name__ == '__main__':
                                 save_path)
     else:
         if args.sample > 0:
-            dataset = T1Dataset(config['input_shape'], datapath, data, config['conditional_dim'], age_range,
-                                config['one_hot_age'], testing=True)
+            dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['conditional_dim'],
+                                age_range, config['invariant'], testing=True)
             sample(model, dataset, args.age, args.sample, args.device, save_path)
         elif args.manifold:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, args.data_type, save_path)

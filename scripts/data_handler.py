@@ -20,14 +20,17 @@ def load_metadata(datapath):
     return metadata, age_range
 
 
-def load_datasets(datapath, input_shape, conditional_dim, one_hot, sample_size, val_size, test_size, redo_splits,
-                  shuffle, random_state):
+def load_datasets(datapath, input_shape, latent_dim, conditional_dim, invariant, sample_size, val_size, test_size,
+                  redo_splits, shuffle, random_state):
     metadata, age_range = load_metadata(datapath)
     train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
                                    shuffle=shuffle, random_state=random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train, conditional_dim, age_range, one_hot, testing=False)
-    val_dataset = T1Dataset(input_shape, datapath, val, conditional_dim, age_range, one_hot, testing=True)
-    test_dataset = T1Dataset(input_shape, datapath, test, conditional_dim, age_range, one_hot, testing=True)
+    train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, conditional_dim, age_range, invariant,
+                              testing=False)
+    val_dataset = T1Dataset(input_shape, datapath, val, latent_dim, conditional_dim, age_range, invariant,
+                            testing=True)
+    test_dataset = T1Dataset(input_shape, datapath, test, latent_dim, conditional_dim, age_range, invariant,
+                             testing=True)
     return train_dataset, val_dataset, test_dataset
 
 

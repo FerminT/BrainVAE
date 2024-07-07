@@ -13,18 +13,20 @@ class ICVAE(lg.LightningModule):
                  latent_dim=354,
                  layers=None,
                  conditional_dim=0,
-                 lr=0.1,
-                 min_lr=0.01,
+                 invariant=False,
+                 lr=0.0004,
+                 min_lr=0.0004,
                  optimizer='AdamW',
                  momentum=0.9,
-                 weight_decay=0.0005,
-                 beta=0.001,
-                 beta_strategy='constant',
+                 weight_decay=0.01,
+                 beta=0.0001,
+                 beta_strategy='stepwise',
                  losses_weights=None
                  ):
         super(ICVAE, self).__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
+        self.invariant = invariant
         self.lr, self.min_lr = lr, min_lr
         self.momentum, self.weight_decay = momentum, weight_decay
         check_weights(losses_weights)
@@ -85,7 +87,7 @@ class ICVAE(lg.LightningModule):
             self.log('beta', beta * self.losses_weights['prior'], sync_dist=True)
         loss = recon_loss + prior_loss
         marginal_loss_value = 0.0
-        if self.hparams.conditional_dim > 0:
+        if self.invariant:
             marginal_loss = pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean()
             marginal_loss_value = marginal_loss.item()
             marginal_loss *= self.losses_weights['marginal']

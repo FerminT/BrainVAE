@@ -5,18 +5,18 @@ from torch import from_numpy, tensor
 from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
 from torchio import Compose, RandomSwap
-from scripts.utils import num2vect, crop_center
+from scripts.utils import num2vect, crop_center, position_encoding
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, conditional_dim, age_range, one_hot_age,
+    def __init__(self, input_shape, datapath, data, latent_dim, conditional_dim, age_range, invariant,
                  testing=False, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
         self.testing = testing
-        self.age_mapping = age_mapping_function(conditional_dim, age_range, one_hot_age)
+        self.age_mapping = age_mapping_function(conditional_dim, latent_dim, age_range, invariant)
 
     def __len__(self):
         return len(self.data)
@@ -48,17 +48,22 @@ class T1Dataset(Dataset):
         return t1_img
 
 
-def age_mapping_function(conditional_dim, age_range, one_hot_age):
+def age_mapping_function(conditional_dim, latent_dim, age_range, invariant):
     num_bins = age_range[1] - age_range[0]
-    if (not one_hot_age and 1 < conditional_dim != num_bins) or (one_hot_age and num_bins + 1 != conditional_dim):
+    if 1 < conditional_dim != num_bins:
         raise ValueError('conditional_dim does not match the bins/classes for the age range')
-    if conditional_dim <= 1:
+    if conditional_dim == 1:
         age_mapping = age_to_tensor
-    elif one_hot_age:
-        age_mapping = partial(age_to_onehot, lower=age_range[0], num_classes=conditional_dim)
+    elif invariant:
+        encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
+        age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
     else:
         age_mapping = partial(soft_age, lower=age_range[0], upper=age_range[1], bin_step=1, bin_sigma=1)
     return age_mapping
+
+
+def sinusoidal_age(age, encoding_matrix):
+    return from_numpy(encoding_matrix[round(age)])
 
 
 def soft_age(age, lower, upper, bin_step, bin_sigma):
