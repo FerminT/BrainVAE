@@ -40,7 +40,6 @@ def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, da
         all_results.append(results)
     column_names = ['F1', 'Precision', 'Recall'] if data_type == 'categorical' else ['MAE', 'Corr', 'p_value']
     results_df = DataFrame(all_results, columns=column_names)
-    results_df.to_csv(save_path / f'classifier_results.csv', index=False)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['Std'] = results_df.std(axis=0)
     print(mean_df)
