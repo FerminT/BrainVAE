@@ -14,7 +14,7 @@ def elastic(recon_x, x, alpha=0.2):
 
 
 def mse(recon_x, x):
-    return nn.functional.mse_loss(recon_x, x, reduction='sum')
+    return nn.functional.mse_loss(recon_x, x, reduction='mean')
 
 
 def l1(recon_x, x):
