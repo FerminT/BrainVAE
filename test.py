@@ -7,7 +7,7 @@ from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedd
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, precision_score, recall_score, mean_absolute_error
+from sklearn.metrics import accuracy_score, precision_score, recall_score, mean_absolute_error
 from models.embedding_classifier import EmbeddingClassifier
 from models.icvae import ICVAE
 from models.utils import get_latent_representation
@@ -38,7 +38,7 @@ def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, da
                                       device, no_sync, seed)
         results = test_classifier(classifier, val_dataset, data_type, device, seed)
         all_results.append(results)
-    column_names = ['F1', 'Precision', 'Recall'] if data_type == 'categorical' else ['MAE', 'Corr', 'p_value']
+    column_names = ['Accuracy', 'Precision', 'Recall'] if data_type == 'categorical' else ['MAE', 'Corr', 'p_value']
     results_df = DataFrame(all_results, columns=column_names)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['Std'] = results_df.std(axis=0)
@@ -75,9 +75,9 @@ def test_classifier(model, val_dataset, data_type, device, seed):
         predictions.append(prediction)
         labels.append(target.item())
     if data_type == 'categorical':
-        f1 = f1_score(labels, predictions)
+        acc = accuracy_score(labels, predictions)
         precision, recall = precision_score(labels, predictions), recall_score(labels, predictions)
-        return f1, precision, recall
+        return acc, precision, recall
     else:
         mae = mean_absolute_error(labels, predictions)
         corr, p_value = pearsonr(predictions, labels)
