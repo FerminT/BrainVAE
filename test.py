@@ -24,7 +24,7 @@ import argparse
 
 
 def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, data_type, batch_size, epochs, n_iters,
-                            no_sync, device, save_path):
+                            no_sync, device):
     embeddings_df = embeddings_df[~embeddings_df[target].isna()]
     train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
     transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
@@ -192,8 +192,7 @@ if __name__ == '__main__':
     embeddings_df = subjects_embeddings(dataset, model, device, save_path)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
-                                args.data_type, args.batch_size, args.epochs, args.n_iters, args.sync, args.device,
-                                save_path)
+                                args.data_type, args.batch_size, args.epochs, args.n_iters, args.sync, args.device)
     else:
         if args.sample > 0:
             dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['conditional_dim'],
