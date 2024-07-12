@@ -41,27 +41,3 @@ def pairwise_gaussian_kl(mu, logvar, latent_dim):
     res = 0.5 * (first_term + second_term + third_term - latent_dim)
 
     return res
-
-
-def frange_cycle(start, stop, total_steps, n_cycle, ratio, mode='linear'):
-    beta_at_steps = ones(total_steps)
-    period = total_steps / n_cycle
-    step = (stop - start) / (period * ratio)
-    for c in range(n_cycle):
-        v, i = start, 0
-        while v <= stop:
-            beta = v
-            if mode == 'cosine':
-                beta = .5 - .5 * cos(v * pi)
-            elif mode == 'sigmoid':
-                beta = 1.0 / (1.0 + mexp(-(v * 12. - 6.)))
-            beta_at_steps[int(i + c * period)] = beta
-            v += step
-            i += 1
-    return beta_at_steps
-
-
-def step_cycle(values_at_each_step, total_steps):
-    values_at_each_step = array(values_at_each_step)
-    bin_size = round(total_steps / len(values_at_each_step))
-    return repeat(values_at_each_step, bin_size)

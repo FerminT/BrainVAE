@@ -3,7 +3,7 @@ from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer
 from scripts.utils import crop_brain
-from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, frange_cycle, step_cycle
+from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights
 from torch import optim
 
 
@@ -19,10 +19,7 @@ class ICVAE(lg.LightningModule):
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.01,
-                 beta=0.0001,
-                 beta_strategy='stepwise',
-                 losses_weights=None
-                 ):
+                 losses_weights=None):
         super(ICVAE, self).__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
@@ -35,7 +32,6 @@ class ICVAE(lg.LightningModule):
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
         self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
-        self.beta, self.beta_strategy, self.beta_values = beta, beta_strategy, None
 
     def forward(self, x_transformed, condition=None):
         mu, logvar = self.encoder(x_transformed)
@@ -66,36 +62,17 @@ class ICVAE(lg.LightningModule):
         self.log_dict(loss_dict, sync_dist=True)
         return x_reconstructed
 
-    def on_train_start(self):
-        if self.beta_strategy == 'cyclical':
-            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.estimated_stepping_batches, 4, .99,
-                                            mode='cosine')
-        elif self.beta_strategy == 'monotonic':
-            self.beta_values = frange_cycle(self.beta, 1.0, self.trainer.estimated_stepping_batches, 1, .99,
-                                            mode='cosine')
-        elif self.beta_strategy == 'stepwise':
-            self.beta_values = step_cycle(self.beta, self.trainer.estimated_stepping_batches)
-        else:
-            self.beta_values = None
-
     def _loss(self, recon_x, x, mu, logvar, mode='train'):
         recon_loss, prior_loss = mse(crop_brain(recon_x), crop_brain(x)), kl_divergence(mu, logvar).mean()
         recon_loss_value, prior_loss_value = recon_loss.item(), prior_loss.item()
         recon_loss *= self.losses_weights['reconstruction']
         prior_loss *= self.losses_weights['prior']
-        if self.beta_values is not None:
-            beta = self.beta_values[min(len(self.beta_values) - 1, self.trainer.global_step)]
-            prior_loss *= beta
-            self.log('beta', beta * self.losses_weights['prior'], sync_dist=True)
         loss = recon_loss + prior_loss
         marginal_loss_value = 0.0
         if self.invariant:
             marginal_loss = pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean()
             marginal_loss_value = marginal_loss.item()
             marginal_loss *= self.losses_weights['marginal']
-            if self.beta_values is not None:
-                beta = self.beta_values[min(len(self.beta_values) - 1, self.trainer.global_step)]
-                marginal_loss *= beta
             loss += marginal_loss
         return loss, self._log_dict(mode, recon_loss_value, prior_loss_value, marginal_loss_value)
 
