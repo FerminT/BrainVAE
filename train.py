@@ -55,14 +55,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     datapath = Path(constants.DATA_PATH, args.dataset)
-    config = load_yaml(Path(constants.CFG_PATH, args.cfg))
+    config = load_yaml(Path(constants.CFG_PATH, f'{args.cfg}.yaml'))
     if args.device == 'gpu' and not is_available():
         raise ValueError('gpu is not available')
     train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['latent_dim'],
                                                     config['conditional_dim'], config['invariant'], args.sample_size,
                                                     args.val_size, args.test_size, args.redo_splits, shuffle=True,
                                                     random_state=42)
-    save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg.split('.')[0])
+    save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg)
     run_name = f'e{args.epochs}'
     if args.sample_size != -1:
         run_name = f's{args.sample_size}_{run_name}'
