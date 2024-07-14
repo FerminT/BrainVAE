@@ -1,6 +1,4 @@
 from torch import matmul, unsqueeze
-from numpy import ones, repeat, array
-from math import pi, cos, exp as mexp
 import torch.nn as nn
 
 
