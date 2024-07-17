@@ -126,7 +126,7 @@ def num2vect(x, bin_range, bin_step=1, sigma=1):
             return v, bin_centers
 
 
-def position_encoding(num_ages, embed_dim, amp_factor=0.1, n=10000):
+def position_encoding(num_ages, embed_dim, amp_factor=1.0, n=10000):
     """
     Positional encoding for age
     """
