@@ -3,13 +3,12 @@ from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_P
 from scripts.data_handler import load_metadata, get_loader, gender_to_onehot, load_set
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.t1_dataset import T1Dataset, age_to_tensor
-from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings
+from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, mean_absolute_error
 from models.embedding_classifier import EmbeddingClassifier
-from models.icvae import ICVAE
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
@@ -179,17 +178,14 @@ if __name__ == '__main__':
         print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
 
     weights_path = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
-    weights = next(weights_path.parent.glob(f'{weights_path.name}*'))
     save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
     data = load_set(datapath, args.sample_size, args.set)
     dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], conditional_dim=0,
                         age_range=age_range, invariant=False, testing=True)
 
     save_path.mkdir(parents=True, exist_ok=True)
-    model = ICVAE.load_from_checkpoint(weights)
-    model.eval()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    embeddings_df = subjects_embeddings(dataset, model, device, save_path)
+    embeddings_df = subjects_embeddings(dataset, weights_path, device, save_path)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
                                 args.data_type, args.batch_size, args.epochs, args.n_iters, args.sync, args.device)
@@ -197,6 +193,7 @@ if __name__ == '__main__':
         if args.sample > 0:
             dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['conditional_dim'],
                                 age_range, config['invariant'], testing=True)
+            model = load_model(weights_path, device)
             sample(model, dataset, args.age, args.sample, args.device, save_path)
         elif args.manifold:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, args.data_type, save_path)

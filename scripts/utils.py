@@ -9,6 +9,7 @@ from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
 from models.utils import get_latent_representation
+from models.icvae import ICVAE
 from scripts.constants import BRAIN_MASK
 import umap
 
@@ -43,10 +44,22 @@ def load_yaml(filepath):
         return yaml.safe_load(file)
 
 
-def subjects_embeddings(dataset, model, device, save_path):
+def load_model(weights_path, device):
+    weights = get_weights(weights_path)
+    model = ICVAE.load_from_checkpoint(weights).to(device)
+    model.eval()
+    return model
+
+
+def get_weights(weights_path):
+    return next(weights_path.parent.glob(f'{weights_path.name}*'))
+
+
+def subjects_embeddings(dataset, weights_path, device, save_path):
     filename = save_path / 'subjects_embeddings.pkl'
     if filename.exists():
         return pd.read_pickle(filename)
+    model = load_model(weights_path, device)
     subjects = []
     print('Computing embeddings...')
     for idx in tqdm(range(len(dataset))):
