@@ -5,7 +5,7 @@ from torch import from_numpy, tensor
 from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
 from torchio import Compose, RandomSwap
-from scripts.utils import num2vect, crop_center, position_encoding
+from models.utils import crop_center, num2vect, position_encoding
 
 
 class T1Dataset(Dataset):

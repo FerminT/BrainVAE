@@ -1,4 +1,5 @@
-from scripts.utils import reconstruction_comparison_grid, crop_brain
+from scripts.utils import reconstruction_comparison_grid
+from models.utils import crop_brain
 from lightning.pytorch.callbacks import Callback
 
 
