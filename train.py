@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, default='default', help='config file')
     parser.add_argument('--batch_size', type=int, default=16, help='batch size')
     parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
-    parser.add_argument('--precision', type=str, default='16-mixed', help='precision (16-mixed or 32)')
+    parser.add_argument('--precision', type=str, default='32', help='precision (16-mixed or 32)')
     parser.add_argument('--log_interval', type=int, default=50, help='log interval')
     parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
     parser.add_argument('--val_size', type=float, default=0.1, help='validation size')
