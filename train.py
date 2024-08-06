@@ -15,7 +15,7 @@ import argparse
 def train(config, train_data, val_data, batch_size, epochs, precision, log_interval, device, workers,
           no_sync, save_path):
     seed_everything(42, workers=True)
-    train_loader = get_loader(train_data, batch_size, shuffle=False, num_workers=workers)
+    train_loader = get_loader(train_data, batch_size, shuffle=True, num_workers=workers)
     val_loader = get_loader(val_data, batch_size, shuffle=False, num_workers=workers)
     model = ICVAE(**config)
     wandb_logger = WandbLogger(name=f'{save_path.parent.name}_{save_path.name}', project='BrainVAE', offline=no_sync)
