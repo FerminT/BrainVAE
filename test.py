@@ -151,8 +151,6 @@ if __name__ == '__main__':
                         help='number of epochs used for training the age classifier')
     parser.add_argument('--n_iters', type=int, default=10,
                         help='number of iterations (with different seeds) to evaluate the age classifier')
-    parser.add_argument('--sample_size', type=int, default=-1,
-                        help='number of samples used for training the model')
     parser.add_argument('--sample', type=int, default=0,
                         help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0,
@@ -167,30 +165,27 @@ if __name__ == '__main__':
                         help='set to evaluate (val or test)')
     parser.add_argument('--val_size', type=float, default=0.1,
                         help='size of the validation set constructed from the set to evaluate')
+    parser.add_argument('--random_state', type=int, default=42,
+                        help='random state for reproducibility')
     parser.add_argument('--sync', action='store_false',
                         help='sync to wandb')
     args = parser.parse_args()
 
-    datapath = Path(DATA_PATH, args.dataset)
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
-    _, age_range = load_metadata(datapath)
-    if args.age > 0 and not age_range[0] < args.age < age_range[1]:
-        print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
-
     weights_path = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
     save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
-    data = load_set(datapath, args.sample_size, args.set)
-    dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], conditional_dim=0,
-                        age_range=age_range, invariant=False, testing=True)
-
     save_path.mkdir(parents=True, exist_ok=True)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    embeddings_df = subjects_embeddings(dataset, weights_path, device, save_path)
+
+    datapath = Path(DATA_PATH)
+    embeddings_df = subjects_embeddings(weights_path, args.set, datapath, args.random_state, save_path)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
                                 args.data_type, args.batch_size, args.epochs, args.n_iters, args.sync, args.device)
     else:
         if args.sample > 0:
+            data, age_range = load_set(args.dataset, split, random_state)
+            if args.age > 0 and not age_range[0] < args.age < age_range[1]:
+                print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
             dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['conditional_dim'],
                                 age_range, config['invariant'], testing=True)
             model = load_model(weights_path, device)
