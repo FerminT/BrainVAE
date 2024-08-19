@@ -63,7 +63,7 @@ def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuf
         train.to_csv(train_csv, index=False)
         val.to_csv(val_csv, index=False)
         test.to_csv(test_csv, index=False)
-    if datapath.name != 'ukbb':
+    if datapath.name != 'ukbb' and sample_size:
         train = train.sample(sample_size, random_state=random_state, replace=True)
     return train, val, test
 
@@ -105,14 +105,14 @@ def get_datasets(dataset):
     return datasets
 
 
-def load_set(datapath, split):
-    train_csv, val_csv, test_csv = get_splits_files(datapath)
-    if not (train_csv.exists() and val_csv.exists() and test_csv.exists()):
-        raise ValueError(f'splits files do not exist')
+def load_set(dataset, split, random_state):
+    datasets = get_datasets(dataset)
+    train, val, test, age_range = combine_datasets(datasets, sample_size=None, val_size=None, test_size=None,
+                                                   redo_splits=False, shuffle=True, random_state=random_state)
     if split == 'val':
-        data = read_csv(val_csv)
+        data = val
     elif split == 'test':
-        data = read_csv(test_csv)
+        data = test
     else:
-        data = read_csv(train_csv)
-    return data
+        data = train
+    return data, age_range
