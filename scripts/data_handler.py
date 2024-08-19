@@ -22,13 +22,7 @@ def load_metadata(datapath):
     return metadata, age_range
 
 
-def load_datasets(dataset, input_shape, latent_dim, conditional_dim, invariant, sample_size,
-                  val_size, test_size, redo_splits, shuffle, random_state):
-    datapath = Path(constants.DATA_PATH)
-    if dataset == 'all':
-        datasets = list(datapath.iterdir())
-    else:
-        datasets = [datapath / dataset]
+def combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, shuffle, random_state):
     train_datasets, val_datasets, test_datasets, age_range = [], [], [], [inf, -inf]
     for dataset in datasets:
         metadata, dataset_age_range = load_metadata(dataset)
@@ -39,8 +33,15 @@ def load_datasets(dataset, input_shape, latent_dim, conditional_dim, invariant, 
         val_datasets.append(val)
         test_datasets.append(test)
     train, val, test = pd.concat(train_datasets), pd.concat(val_datasets), pd.concat(test_datasets)
-    train, val, test = train.sample(frac=1, random_state=random_state), val.sample(frac=1, random_state=random_state), \
-                          test.sample(frac=1, random_state=random_state)
+    train, val, test = shuffle(train, random_state), shuffle(val, random_state), shuffle(test, random_state)
+    return train, val, test, age_range
+
+
+def load_datasets(dataset, input_shape, latent_dim, conditional_dim, invariant, sample_size,
+                  val_size, test_size, redo_splits, shuffle, random_state):
+    datasets = get_datasets(dataset)
+    train, val, test, age_range = combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, shuffle,
+                                                   random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, conditional_dim, age_range, invariant,
                               testing=False)
     val_dataset = T1Dataset(input_shape, datapath, val, latent_dim, conditional_dim, age_range, invariant,
@@ -75,6 +76,10 @@ def generate_splits(data, val_size, test_size, shuffle, random_state):
     return train, val, test
 
 
+def shuffle(data, random_state):
+    return data.sample(frac=1, random_state=random_state)
+
+
 def preprocess(data):
     data = data.drop_duplicates(subset='subject_id')
     return data
@@ -89,6 +94,15 @@ def get_splits_files(datapath):
     splits_path = datapath / constants.SPLITS_PATH
     train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
     return train_csv, val_csv, test_csv
+
+
+def get_datasets(dataset):
+    datapath = Path(constants.DATA_PATH)
+    if dataset == 'all':
+        datasets = list(datapath.iterdir())
+    else:
+        datasets = [datapath / dataset]
+    return datasets
 
 
 def load_set(datapath, split):
