@@ -44,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
     parser.add_argument('--precision', type=str, default='32', help='precision (16-mixed or 32)')
     parser.add_argument('--log_interval', type=int, default=50, help='log interval')
-    parser.add_argument('--sample_size', type=int, default=-1, help='number of samples to use')
+    parser.add_argument('--sample_size', type=int, default=2000, help='number of samples to use in smaller datasets')
     parser.add_argument('--val_size', type=float, default=0.1, help='validation size')
     parser.add_argument('--test_size', type=float, default=0.15, help='test size')
     parser.add_argument('--redo_splits', action='store_true', help='redo train/val/test splits')
@@ -54,14 +54,13 @@ if __name__ == '__main__':
     parser.add_argument('--run_name', type=str, default='', help='(optional) add prefix to default run name')
 
     args = parser.parse_args()
-    datapath = Path(constants.DATA_PATH, args.dataset)
     config = load_yaml(Path(constants.CFG_PATH, f'{args.cfg}.yaml'))
     if args.device == 'gpu' and not is_available():
         raise ValueError('gpu is not available')
-    train_data, val_data, test_data = load_datasets(datapath, config['input_shape'], config['latent_dim'],
+    train_data, val_data, test_data = load_datasets(args.dataset, config['input_shape'], config['latent_dim'],
                                                     config['conditional_dim'], config['invariant'], args.sample_size,
-                                                    args.val_size, args.test_size, args.redo_splits, shuffle=True,
-                                                    random_state=42)
+                                                    args.val_size, args.test_size, args.redo_splits,
+                                                    shuffle=True, random_state=42)
     save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg)
     run_name = f'e{args.epochs}'
     if args.sample_size != -1:

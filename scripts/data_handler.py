@@ -1,9 +1,11 @@
 import pandas as pd
 from os import cpu_count
 from pandas import read_csv
+from numpy import inf
 from torch.utils.data import DataLoader
 from torch import tensor
 from torch.nn.functional import one_hot
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 from scripts.t1_dataset import T1Dataset
 from scripts import constants
@@ -20,11 +22,25 @@ def load_metadata(datapath):
     return metadata, age_range
 
 
-def load_datasets(datapath, input_shape, latent_dim, conditional_dim, invariant, sample_size, val_size, test_size,
-                  redo_splits, shuffle, random_state):
-    metadata, age_range = load_metadata(datapath)
-    train, val, test = load_splits(datapath, metadata, sample_size, val_size, test_size, redo_splits,
-                                   shuffle=shuffle, random_state=random_state)
+def load_datasets(dataset, input_shape, latent_dim, conditional_dim, invariant, sample_size,
+                  val_size, test_size, redo_splits, shuffle, random_state):
+    datapath = Path(constants.DATA_PATH)
+    if dataset == 'all':
+        datasets = list(datapath.iterdir())
+    else:
+        datasets = [datapath / dataset]
+    train_datasets, val_datasets, test_datasets, age_range = [], [], [], [inf, -inf]
+    for dataset in datasets:
+        metadata, dataset_age_range = load_metadata(dataset)
+        train, val, test = load_splits(dataset, metadata, sample_size, val_size, test_size, redo_splits,
+                                       shuffle=shuffle, random_state=random_state)
+        age_range = [min(age_range[0], dataset_age_range[0]), max(age_range[1], dataset_age_range[1])]
+        train_datasets.append(train)
+        val_datasets.append(val)
+        test_datasets.append(test)
+    train, val, test = pd.concat(train_datasets), pd.concat(val_datasets), pd.concat(test_datasets)
+    train, val, test = train.sample(frac=1, random_state=random_state), val.sample(frac=1, random_state=random_state), \
+                          test.sample(frac=1, random_state=random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, conditional_dim, age_range, invariant,
                               testing=False)
     val_dataset = T1Dataset(input_shape, datapath, val, latent_dim, conditional_dim, age_range, invariant,
@@ -35,29 +51,27 @@ def load_datasets(datapath, input_shape, latent_dim, conditional_dim, invariant,
 
 
 def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuffle, random_state):
-    train_csv, val_csv, test_csv = get_splits_files(datapath, sample_size)
+    train_csv, val_csv, test_csv = get_splits_files(datapath)
     if train_csv.exists() and val_csv.exists() and test_csv.exists() and not redo:
         train = pd.read_csv(train_csv)
         val = pd.read_csv(val_csv)
         test = pd.read_csv(test_csv)
     else:
-        train, val, test = generate_splits(metadata, sample_size, val_size, test_size, shuffle, random_state)
+        train, val, test = generate_splits(metadata, val_size, test_size, shuffle, random_state)
         train_csv.absolute().parent.mkdir(parents=True, exist_ok=True)
         train.to_csv(train_csv, index=False)
         val.to_csv(val_csv, index=False)
         test.to_csv(test_csv, index=False)
+    if datapath.name != 'ukbb':
+        train = train.sample(sample_size, random_state=random_state, replace=True)
     return train, val, test
 
 
-def generate_splits(data, sample_size, val_size, test_size, shuffle, random_state):
+def generate_splits(data, val_size, test_size, shuffle, random_state):
     data = preprocess(data)
     train, val_test = train_test_split(data, test_size=val_size + test_size, shuffle=shuffle, random_state=random_state)
     val, test = train_test_split(val_test, test_size=test_size / (val_size + test_size), shuffle=shuffle,
                                  random_state=random_state)
-    if 0 < sample_size < len(data):
-        train = train.sample(int(sample_size * (1 - val_size - test_size)), random_state=random_state)
-        val = val.sample(int(sample_size * val_size), random_state=random_state)
-        test = test.sample(int(sample_size * test_size), random_state=random_state)
     return train, val, test
 
 
@@ -71,18 +85,16 @@ def gender_to_onehot(gender):
     return tensor(label).unsqueeze(dim=0)
 
 
-def get_splits_files(datapath, sample_size):
+def get_splits_files(datapath):
     splits_path = datapath / constants.SPLITS_PATH
-    if sample_size != -1:
-        splits_path = splits_path / f'sample_{sample_size}'
     train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
     return train_csv, val_csv, test_csv
 
 
-def load_set(datapath, sample_size, split):
-    train_csv, val_csv, test_csv = get_splits_files(datapath, sample_size)
+def load_set(datapath, split):
+    train_csv, val_csv, test_csv = get_splits_files(datapath)
     if not (train_csv.exists() and val_csv.exists() and test_csv.exists()):
-        raise ValueError(f'splits files for a sample size of {sample_size} do not exist')
+        raise ValueError(f'splits files do not exist')
     if split == 'val':
         data = read_csv(val_csv)
     elif split == 'test':
