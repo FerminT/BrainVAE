@@ -8,6 +8,7 @@ from torchvision.transforms import Resize
 from tqdm import tqdm
 from models.utils import get_latent_representation
 from models.icvae import ICVAE
+from scripts.data_handler import load_set
 import umap
 
 
