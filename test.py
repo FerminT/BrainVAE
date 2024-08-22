@@ -88,7 +88,6 @@ def sample(model, dataset, age, subject_id, device, save_path):
     save_path = save_path / 'samples'
     save_path.mkdir(parents=True, exist_ok=True)
     sample = dataset.get_subject(subject_id)
-    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     t1_img, _ = dataset.load_and_process_img(sample)
     t1_img = t1_img.unsqueeze(dim=0).to(device)
     z = get_latent_representation(t1_img, model.encoder)
@@ -177,18 +176,20 @@ if __name__ == '__main__':
     save_path.mkdir(parents=True, exist_ok=True)
 
     datapath = Path(DATA_PATH)
-    embeddings_df = subjects_embeddings(weights_path, args.set, datapath, args.random_state, save_path)
+    embeddings_df = subjects_embeddings(weights_path, config['input_shape'], config['latent_dim'], args.set,
+                                        datapath, args.random_state, save_path)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
                                 args.data_type, args.batch_size, args.epochs, args.n_iters, args.sync, args.device)
     else:
         if args.sample > 0:
-            data, age_range = load_set(args.dataset, split, random_state)
+            data, age_range = load_set(args.dataset, args.split, args.random_state)
             if args.age > 0 and not age_range[0] < args.age < age_range[1]:
                 print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
             dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['conditional_dim'],
                                 age_range, config['invariant'], testing=True)
+            device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
             model = load_model(weights_path, device)
-            sample(model, dataset, args.age, args.sample, args.device, save_path)
+            sample(model, dataset, args.age, args.sample, device, save_path)
         elif args.manifold:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, args.data_type, save_path)
