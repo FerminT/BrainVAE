@@ -37,6 +37,7 @@ def combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, sh
 def load_datasets(dataset, input_shape, latent_dim, conditional_dim, invariant, sample_size,
                   val_size, test_size, redo_splits, shuffle, random_state):
     datasets = get_datasets(dataset)
+    datapath = Path(constants.DATA_PATH)
     train, val, test, age_range = combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, shuffle,
                                                    random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, conditional_dim, age_range, invariant,
