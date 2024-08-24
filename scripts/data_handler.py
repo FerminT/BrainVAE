@@ -31,7 +31,8 @@ def combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, sh
         val_datasets.append(val)
         test_datasets.append(test)
     train, val, test = pd.concat(train_datasets), pd.concat(val_datasets), pd.concat(test_datasets)
-    train, val, test = shuffle(train, random_state), shuffle(val, random_state), shuffle(test, random_state)
+    train, val, test = (shuffle_data(train, random_state), shuffle_data(val, random_state),
+                        shuffle_data(test, random_state))
     return train, val, test, age_range
 
 
@@ -75,7 +76,7 @@ def generate_splits(data, val_size, test_size, shuffle, random_state):
     return train, val, test
 
 
-def shuffle(data, random_state):
+def shuffle_data(data, random_state):
     return data.sample(frac=1, random_state=random_state)
 
 
