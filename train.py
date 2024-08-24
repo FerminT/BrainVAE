@@ -63,8 +63,6 @@ if __name__ == '__main__':
                                                     shuffle=True, random_state=42)
     save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg)
     run_name = f'e{args.epochs}'
-    if args.sample_size != -1:
-        run_name = f's{args.sample_size}_{run_name}'
     if args.run_name:
         run_name = f'{args.run_name}_{run_name}'
     save_path = save_path / run_name
