@@ -1,6 +1,6 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import load_metadata, get_loader, gender_to_onehot, load_set
+from scripts.data_handler import get_loader, gender_to_onehot, load_set
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.t1_dataset import T1Dataset, age_to_tensor
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
@@ -13,7 +13,7 @@ from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
 from numpy import array, random
-from pandas import cut, DataFrame
+from pandas import concat, cut, DataFrame
 from seaborn import scatterplot, kdeplot
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
@@ -22,13 +22,21 @@ import wandb
 import argparse
 
 
-def predict_from_embeddings(embeddings_df, cfg, val_size, latent_dim, target, data_type, batch_size, epochs, n_iters,
-                            no_sync, device):
-    embeddings_df = embeddings_df[~embeddings_df[target].isna()]
-    train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
+def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim, label, target_dataset, data_type,
+                            batch_size, epochs, n_iters, no_sync, device):
+    embeddings_df = embeddings_df[~embeddings_df[label].isna()]
+    train, val = train_test_split(embeddings_df[embeddings_df['dataset'] != 'ukbb'], test_size=val_size,
+                                  random_state=42)
+    train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
+                                            random_state=42)
+    train = train.groupby('dataset')[['dataset']].apply(lambda x: x.sample(180, replace=True, random_state=42))
+    train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
+    val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
+    if target_dataset != 'all':
+        val = val[val['dataset'] == target_dataset]
     transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
-    train_dataset = EmbeddingDataset(train, target=target, transform_fn=transform_fn)
-    val_dataset = EmbeddingDataset(val, target=target, transform_fn=transform_fn)
+    train_dataset = EmbeddingDataset(train, target=label, transform_fn=transform_fn)
+    val_dataset = EmbeddingDataset(val, target=label, transform_fn=transform_fn)
     rnd_gen = random.default_rng(42)
     random_seeds = [rnd_gen.integers(1, 100) for _ in range(n_iters)]
     all_results = []
@@ -138,8 +146,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('weights', type=str,
                         help='checkpoint file')
-    parser.add_argument('--dataset', type=str, default='ukbb',
+    parser.add_argument('--dataset', type=str, default='all',
                         help='dataset name')
+    parser.add_argument('--target', type=str, default='all',
+                        help='target dataset for predicting features')
     parser.add_argument('--cfg', type=str, default='default',
                         help='config file used for the trained model')
     parser.add_argument('--device', type=str, default='cpu',
@@ -162,8 +172,10 @@ if __name__ == '__main__':
                         help='data type: either continuous or categorical')
     parser.add_argument('--set', type=str, default='val',
                         help='set to evaluate (val or test)')
-    parser.add_argument('--val_size', type=float, default=0.1,
-                        help='size of the validation set constructed from the set to evaluate')
+    parser.add_argument('--ukbb_size', type=float, default=0.15,
+                        help='size of the validation split constructed from the ukbb set to evaluate')
+    parser.add_argument('--val_size', type=float, default=0.3,
+                        help='size of the validation split constructed from the set to evaluate')
     parser.add_argument('--random_state', type=int, default=42,
                         help='random state for reproducibility')
     parser.add_argument('--sync', action='store_false',
@@ -179,8 +191,9 @@ if __name__ == '__main__':
     embeddings_df = subjects_embeddings(weights_path, config['input_shape'], config['latent_dim'], args.set,
                                         datapath, args.random_state, save_path)
     if args.sample == 0 and not args.manifold:
-        predict_from_embeddings(embeddings_df, args.cfg, args.val_size, config['latent_dim'], args.label,
-                                args.data_type, args.batch_size, args.epochs, args.n_iters, args.sync, args.device)
+        predict_from_embeddings(embeddings_df, args.cfg, args.ukbb_size, args.val_size, config['latent_dim'],
+                                args.label, args.target, args.data_type, args.batch_size, args.epochs, args.n_iters,
+                                args.sync, args.device)
     else:
         if args.sample > 0:
             data, age_range = load_set(args.dataset, args.split, args.random_state)
