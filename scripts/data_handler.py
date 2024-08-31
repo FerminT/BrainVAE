@@ -20,11 +20,11 @@ def load_metadata(datapath):
     return metadata, age_range
 
 
-def combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, shuffle, random_state):
+def combine_datasets(datasets, sample_size, val_size, test_size, splits_path, redo_splits, shuffle, random_state):
     train_datasets, val_datasets, test_datasets, age_range = [], [], [], [inf, -inf]
     for dataset in datasets:
         metadata, dataset_age_range = load_metadata(dataset)
-        train, val, test = load_splits(dataset, metadata, sample_size, val_size, test_size, redo_splits,
+        train, val, test = load_splits(dataset, metadata, sample_size, val_size, test_size, splits_path, redo_splits,
                                        shuffle=shuffle, random_state=random_state)
         age_range = [min(age_range[0], dataset_age_range[0]), max(age_range[1], dataset_age_range[1])]
         train_datasets.append(train)
@@ -37,11 +37,11 @@ def combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, sh
 
 
 def load_datasets(dataset, input_shape, latent_dim, conditional_dim, invariant, sample_size,
-                  val_size, test_size, redo_splits, shuffle, random_state):
+                  val_size, test_size, splits_path, redo_splits, shuffle, random_state):
     datasets = get_datasets(dataset)
     datapath = Path(constants.DATA_PATH)
-    train, val, test, age_range = combine_datasets(datasets, sample_size, val_size, test_size, redo_splits, shuffle,
-                                                   random_state)
+    train, val, test, age_range = combine_datasets(datasets, sample_size, val_size, test_size, splits_path, redo_splits,
+                                                   shuffle, random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, conditional_dim, age_range, invariant,
                               testing=False)
     val_dataset = T1Dataset(input_shape, datapath, val, latent_dim, conditional_dim, age_range, invariant,
@@ -51,8 +51,8 @@ def load_datasets(dataset, input_shape, latent_dim, conditional_dim, invariant, 
     return train_dataset, val_dataset, test_dataset
 
 
-def load_splits(datapath, metadata, sample_size, val_size, test_size, redo, shuffle, random_state):
-    train_csv, val_csv, test_csv = get_splits_files(datapath)
+def load_splits(datapath, metadata, sample_size, val_size, test_size, splits_path, redo, shuffle, random_state):
+    train_csv, val_csv, test_csv = get_splits_files(datapath, splits_path)
     if train_csv.exists() and val_csv.exists() and test_csv.exists() and not redo:
         train = pd.read_csv(train_csv)
         val = pd.read_csv(val_csv)
@@ -90,8 +90,8 @@ def gender_to_onehot(gender):
     return tensor(label).unsqueeze(dim=0)
 
 
-def get_splits_files(datapath):
-    splits_path = datapath / constants.SPLITS_PATH
+def get_splits_files(datapath, splits_path):
+    splits_path = datapath / splits_path
     train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
     return train_csv, val_csv, test_csv
 
