@@ -148,6 +148,8 @@ if __name__ == '__main__':
                         help='checkpoint file')
     parser.add_argument('--dataset', type=str, default='all',
                         help='dataset name')
+    parser.add_argument('--splits_path', type=str, default='splits',
+                        help='path to the data splits')
     parser.add_argument('--target', type=str, default='all',
                         help='target dataset for predicting features')
     parser.add_argument('--cfg', type=str, default='default',
@@ -189,7 +191,7 @@ if __name__ == '__main__':
 
     datapath = Path(DATA_PATH)
     embeddings_df = subjects_embeddings(weights_path, config['input_shape'], config['latent_dim'], args.set,
-                                        datapath, args.random_state, save_path)
+                                        datapath, args.splits_path, args.random_state, save_path)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.ukbb_size, args.val_size, config['latent_dim'],
                                 args.label, args.target, args.data_type, args.batch_size, args.epochs, args.n_iters,

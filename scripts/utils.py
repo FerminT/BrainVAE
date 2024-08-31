@@ -54,8 +54,8 @@ def get_weights(weights_path):
     return next(weights_path.parent.glob(f'{weights_path.name}*'))
 
 
-def subjects_embeddings(weights_path, input_shape, latent_dim, split, datapath, random_state, save_path):
-    data, age_range = load_set('all', split, random_state)
+def subjects_embeddings(weights_path, input_shape, latent_dim, split, datapath, splits_path, random_state, save_path):
+    data, age_range = load_set('all', split, splits_path, random_state)
     dataset = T1Dataset(input_shape, datapath, data, latent_dim, conditional_dim=0,
                         age_range=age_range, invariant=False, testing=True)
     device_ = device('cuda' if cuda.is_available() else 'cpu')

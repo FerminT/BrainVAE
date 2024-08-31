@@ -105,10 +105,11 @@ def get_datasets(dataset):
     return datasets
 
 
-def load_set(dataset, split, random_state):
+def load_set(dataset, split, splits_path, random_state):
     datasets = get_datasets(dataset)
     train, val, test, age_range = combine_datasets(datasets, sample_size=None, val_size=None, test_size=None,
-                                                   redo_splits=False, shuffle=True, random_state=random_state)
+                                                   splits_path=splits_path, redo_splits=False, shuffle=True,
+                                                   random_state=random_state)
     if split == 'val':
         data = val
     elif split == 'test':
