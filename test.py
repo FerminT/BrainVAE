@@ -1,8 +1,8 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import get_loader, load_set
+from scripts.data_handler import get_loader, gender_to_onehot, load_set, upsample_datasets
 from scripts.embedding_dataset import EmbeddingDataset
-from scripts.t1_dataset import T1Dataset, age_to_tensor, gender_to_onehot
+from scripts.t1_dataset import T1Dataset, age_to_tensor
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
@@ -29,7 +29,7 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
                                   random_state=42)
     train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
                                             random_state=42)
-    train = train.groupby('dataset')[['dataset']].apply(lambda x: x.sample(180, replace=True, random_state=42))
+    train = upsample_datasets(train, n_upsampled=180)
     train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
     val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
     if target_dataset != 'all':
