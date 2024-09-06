@@ -1,6 +1,7 @@
 import pandas as pd
 from os import cpu_count
 from numpy import inf
+from pandas import concat
 from torch.utils.data import DataLoader
 from torch import tensor
 from pathlib import Path
@@ -117,3 +118,13 @@ def load_set(dataset, split, splits_path, random_state):
     else:
         data = train
     return data, age_range
+
+
+def upsample_datasets(train, n_upsampled):
+    for dataset in train['dataset'].unique():
+        dataset_samples = train[train['dataset'] == dataset]
+        n_samples = len(dataset_samples)
+        if n_samples < n_upsampled:
+            resampled = dataset_samples.sample(n=n_upsampled - n_samples, replace=True, random_state=42)
+            train = concat([train, resampled])
+    return train
