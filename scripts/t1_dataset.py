@@ -8,9 +8,13 @@ from torchio import Compose, RandomSwap
 from models.utils import crop_center, num2vect, position_encoding
 
 
+def transform(t1_img):
+    return Compose([RandomSwap(p=0.3)])(t1_img)
+
+
 class T1Dataset(Dataset):
     def __init__(self, input_shape, datapath, data, latent_dim, conditional_dim, age_range, invariant,
-                 testing=False, transform=None):
+                 testing=False, transform=transform):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
@@ -76,7 +80,3 @@ def age_to_onehot(age, lower, num_classes):
 
 def age_to_tensor(age):
     return tensor(float(age)).unsqueeze(dim=0)
-
-
-def transform(t1_img):
-    return Compose([RandomSwap(p=0.5)])(t1_img)
