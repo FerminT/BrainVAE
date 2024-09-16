@@ -9,7 +9,7 @@ from models.utils import crop_center, num2vect, position_encoding
 
 
 def transform(t1_img):
-    return Compose([RandomSwap(p=0.3)])(t1_img)
+    return Compose([RandomSwap(p=0.6)])(t1_img)
 
 
 class T1Dataset(Dataset):
