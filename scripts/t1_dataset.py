@@ -25,7 +25,9 @@ class T1Dataset(Dataset):
         sample = self.data.iloc[idx]
         t1_img, t1_transformed = self.load_and_process_img(sample)
         age = self.age_mapping(sample['age_at_scan'])
-        return t1_img, t1_transformed, age
+        gender = gender_to_onehot(sample['gender'])
+        bmi = age_to_tensor(sample['bmi'])
+        return t1_img, t1_transformed, age, gender, bmi
 
     def get_subject(self, subject_id):
         return self.data[self.data['subject_id'] == subject_id].iloc[0]
@@ -80,3 +82,8 @@ def age_to_tensor(age):
 
 def transform(t1_img):
     return Compose([RandomSwap(p=0.5)])(t1_img)
+
+
+def gender_to_onehot(gender):
+    label = 0.0 if gender == 'male' else 1.0
+    return tensor(label).unsqueeze(dim=0)

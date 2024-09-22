@@ -28,13 +28,15 @@ class ICVAE(lg.LightningModule):
         check_weights(losses_weights)
         self.losses_weights = losses_weights
         self.encoder = Encoder(input_shape, latent_dim, layers)
+        # TODO: Add linear layers (of shape latent_dim x 2/1) for predicting gender and bmi
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
         self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
 
-    def forward(self, x_transformed, condition=None):
+    def forward(self, x_transformed, condition):
         mu, logvar = self.encoder(x_transformed)
         z = reparameterize(mu, logvar)
+        # TODO: forward the embedding to linear layers for predicting gender and bmi
         x_reconstructed = self.decoder(z, condition)
         return x_reconstructed, mu, logvar
 
@@ -46,7 +48,7 @@ class ICVAE(lg.LightningModule):
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'epoch'}]
 
     def training_step(self, batch, batch_idx):
-        x, x_transformed, condition = batch
+        x, x_transformed, condition, gender, bmi = batch
         condition = condition if self.invariant else None
         x_reconstructed, mu, logvar = self(x_transformed, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar)

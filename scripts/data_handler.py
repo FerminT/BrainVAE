@@ -85,11 +85,6 @@ def preprocess(data):
     return data
 
 
-def gender_to_onehot(gender):
-    label = 0.0 if gender == 'male' else 1.0
-    return tensor(label).unsqueeze(dim=0)
-
-
 def get_splits_files(datapath, splits_path):
     splits_path = datapath / splits_path
     train_csv, val_csv, test_csv = splits_path / 'train.csv', splits_path / 'val.csv', splits_path / 'test.csv'
