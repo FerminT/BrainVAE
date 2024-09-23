@@ -24,6 +24,9 @@ class T1Dataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         t1_img, t1_transformed = self.load_and_process_img(sample)
+        # for testing, use random tensors of shape input_shape
+        # t1_img = from_numpy(np.random.rand(*self.input_shape))
+        # t1_transformed = from_numpy(np.random.rand(*self.input_shape))
         age = self.age_mapping(sample['age_at_scan'])
         gender = gender_to_onehot(sample['gender'])
         bmi = age_to_tensor(sample['bmi'])

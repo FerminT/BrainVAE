@@ -7,16 +7,16 @@ def check_weights(weights):
         raise ValueError('Loss weights dict must contain keys: reconstruction, prior and marginal')
 
 
-def elastic(recon_x, x, alpha=0.2):
-    return alpha * l1(recon_x, x) + (1 - alpha) * mse(recon_x, x)
+def bce(pred, target):
+    return nn.functional.bce(pred, target)
 
 
 def mse(recon_x, x):
     return nn.functional.mse_loss(recon_x, x, reduction='mean')
 
 
-def l1(recon_x, x):
-    return nn.functional.l1_loss(recon_x, x, reduction='mean')
+def l1(pred, target):
+    return nn.functional.l1_loss(pred, target, reduction='mean')
 
 
 def kl_divergence(mu, logvar):
