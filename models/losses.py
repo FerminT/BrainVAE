@@ -8,7 +8,7 @@ def check_weights(weights):
 
 
 def bce(pred, target):
-    return nn.functional.bce(pred, target)
+    return nn.functional.binary_cross_entropy(pred, target)
 
 
 def mse(recon_x, x):

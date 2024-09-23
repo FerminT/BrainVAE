@@ -3,7 +3,7 @@ from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer, crop_brain
 from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, bce, l1
-from torch import optim, tensor, nn
+from torch import optim, tensor, nn, isnan
 
 
 class ICVAE(lg.LightningModule):
@@ -28,7 +28,7 @@ class ICVAE(lg.LightningModule):
         check_weights(losses_weights)
         self.losses_weights = losses_weights
         self.encoder = Encoder(input_shape, latent_dim, layers)
-        self.gender = nn.Sequential(nn.Linear(latent_dim, 2), nn.Sigmoid())
+        self.gender = nn.Sequential(nn.Linear(latent_dim, 1), nn.Sigmoid())
         self.bmi = nn.Linear(latent_dim, 1)
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
@@ -72,7 +72,8 @@ class ICVAE(lg.LightningModule):
             marginal_loss = pairwise_gaussian_kl(mu, logvar, self.hparams.latent_dim).mean()
             loss += self.losses_weights['marginal'] * marginal_loss
         gender_loss = bce(gender_pred, gender)
-        bmi_loss = l1(bmi_pred, bmi)
+        nan_mask = ~isnan(bmi)
+        bmi_loss = l1(bmi_pred[nan_mask], bmi[nan_mask])
         loss += self.losses_weights['gender'] * gender_loss + self.losses_weights['bmi'] * bmi_loss
         return loss, self._log_dict(mode, recon_loss.item(), prior_loss.item(), marginal_loss.item(),
                                     gender_loss.item(), bmi_loss.item())
