@@ -94,7 +94,7 @@ def get_splits_files(datapath, splits_path):
 def get_datasets(dataset):
     datapath = Path(constants.DATA_PATH)
     if dataset == 'all':
-        datasets = list(datapath.iterdir())
+        datasets = [d for d in datapath.iterdir() if d.is_dir()]
     else:
         datasets = [datapath / dataset]
     return datasets
