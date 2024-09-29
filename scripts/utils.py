@@ -66,7 +66,7 @@ def subjects_embeddings(weights_path, input_shape, latent_dim, split, datapath, 
     subjects = []
     print('Computing embeddings...')
     for idx in tqdm(range(len(dataset))):
-        t1_img, _, _ = dataset[idx]
+        t1_img, _, _, _, _ = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device_)
         z = get_latent_representation(t1_img, model.encoder)
         subject_metadata = dataset.get_metadata(idx).copy()
