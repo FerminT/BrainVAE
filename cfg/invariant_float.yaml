@@ -73,3 +73,5 @@ losses_weights:
   reconstruction: 3.0
   prior: 0.00001
   marginal: 0.001
+  gender: 1.0
+  bmi: 1.0
