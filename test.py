@@ -198,11 +198,11 @@ if __name__ == '__main__':
                                 args.sync, args.device)
     else:
         if args.sample > 0:
-            data, age_range = load_set(args.dataset, args.split, args.random_state)
+            data, age_range, bmi_range = load_set(args.dataset, args.split, args.splits_path, args.random_state)
             if args.age > 0 and not age_range[0] < args.age < age_range[1]:
                 print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
             dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['conditional_dim'],
-                                age_range, config['invariant'], testing=True)
+                                age_range, bmi_range, config['invariant'], testing=True)
             device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
             model = load_model(weights_path, device)
             sample(model, dataset, args.age, args.sample, device, save_path)

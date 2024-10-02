@@ -9,13 +9,14 @@ from models.utils import crop_center, num2vect, position_encoding
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, latent_dim, conditional_dim, age_range, invariant,
+    def __init__(self, input_shape, datapath, data, latent_dim, conditional_dim, age_range, bmi_range, invariant,
                  testing=False, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
         self.testing = testing
+        self.bmi_range = bmi_range
         self.age_mapping = age_mapping_function(conditional_dim, latent_dim, age_range, invariant)
 
     def __len__(self):
@@ -23,10 +24,12 @@ class T1Dataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        t1_img, t1_transformed = self.load_and_process_img(sample)
+        # t1_img, t1_transformed = self.load_and_process_img(sample)
+        t1_img = torch.randn(1, 160, 192, 160)
+        t1_transformed = torch.randn(1, 160, 192, 160)
         age = self.age_mapping(sample['age_at_scan'])
         gender = gender_to_onehot(sample['gender'])
-        bmi = age_to_tensor(sample['bmi'])
+        bmi = self.soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
         return t1_img, t1_transformed, age, gender, bmi
 
     def get_subject(self, subject_id):
@@ -60,7 +63,7 @@ def age_mapping_function(conditional_dim, latent_dim, age_range, invariant):
             encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
             age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
         elif conditional_dim > 1:
-            age_mapping = partial(soft_age, lower=age_range[0], upper=age_range[1], bin_step=1, bin_sigma=1)
+            age_mapping = partial(soft_label, lower=age_range[0], upper=age_range[1])
     return age_mapping
 
 
@@ -68,7 +71,7 @@ def sinusoidal_age(age, encoding_matrix):
     return from_numpy(encoding_matrix[round(age)])
 
 
-def soft_age(age, lower, upper, bin_step, bin_sigma):
+def soft_label(age, lower, upper, bin_step=1, bin_sigma=1):
     return from_numpy(num2vect(age, [lower, upper], bin_step, bin_sigma)[0])
 
 
