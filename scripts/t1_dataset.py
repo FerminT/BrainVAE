@@ -1,7 +1,7 @@
 from functools import partial
 import nibabel as nib
 import numpy as np
-from torch import from_numpy, tensor
+from torch import from_numpy, tensor, randn
 from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
 from torchio import Compose, RandomSwap
@@ -25,11 +25,11 @@ class T1Dataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         # t1_img, t1_transformed = self.load_and_process_img(sample)
-        t1_img = torch.randn(1, 160, 192, 160)
-        t1_transformed = torch.randn(1, 160, 192, 160)
+        t1_img = randn(1, 160, 192, 160)
+        t1_transformed = randn(1, 160, 192, 160)
         age = self.age_mapping(sample['age_at_scan'])
         gender = gender_to_onehot(sample['gender'])
-        bmi = self.soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
+        bmi = soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
         return t1_img, t1_transformed, age, gender, bmi
 
     def get_subject(self, subject_id):

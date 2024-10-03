@@ -18,7 +18,9 @@ def get_loader(dataset, batch_size, shuffle, num_workers=4):
 def load_metadata(datapath):
     metadata = pd.read_csv(datapath / constants.METADATA_PATH / f'{datapath.name}_image_baseline_metadata.csv')
     age_range = [int(metadata['age_at_scan'].min()), round(metadata['age_at_scan'].max() + 0.5)]
-    bmi_range = [int(metadata['bmi'].min()), round(metadata['bmi'].max() + 0.5)]
+    bmi_range = [inf, -inf]
+    if metadata['bmi'].notna().any():
+        bmi_range = [int(metadata['bmi'].min()), round(metadata['bmi'].max() + 0.5)]
     return metadata, age_range, bmi_range
 
 

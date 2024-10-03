@@ -11,6 +11,10 @@ def bce(pred, target):
     return nn.functional.binary_cross_entropy(pred, target)
 
 
+def cross_entropy(pred, target):
+    return nn.functional.cross_entropy(pred, target)
+
+
 def mse(recon_x, x):
     return nn.functional.mse_loss(recon_x, x, reduction='mean')
 

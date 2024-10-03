@@ -2,7 +2,7 @@ import lightning as lg
 from models.decoder import Decoder
 from models.encoder import Encoder
 from models.utils import reparameterize, init_optimizer, crop_brain
-from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, bce, l1
+from models.losses import mse, kl_divergence, pairwise_gaussian_kl, check_weights, bce, cross_entropy
 from torch import optim, tensor, nn, isnan
 
 
@@ -12,6 +12,7 @@ class ICVAE(lg.LightningModule):
                  latent_dim=354,
                  layers=None,
                  conditional_dim=0,
+                 bmi_dim=46,
                  invariant=False,
                  lr=0.0004,
                  min_lr=0.0004,
@@ -29,7 +30,7 @@ class ICVAE(lg.LightningModule):
         self.losses_weights = losses_weights
         self.encoder = Encoder(input_shape, latent_dim, layers)
         self.gender = nn.Sequential(nn.Linear(latent_dim, 1), nn.Sigmoid())
-        self.bmi = nn.Linear(latent_dim, 1)
+        self.bmi = nn.Linear(latent_dim, bmi_dim)
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
         self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
@@ -73,7 +74,7 @@ class ICVAE(lg.LightningModule):
             loss += self.losses_weights['marginal'] * marginal_loss
         gender_loss = bce(gender_pred, gender)
         nan_mask = ~isnan(bmi)
-        bmi_loss = l1(bmi_pred[nan_mask], bmi[nan_mask])
+        bmi_loss = cross_entropy(bmi_pred[nan_mask], bmi[nan_mask])
         loss += self.losses_weights['gender'] * gender_loss + self.losses_weights['bmi'] * bmi_loss
         return loss, self._log_dict(mode, recon_loss.item(), prior_loss.item(), marginal_loss.item(),
                                     gender_loss.item(), bmi_loss.item())
