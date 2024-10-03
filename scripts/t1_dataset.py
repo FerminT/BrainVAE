@@ -24,9 +24,7 @@ class T1Dataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        # t1_img, t1_transformed = self.load_and_process_img(sample)
-        t1_img = randn(1, 160, 192, 160)
-        t1_transformed = randn(1, 160, 192, 160)
+        t1_img, t1_transformed = self.load_and_process_img(sample)
         age = self.age_mapping(sample['age_at_scan'])
         gender = gender_to_onehot(sample['gender'])
         bmi = soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
