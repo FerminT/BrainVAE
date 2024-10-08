@@ -30,7 +30,7 @@ class ICVAE(lg.LightningModule):
         self.losses_weights = losses_weights
         self.encoder = Encoder(input_shape, latent_dim, layers)
         self.gender = nn.Sequential(nn.Linear(latent_dim, 1), nn.Sigmoid())
-        self.bmi = nn.Linear(latent_dim, bmi_dim)
+        self.bmi = nn.Sequential(nn.Linear(latent_dim, bmi_dim), nn.LogSoftmax(dim=1))
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
         self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
