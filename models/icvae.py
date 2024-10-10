@@ -11,7 +11,7 @@ class ICVAE(lg.LightningModule):
                  input_shape=(160, 192, 160),
                  latent_dim=354,
                  layers=None,
-                 conditional_dim=0,
+                 age_dim=0,
                  bmi_dim=46,
                  invariant=False,
                  lr=0.0004,
@@ -33,7 +33,7 @@ class ICVAE(lg.LightningModule):
         self.bmi = nn.Sequential(nn.Linear(latent_dim, bmi_dim), nn.LogSoftmax(dim=1))
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
-        self.decoder = Decoder(features_shape, latent_dim, reversed_layers, conditional_dim)
+        self.decoder = Decoder(features_shape, latent_dim, reversed_layers, age_dim)
 
     def forward(self, x_transformed, condition):
         mu, logvar = self.encoder(x_transformed)
@@ -50,16 +50,16 @@ class ICVAE(lg.LightningModule):
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'epoch'}]
 
     def training_step(self, batch, batch_idx):
-        x, x_transformed, condition, gender, bmi = batch
-        condition = condition if self.invariant else None
+        x, x_transformed, age, gender, bmi = batch
+        condition = age if self.invariant else None
         x_reconstructed, mu, logvar, gender_pred, bmi_pred = self(x_transformed, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar, gender_pred, bmi_pred, gender, bmi)
         self.log_dict(loss_dict, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, _, condition, gender, bmi = batch
-        condition = condition if self.invariant else None
+        x, _, age, gender, bmi = batch
+        condition = age if self.invariant else None
         x_reconstructed, mu, logvar, gender_pred, bmi_pred = self(x, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar, gender_pred, bmi_pred, gender, bmi, mode='val')
         self.log_dict(loss_dict, sync_dist=True)

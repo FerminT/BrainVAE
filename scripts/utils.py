@@ -56,8 +56,8 @@ def get_weights(weights_path):
 
 def subjects_embeddings(weights_path, input_shape, latent_dim, split, datapath, splits_path, random_state, save_path):
     data, age_range, bmi_range = load_set('all', split, splits_path, random_state)
-    dataset = T1Dataset(input_shape, datapath, data, latent_dim, conditional_dim=0, age_range=age_range,
-                        bmi_range=bmi_range, invariant=False, testing=True)
+    dataset = T1Dataset(input_shape, datapath, data, latent_dim, age_dim=0, age_range=age_range, bmi_range=bmi_range,
+                        testing=True)
     device_ = device('cuda' if cuda.is_available() else 'cpu')
     filename = save_path / 'subjects_embeddings.pkl'
     if filename.exists():

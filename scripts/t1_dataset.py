@@ -9,7 +9,7 @@ from models.utils import crop_center, num2vect, position_encoding
 
 
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, latent_dim, conditional_dim, age_range, bmi_range, invariant,
+    def __init__(self, input_shape, datapath, data, latent_dim, age_dim, age_range, bmi_range,
                  testing=False, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
@@ -17,14 +17,16 @@ class T1Dataset(Dataset):
         self.transform = transform
         self.testing = testing
         self.bmi_range = bmi_range
-        self.age_mapping = age_mapping_function(conditional_dim, latent_dim, age_range, invariant)
+        self.age_mapping = age_mapping_function(age_dim, latent_dim, age_range)
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        t1_img, t1_transformed = self.load_and_process_img(sample)
+        # t1_img, t1_transformed = self.load_and_process_img(sample)
+        t1_img = randn(1, 160, 192, 160)
+        t1_transformed = randn(1, 160, 192, 160)
         age = self.age_mapping(sample['age_at_scan'])
         gender = gender_to_onehot(sample['gender'])
         bmi = soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
@@ -51,17 +53,16 @@ class T1Dataset(Dataset):
         return t1_img
 
 
-def age_mapping_function(conditional_dim, latent_dim, age_range, invariant):
+def age_mapping_function(age_dim, latent_dim, age_range):
     num_bins = age_range[1] - age_range[0]
-    if 1 < conditional_dim != num_bins:
-        raise ValueError('conditional_dim does not match the bins/classes for the age range')
+    if 1 < age_dim != num_bins:
+        raise ValueError('age_dim does not match the bins/classes for the age range')
     age_mapping = age_to_tensor
-    if invariant:
-        if conditional_dim == 0:
-            encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
-            age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
-        elif conditional_dim > 1:
-            age_mapping = partial(soft_label, lower=age_range[0], upper=age_range[1])
+    if age_dim == 0:
+        encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
+        age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
+    elif age_dim > 1:
+        age_mapping = partial(soft_label, lower=age_range[0], upper=age_range[1])
     return age_mapping
 
 

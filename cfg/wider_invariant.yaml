@@ -82,7 +82,7 @@ layers:
   batch_norm: yes
   activation: 'relu'
 
-conditional_dim: 1
+age_dim: 1
 invariant: yes
 lr: 0.0004
 min_lr: 0.0004
