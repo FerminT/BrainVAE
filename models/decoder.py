@@ -9,12 +9,14 @@ class Decoder(nn.Module):
                  input_shape,
                  latent_dim,
                  blocks,
-                 age_dim=0):
+                 age_dim=0,
+                 conditional=False):
         super(Decoder, self).__init__()
         self.input_shape = list(input_shape)
         self.age_dim = age_dim
 
-        self.fc_input = nn.Linear(latent_dim + age_dim, np.prod(input_shape))
+        input_dim = latent_dim + age_dim if conditional else latent_dim
+        self.fc_input = nn.Linear(input_dim, np.prod(input_shape))
         self.tconv_blocks = build_modules(blocks)
 
     def forward(self, x, condition):

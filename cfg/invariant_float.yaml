@@ -64,6 +64,7 @@ layers:
 
 age_dim: 1
 bmi_dim: 46
+predict_age: no
 invariant: yes
 lr: 0.0004
 min_lr: 0.00004
@@ -76,3 +77,4 @@ losses_weights:
   marginal: 0.001
   gender: 1.0
   bmi: 1.0
+  age: 0.0

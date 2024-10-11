@@ -62,9 +62,9 @@ layers:
   batch_norm: yes
   activation: 'relu'
 
-age_dim: 0
+age_dim: 70
 bmi_dim: 46
-predict_age: no
+predict_age: yes
 invariant: no
 lr: 0.0004
 min_lr: 0.00004
@@ -77,4 +77,4 @@ losses_weights:
   marginal: 0.0
   gender: 1.0
   bmi: 1.0
-  age: 0.0
+  age: 1.0
