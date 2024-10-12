@@ -3,7 +3,7 @@
 
 import lightning as lg
 from models.utils import init_optimizer
-from torch import nn, optim
+from torch import nn, optim, exp
 
 
 class EmbeddingClassifier(lg.LightningModule):
@@ -16,13 +16,13 @@ class EmbeddingClassifier(lg.LightningModule):
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
-                 data_type='continuous'):
+                 bin_centers=None):
         super(EmbeddingClassifier, self).__init__()
         self.save_hyperparameters()
-        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims, data_type)
-        self.lr, self.optimizer = lr, optimizer
-        self.data_type = data_type
+        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
+        self.lr, self.optimizer, self.output_dim = lr, optimizer, output_dim
         self.momentum, self.weight_decay = momentum, weight_decay
+        self.bin_centers = bin_centers
 
     def forward(self, z):
         return self.fc_layers(z)
@@ -41,26 +41,31 @@ class EmbeddingClassifier(lg.LightningModule):
         return self._step(batch, 'val')
 
     def _step(self, batch, mode):
-        z, target = batch
-        prediction = self(z)
-        if self.data_type == 'categorical':
-            loss = nn.functional.binary_cross_entropy(prediction, target)
+        z, targets = batch
+        predictions = self(z)
+        if self.output_dim == 2:
+            loss = nn.functional.binary_cross_entropy(predictions, targets)
             self.log(f'{mode}_bce', loss.item(), sync_dist=True)
-            self.log(f'{mode}_accuracy', ((prediction > 0.5) == target).float().mean().item(), sync_dist=True)
+            self.log(f'{mode}_accuracy', ((predictions > 0.5) == targets).float().mean().item(), sync_dist=True)
         else:
-            loss = nn.functional.l1_loss(prediction, target)
-            self.log(f'{mode}_mae', loss.item(), sync_dist=True)
-            self.log(f'{mode}_prediction', prediction.mean().item(), sync_dist=True)
+            loss = nn.functional.kl_div(predictions, targets, reduction='batchmean')
+            predicted_values = exp(predictions.detach()) @ self.bin_centers
+            target_values = targets @ self.bin_centers
+            self.log(f'{mode}_mae', abs(predicted_values - target_values).mean(), sync_dist=True)
+            self.log(f'{mode}_prediction', predicted_values.mean().item(), sync_dist=True)
         return loss
 
 
-def create_fc_layers(input_dim, output_dim, hidden_dims, data_type):
+def create_fc_layers(input_dim, output_dim, hidden_dims):
     layers = list()
     dims = [input_dim] + list(hidden_dims) + [output_dim]
     for i in range(len(dims) - 1):
         layers.append(nn.Linear(dims[i], dims[i + 1]))
         if i < len(dims) - 2:
             layers.append(nn.ReLU())
-        if data_type == 'categorical' and i == len(dims) - 2:
-            layers.append(nn.Sigmoid())
+        if i == len(dims) - 2:
+            if output_dim == 2:
+                layers.append(nn.Sigmoid())
+            else:
+                layers.append(nn.LogSoftmax(dim=1))
     return nn.Sequential(*layers)
