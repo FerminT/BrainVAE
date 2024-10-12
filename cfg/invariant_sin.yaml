@@ -1,5 +1,5 @@
 input_shape: [160, 192, 160]
-latent_dim: 354
+latent_dim: 250
 layers:
  conv1:
   channels: 32
@@ -76,5 +76,5 @@ losses_weights:
   prior: 0.00001
   marginal: 0.001
   gender: 1.0
-  bmi: 1.0
+  bmi: 100.0
   age: 0.0

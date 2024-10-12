@@ -76,5 +76,5 @@ losses_weights:
   prior: 0.00001
   marginal: 0.0
   gender: 1.0
-  bmi: 1.0
-  age: 1.0
+  bmi: 100.0
+  age: 100.0
