@@ -48,6 +48,7 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
         output_dim = 1
         data_range = [0, 1]
     bin_centers = data_range[0] + 1.0 / 2 + 1.0 * arange(data_range[1] - data_range[0])
+    binary_classification = output_dim == 1
     train_dataset = EmbeddingDataset(train, target=label, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=label, transform_fn=transform_fn)
     rnd_gen = random.default_rng(42)
@@ -58,7 +59,7 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
                                       batch_size, epochs, device, no_sync, seed)
         results = test_classifier(classifier, val_dataset, output_dim, bin_centers, device, seed)
         all_results.append(results)
-    column_names = ['Accuracy', 'Precision', 'Recall'] if output_dim == 1 else ['MAE', 'Corr', 'p_value']
+    column_names = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
     results_df = DataFrame(all_results, columns=column_names)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['Std'] = results_df.std(axis=0)
@@ -82,7 +83,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     return classifier
 
 
-def test_classifier(model, val_dataset, output_dim, bin_centers, device, seed):
+def test_classifier(model, val_dataset, binary_classification, bin_centers, device, seed):
     seed_everything(seed, workers=True)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     model.eval().to(device)
@@ -91,11 +92,11 @@ def test_classifier(model, val_dataset, output_dim, bin_centers, device, seed):
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
         prediction = model(z)
-        prediction = (prediction.item() > 0.5) if output_dim == 2 else (torch.exp(prediction.detach()) @ bin_centers).item()
+        prediction = (prediction.item() > 0.5) if binary_classification else (torch.exp(prediction.detach()) @ bin_centers).item()
         predictions.append(prediction)
-        label = target.item() if output_dim == 2 else (target @ bin_centers).item()
+        label = target.item() if binary_classification else (target @ bin_centers).item()
         labels.append(label)
-    if output_dim == 2:
+    if binary_classification:
         acc = accuracy_score(labels, predictions)
         precision, recall = precision_score(labels, predictions), recall_score(labels, predictions)
         return acc, precision, recall
