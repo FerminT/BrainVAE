@@ -33,7 +33,8 @@ class ICVAE(lg.LightningModule):
         self.encoder = Encoder(input_shape, latent_dim, layers)
         self.gender = nn.Sequential(nn.Linear(latent_dim, 1), nn.Sigmoid())
         self.bmi = nn.Sequential(nn.Linear(latent_dim, bmi_dim), nn.LogSoftmax(dim=1))
-        self.age = nn.Sequential(nn.Linear(latent_dim, age_dim), nn.LogSoftmax(dim=1))
+        if predict_age:
+            self.age = nn.Sequential(nn.Linear(latent_dim, age_dim), nn.LogSoftmax(dim=1))
         features_shape = self.encoder.final_shape
         reversed_layers = dict(reversed(layers.items()))
         self.decoder = Decoder(features_shape, latent_dim, reversed_layers, age_dim, invariant)
@@ -41,7 +42,8 @@ class ICVAE(lg.LightningModule):
     def forward(self, x_transformed, condition):
         mu, logvar = self.encoder(x_transformed)
         z = reparameterize(mu, logvar)
-        gender, bmi, age = self.gender(z), self.bmi(z), self.age(z)
+        gender, bmi = self.gender(z), self.bmi(z)
+        age = self.age(z) if self.predict_age else tensor(0.0)
         x_reconstructed = self.decoder(z, condition)
         return x_reconstructed, mu, logvar, gender, bmi, age
 
