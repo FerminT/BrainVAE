@@ -93,8 +93,7 @@ class ICVAE(lg.LightningModule):
         state = {f'{mode}_recon_loss': recon_loss,
                  f'{mode}_prior_loss': prior_loss,
                  f'{mode}_gender_loss': gender_loss,
-                 f'{mode}_bmi_loss': bmi_loss,
-                 f'{mode}_age_loss': age_loss}
+                 f'{mode}_bmi_loss': bmi_loss}
         if self.predict_age:
             state[f'{mode}_age_loss'] = age_loss
         if self.invariant:
