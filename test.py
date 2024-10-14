@@ -57,7 +57,7 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
     for seed in random_seeds:
         classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, bin_centers,
                                       batch_size, epochs, device, no_sync, seed)
-        results = test_classifier(classifier, val_dataset, output_dim, bin_centers, device, seed)
+        results = test_classifier(classifier, val_dataset, binary_classification, bin_centers, device, seed)
         all_results.append(results)
     column_names = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
     results_df = DataFrame(all_results, columns=column_names)
