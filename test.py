@@ -45,7 +45,7 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
         data_range = bmi_range
     else:
         transform_fn = gender_to_onehot
-        output_dim = 2
+        output_dim = 1
         data_range = [0, 1]
     bin_centers = data_range[0] + 1.0 / 2 + 1.0 * arange(data_range[1] - data_range[0])
     train_dataset = EmbeddingDataset(train, target=label, transform_fn=transform_fn)
