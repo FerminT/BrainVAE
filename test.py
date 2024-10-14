@@ -58,7 +58,7 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
                                       batch_size, epochs, device, no_sync, seed)
         results = test_classifier(classifier, val_dataset, output_dim, bin_centers, device, seed)
         all_results.append(results)
-    column_names = ['Accuracy', 'Precision', 'Recall'] if output_dim == 2 else ['MAE', 'Corr', 'p_value']
+    column_names = ['Accuracy', 'Precision', 'Recall'] if output_dim == 1 else ['MAE', 'Corr', 'p_value']
     results_df = DataFrame(all_results, columns=column_names)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['Std'] = results_df.std(axis=0)
