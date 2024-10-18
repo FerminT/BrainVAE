@@ -90,13 +90,13 @@ class ICVAE(lg.LightningModule):
                                     gender_loss.item(), bmi_loss.item(), age_loss.item())
 
     def _log_dict(self, mode, recon_loss, prior_loss, marginal_loss, gender_loss, bmi_loss, age_loss):
-        state = {f'{mode}_recon_loss': recon_loss,
-                 f'{mode}_prior_loss': prior_loss,
-                 f'{mode}_gender_loss': gender_loss,
-                 f'{mode}_bmi_loss': bmi_loss}
+        state = {f'{mode}/recon_loss': recon_loss,
+                 f'{mode}/prior_loss': prior_loss,
+                 f'{mode}/gender_loss': gender_loss,
+                 f'{mode}/bmi_loss': bmi_loss}
         if self.predict_age:
-            state[f'{mode}_age_loss'] = age_loss
+            state[f'{mode}/age_loss'] = age_loss
         if self.invariant:
-            state[f'{mode}_marginal_loss'] = marginal_loss
-        state[f'{mode}_loss'] = recon_loss + prior_loss + marginal_loss + gender_loss + bmi_loss + age_loss
+            state[f'{mode}/marginal_loss'] = marginal_loss
+        state[f'{mode}/loss'] = recon_loss + prior_loss + marginal_loss + gender_loss + bmi_loss + age_loss
         return state
