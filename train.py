@@ -20,8 +20,8 @@ def train(config, train_data, val_data, batch_size, epochs, precision, log_inter
     model = ICVAE(**config)
     run_name = f'{save_path.parent.name}_{save_path.name}'
     wandb_logger = WandbLogger(name=run_name, version=run_name, project='BrainVAE', offline=no_sync)
-    checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_recon_loss:.3f}',
-                                 monitor='val_recon_loss', mode='min', save_top_k=5, save_last=True)
+    checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}', every_n_epochs=epochs // 5, save_top_k=-1,
+                                 save_last=True)
     lr_monitor = LearningRateMonitor(logging_interval='step')
     reconstruction = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
