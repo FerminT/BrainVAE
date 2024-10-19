@@ -33,7 +33,7 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
     train = upsample_datasets(train, n_upsampled=180)
     train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
     val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
-    if target_dataset != 'all':
+    if target_dataset != 'general' and target_dataset != 'diseased':
         val = val[val['dataset'] == target_dataset]
     if label == 'age_at_scan':
         transform_fn = partial(soft_label, lower=age_range[0], upper=age_range[1])
@@ -159,42 +159,29 @@ def plot_embeddings(subjects_df, method, label, save_path, annotate_ids=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('weights', type=str,
-                        help='checkpoint file')
-    parser.add_argument('--dataset', type=str, default='all',
-                        help='dataset name')
-    parser.add_argument('--splits_path', type=str, default='splits',
-                        help='path to the data splits')
-    parser.add_argument('--target', type=str, default='all',
-                        help='target dataset for predicting features')
-    parser.add_argument('--cfg', type=str, default='default',
-                        help='config file used for the trained model')
-    parser.add_argument('--device', type=str, default='cpu',
-                        help='device used for training and evaluation')
-    parser.add_argument('--batch_size', type=int, default=8,
-                        help='batch size used for training the age classifier')
-    parser.add_argument('--epochs', type=int, default=10,
-                        help='number of epochs used for training the age classifier')
+    parser.add_argument('weights', type=str, help='checkpoint file')
+    parser.add_argument('--dataset', type=str, default='general', help='dataset name')
+    parser.add_argument('--splits_path', type=str, default='splits', help='path to the data splits')
+    parser.add_argument('--target', type=str, default='general', help='target dataset for predicting features')
+    parser.add_argument('--cfg', type=str, default='default', help='config file used for the trained model')
+    parser.add_argument('--device', type=str, default='cpu', help='device used for training and evaluation')
+    parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
+    parser.add_argument('--epochs', type=int, default=10, help='number of epochs used for training the age classifier')
     parser.add_argument('--n_iters', type=int, default=10,
                         help='number of iterations (with different seeds) to evaluate the age classifier')
-    parser.add_argument('--sample', type=int, default=0,
-                        help='subject id from which to reconstruct MRI data')
-    parser.add_argument('--age', type=float, default=0.0,
-                        help='age of the subject to resample to, if using ICVAE')
+    parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
+    parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--manifold', type=str, default=None,
                         help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
     parser.add_argument('--label', type=str, default='age_at_scan',
                         help='label used for prediction and plotting latent representations (age; gender; bmi)'),
-    parser.add_argument('--set', type=str, default='val',
-                        help='set to evaluate (val or test)')
+    parser.add_argument('--set', type=str, default='val', help='set to evaluate (val or test)')
     parser.add_argument('--ukbb_size', type=float, default=0.15,
                         help='size of the validation split constructed from the ukbb set to evaluate')
     parser.add_argument('--val_size', type=float, default=0.3,
                         help='size of the validation split constructed from the set to evaluate')
-    parser.add_argument('--random_state', type=int, default=42,
-                        help='random state for reproducibility')
-    parser.add_argument('--sync', action='store_false',
-                        help='sync to wandb')
+    parser.add_argument('--random_state', type=int, default=42, help='random state for reproducibility')
+    parser.add_argument('--sync', action='store_false', help='sync to wandb')
     args = parser.parse_args()
 
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
@@ -203,8 +190,8 @@ if __name__ == '__main__':
     save_path.mkdir(parents=True, exist_ok=True)
 
     datapath = Path(DATA_PATH)
-    embeddings_df = subjects_embeddings(weights_path, config['input_shape'], config['latent_dim'], args.set,
-                                        datapath, args.splits_path, args.random_state, save_path)
+    embeddings_df = subjects_embeddings(weights_path, args.dataset, config['input_shape'], config['latent_dim'],
+                                        args.set, datapath, args.splits_path, args.random_state, save_path)
     data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.ukbb_size, args.val_size, config['latent_dim'],
