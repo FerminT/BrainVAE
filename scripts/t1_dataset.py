@@ -1,7 +1,7 @@
 from functools import partial
 import nibabel as nib
 import numpy as np
-from torch import from_numpy, tensor, randn
+from torch import from_numpy, tensor, randn, float32
 from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
 from torchio import Compose, RandomSwap
@@ -72,16 +72,17 @@ def soft_label(age, lower, upper, bin_step=1, bin_sigma=1):
     return from_numpy(num2vect(age, [lower, upper], bin_step, bin_sigma)[0])
 
 
-def age_to_onehot(age, lower, num_classes):
-    return one_hot(tensor(round(age) - lower), num_classes)
-
-
 def age_to_tensor(age):
     return tensor(float(age)).unsqueeze(dim=0)
 
 
 def transform(t1_img):
     return Compose([RandomSwap(p=0.5)])(t1_img)
+
+
+def label_to_onehot(label, labels):
+    label_id = one_hot(tensor(labels.index(label)), len(labels))[0]
+    return label_id.to(float32).unsqueeze(dim=0)
 
 
 def gender_to_onehot(gender):

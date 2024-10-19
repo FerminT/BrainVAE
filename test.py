@@ -2,7 +2,7 @@ from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import get_loader, load_set, upsample_datasets, get_datapath
 from scripts.embedding_dataset import EmbeddingDataset
-from scripts.t1_dataset import T1Dataset, soft_label, gender_to_onehot, transform
+from scripts.t1_dataset import T1Dataset, soft_label, label_to_onehot, transform
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
@@ -23,16 +23,19 @@ import wandb
 import argparse
 
 
-def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim, age_range, bmi_range, label,
+def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range, label,
                             target_dataset, batch_size, epochs, n_iters, no_sync, device):
     embeddings_df = embeddings_df[~embeddings_df[label].isna()]
-    train, val = train_test_split(embeddings_df[embeddings_df['dataset'] != 'ukbb'], test_size=val_size,
-                                  random_state=42)
-    train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
-                                            random_state=42)
-    train = upsample_datasets(train, n_upsampled=180)
-    train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
-    val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
+    if dataset == 'general':
+        train, val = train_test_split(embeddings_df[embeddings_df['dataset'] != 'ukbb'], test_size=val_size,
+                                      random_state=42)
+        train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
+                                                random_state=42)
+        train = upsample_datasets(train, n_upsampled=180)
+        train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
+        val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
+    else:
+        train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
     if target_dataset != 'general' and target_dataset != 'diseased':
         val = val[val['dataset'] == target_dataset]
     if label == 'age_at_scan':
@@ -44,7 +47,8 @@ def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim,
         output_dim = bmi_range[1] - bmi_range[0]
         data_range = bmi_range
     else:
-        transform_fn = gender_to_onehot
+        labels = list(embeddings_df[label].unique())
+        transform_fn = partial(label_to_onehot, labels=labels)
         output_dim = 1
         data_range = [0, 1]
     bin_centers = data_range[0] + 1.0 / 2 + 1.0 * arange(data_range[1] - data_range[0])
@@ -194,8 +198,8 @@ if __name__ == '__main__':
                                         args.set, datapath, args.splits_path, args.random_state, save_path)
     data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
     if args.sample == 0 and not args.manifold:
-        predict_from_embeddings(embeddings_df, args.cfg, args.ukbb_size, args.val_size, config['latent_dim'],
-                                age_range, bmi_range, args.label, args.target, args.batch_size,
+        predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
+                                config['latent_dim'], age_range, bmi_range, args.label, args.target, args.batch_size,
                                 args.epochs, args.n_iters, args.sync, args.device)
     else:
         if args.sample > 0:
