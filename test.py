@@ -1,6 +1,6 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import get_loader, load_set, upsample_datasets
+from scripts.data_handler import get_loader, load_set, upsample_datasets, get_datapath
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.t1_dataset import T1Dataset, soft_label, gender_to_onehot, transform
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
@@ -160,7 +160,7 @@ def plot_embeddings(subjects_df, method, label, save_path, annotate_ids=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('weights', type=str, help='checkpoint file')
-    parser.add_argument('--dataset', type=str, default='general', help='dataset name')
+    parser.add_argument('--dataset', type=str, default='general', help='dataset path')
     parser.add_argument('--splits_path', type=str, default='splits', help='path to the data splits')
     parser.add_argument('--target', type=str, default='general', help='target dataset for predicting features')
     parser.add_argument('--cfg', type=str, default='default', help='config file used for the trained model')
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
     save_path.mkdir(parents=True, exist_ok=True)
 
-    datapath = Path(DATA_PATH)
+    datapath = get_datapath(args.dataset)
     embeddings_df = subjects_embeddings(weights_path, args.dataset, config['input_shape'], config['latent_dim'],
                                         args.set, datapath, args.splits_path, args.random_state, save_path)
     data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)

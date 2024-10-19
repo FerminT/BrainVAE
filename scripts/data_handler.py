@@ -44,8 +44,8 @@ def combine_datasets(datasets, sample_size, val_size, test_size, splits_path, re
 
 def load_datasets(dataset, input_shape, latent_dim, age_dim, sample_size,
                   val_size, test_size, splits_path, redo_splits, shuffle, random_state):
+    datapath = get_datapath(dataset)
     datasets = get_datasets(dataset)
-    datapath = Path(constants.DATA_PATH)
     train, val, test, age_range, bmi_range = combine_datasets(datasets, sample_size, val_size, test_size, splits_path,
                                                               redo_splits, shuffle, random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, age_dim, age_range, bmi_range, testing=False)
@@ -96,12 +96,24 @@ def get_splits_files(datapath, splits_path):
 
 def get_datasets(dataset):
     datapath = Path(constants.DATA_PATH)
-    dataset_path = Path(dataset)
-    if len(dataset_path.parts) == 1:
-        datasets = [d for d in (datapath / dataset_path).iterdir() if d.is_dir()]
+    if is_single_dataset(dataset):
+        datasets = [d for d in (datapath / dataset).iterdir() if d.is_dir()]
     else:
-        datasets = [datapath / dataset_path]
+        datasets = [datapath / dataset]
     return datasets
+
+
+def get_datapath(dataset):
+    datapath = Path(constants.DATA_PATH)
+    if not is_single_dataset(dataset):
+        datapath = datapath / dataset
+    else:
+        datapath = datapath / Path(dataset).parent
+    return datapath
+
+
+def is_single_dataset(dataset):
+    return len(Path(dataset).parts) == 1
 
 
 def load_set(dataset, split, splits_path, random_state):
