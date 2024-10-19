@@ -60,7 +60,7 @@ def subjects_embeddings(weights_path, dataset_name, input_shape, latent_dim, spl
     dataset = T1Dataset(input_shape, datapath, data, latent_dim, age_dim=0, age_range=age_range, bmi_range=bmi_range,
                         testing=True)
     device_ = device('cuda' if cuda.is_available() else 'cpu')
-    filename = save_path / f'subjects_embeddings_{dataset_name}.pkl'
+    filename = save_path / f'subjects_embeddings.pkl'
     if filename.exists():
         return pd.read_pickle(filename)
     model = load_model(weights_path, device_)
