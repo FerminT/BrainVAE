@@ -164,7 +164,9 @@ def plot_embeddings(subjects_df, method, label, save_path, annotate_ids=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('weights', type=str, help='checkpoint file')
-    parser.add_argument('--dataset', type=str, default='general', help='dataset path')
+    parser.add_argument('--ckpt_dataset', type=str, default='general',
+                        help='dataset on which the checkpoint file was trained')
+    parser.add_argument('--dataset', type=str, default='general', help='dataset on which to train the predictor')
     parser.add_argument('--splits_path', type=str, default='splits', help='path to the data splits')
     parser.add_argument('--target', type=str, default='general', help='target dataset for predicting features')
     parser.add_argument('--cfg', type=str, default='default', help='config file used for the trained model')
@@ -189,7 +191,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
-    weights_path = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
+    weights_path = Path(CHECKPOINT_PATH, args.ckpt_dataset, args.cfg, args.weights)
     save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
     save_path.mkdir(parents=True, exist_ok=True)
 
