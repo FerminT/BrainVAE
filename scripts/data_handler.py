@@ -96,7 +96,7 @@ def get_splits_files(datapath, splits_path):
 
 def get_datasets(dataset):
     datapath = Path(constants.DATA_PATH)
-    if is_single_dataset(dataset):
+    if not is_single_dataset(dataset):
         datasets = [d for d in (datapath / dataset).iterdir() if d.is_dir()]
     else:
         datasets = [datapath / dataset]
