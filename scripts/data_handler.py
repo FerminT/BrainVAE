@@ -113,7 +113,7 @@ def get_datapath(dataset):
 
 
 def is_single_dataset(dataset):
-    return len(Path(dataset).parts) == 1
+    return len(Path(dataset).parts) > 1
 
 
 def load_set(dataset, split, splits_path, random_state):
