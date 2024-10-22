@@ -20,8 +20,8 @@ def train(config, train_data, val_data, batch_size, epochs, precision, log_inter
     model = ICVAE(**config)
     run_name = f'{save_path.parent.name}_{save_path.name}'
     wandb_logger = WandbLogger(name=run_name, version=run_name, project='BrainVAE', offline=no_sync)
-    checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}-{val_recon_loss:.3f}',
-                                 monitor='val_recon_loss', mode='min', save_top_k=5, save_last=True)
+    checkpoint = ModelCheckpoint(dirpath=save_path, filename='{epoch:03d}', every_n_epochs=epochs // 5, save_top_k=-1,
+                                 save_last=True)
     lr_monitor = LearningRateMonitor(logging_interval='step')
     reconstruction = LogReconstructionsCallback(sample_size=8)
     trainer = Trainer(max_epochs=epochs,
@@ -39,7 +39,7 @@ def train(config, train_data, val_data, batch_size, epochs, precision, log_inter
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='all', help='dataset name')
+    parser.add_argument('--dataset', type=str, default='general', help='dataset name')
     parser.add_argument('--cfg', type=str, default='default', help='config file')
     parser.add_argument('--batch_size', type=int, default=16, help='batch size')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
@@ -60,9 +60,8 @@ if __name__ == '__main__':
     if args.device == 'gpu' and not is_available():
         raise ValueError('gpu is not available')
     train_data, val_data, test_data = load_datasets(args.dataset, config['input_shape'], config['latent_dim'],
-                                                    config['conditional_dim'], config['invariant'], args.sample_size,
-                                                    args.val_size, args.test_size, args.splits_path, args.redo_splits,
-                                                    shuffle=True, random_state=42)
+                                                    config['age_dim'], args.sample_size, args.val_size, args.test_size,
+                                                    args.splits_path, args.redo_splits, shuffle=True, random_state=42)
     save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg)
     run_name = f'e{args.epochs}'
     if args.run_name:

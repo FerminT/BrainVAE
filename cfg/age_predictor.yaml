@@ -1,5 +1,5 @@
-input_shape: [176, 208, 176]
-latent_dim: 354
+input_shape: [160, 192, 160]
+latent_dim: 250
 layers:
  conv1:
   channels: 32
@@ -32,10 +32,10 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv4:
-  channels: 128
+  channels: 256
   kernel_size: 3
-  stride: 1
-  padding: 0
+  stride: 2
+  padding: 1
   pool_size: 0
   pool_stride: 0
   bias: yes
@@ -52,28 +52,8 @@ layers:
   batch_norm: yes
   activation: 'relu'
  conv6:
-  channels: 256
-  kernel_size: 3
-  stride: 1
-  padding: 0
-  pool_size: 0
-  pool_stride: 0
-  bias: yes
-  batch_norm: yes
-  activation: 'relu'
- conv7:
-  channels: 512
-  kernel_size: 3
-  stride: 2
-  padding: 1
-  pool_size: 0
-  pool_stride: 0
-  bias: yes
-  batch_norm: yes
-  activation: 'relu'
- conv8:
-  channels: 512
-  kernel_size: 3
+  channels: 64
+  kernel_size: 1
   stride: 1
   padding: 0
   pool_size: 0
@@ -82,10 +62,12 @@ layers:
   batch_norm: yes
   activation: 'relu'
 
-age_dim: 0
+age_dim: 70
+bmi_dim: 46
+predict_age: yes
 invariant: no
 lr: 0.0004
-min_lr: 0.0004
+min_lr: 0.00004
 optimizer: 'AdamW'
 momentum: 0.9
 weight_decay: 0.01
@@ -93,3 +75,6 @@ losses_weights:
   reconstruction: 1.0
   prior: 0.00001
   marginal: 0.0
+  gender: 1.0
+  bmi: 100.0
+  age: 100.0

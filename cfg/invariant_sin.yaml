@@ -1,5 +1,5 @@
 input_shape: [160, 192, 160]
-latent_dim: 354
+latent_dim: 250
 layers:
  conv1:
   channels: 32
@@ -62,7 +62,9 @@ layers:
   batch_norm: yes
   activation: 'relu'
 
-conditional_dim: 0
+age_dim: 0
+bmi_dim: 46
+predict_age: no
 invariant: yes
 lr: 0.0004
 min_lr: 0.00004
@@ -73,3 +75,6 @@ losses_weights:
   reconstruction: 3.0
   prior: 0.00001
   marginal: 0.001
+  gender: 1.0
+  bmi: 100.0
+  age: 0.0

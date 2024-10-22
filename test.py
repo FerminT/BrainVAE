@@ -1,8 +1,8 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import get_loader, gender_to_onehot, load_set, upsample_datasets
+from scripts.data_handler import get_loader, load_set, upsample_datasets, get_datapath
 from scripts.embedding_dataset import EmbeddingDataset
-from scripts.t1_dataset import T1Dataset, age_to_tensor
+from scripts.t1_dataset import T1Dataset, soft_label, label_to_onehot, transform
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
@@ -12,7 +12,8 @@ from models.embedding_classifier import EmbeddingClassifier
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
-from numpy import array, random
+from functools import partial
+from numpy import array, random, arange
 from pandas import concat, cut, DataFrame
 from seaborn import scatterplot, kdeplot
 from PIL import ImageDraw, ImageFont
@@ -22,41 +23,58 @@ import wandb
 import argparse
 
 
-def predict_from_embeddings(embeddings_df, cfg, ukbb_size, val_size, latent_dim, label, target_dataset, data_type,
-                            batch_size, epochs, n_iters, no_sync, device):
+def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range, label,
+                            target_dataset, batch_size, epochs, n_iters, no_sync, device):
     embeddings_df = embeddings_df[~embeddings_df[label].isna()]
-    train, val = train_test_split(embeddings_df[embeddings_df['dataset'] != 'ukbb'], test_size=val_size,
-                                  random_state=42)
-    train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
-                                            random_state=42)
-    train = upsample_datasets(train, n_upsampled=180)
-    train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
-    val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
-    if target_dataset != 'all':
+    if dataset == 'general':
+        train, val = train_test_split(embeddings_df[embeddings_df['dataset'] != 'ukbb'], test_size=val_size,
+                                      random_state=42)
+        train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
+                                                random_state=42)
+        train = upsample_datasets(train, n_upsampled=180)
+        train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
+        val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
+    else:
+        train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
+    if target_dataset != 'general' and target_dataset != 'diseased':
         val = val[val['dataset'] == target_dataset]
-    transform_fn = age_to_tensor if data_type == 'continuous' else gender_to_onehot
+    if label == 'age_at_scan':
+        transform_fn = partial(soft_label, lower=age_range[0], upper=age_range[1])
+        output_dim = age_range[1] - age_range[0]
+        data_range = age_range
+    elif label == 'bmi':
+        transform_fn = partial(soft_label, lower=bmi_range[0], upper=bmi_range[1])
+        output_dim = bmi_range[1] - bmi_range[0]
+        data_range = bmi_range
+    else:
+        labels = list(embeddings_df[label].unique())
+        transform_fn = partial(label_to_onehot, labels=labels)
+        output_dim = 1
+        data_range = [0, 1]
+    bin_centers = data_range[0] + 1.0 / 2 + 1.0 * arange(data_range[1] - data_range[0])
+    binary_classification = output_dim == 1
     train_dataset = EmbeddingDataset(train, target=label, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=label, transform_fn=transform_fn)
     rnd_gen = random.default_rng(42)
     random_seeds = [rnd_gen.integers(1, 100) for _ in range(n_iters)]
     all_results = []
     for seed in random_seeds:
-        classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, data_type, batch_size, epochs,
-                                      device, no_sync, seed)
-        results = test_classifier(classifier, val_dataset, data_type, device, seed)
+        classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, bin_centers,
+                                      batch_size, epochs, device, no_sync, seed)
+        results = test_classifier(classifier, val_dataset, binary_classification, bin_centers, device, seed)
         all_results.append(results)
-    column_names = ['Accuracy', 'Precision', 'Recall'] if data_type == 'categorical' else ['MAE', 'Corr', 'p_value']
+    column_names = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
     results_df = DataFrame(all_results, columns=column_names)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['Std'] = results_df.std(axis=0)
     print(mean_df)
 
 
-def train_classifier(train_data, val_data, config_name, latent_dim, data_type, batch_size, epochs, device,
-                     no_sync, seed):
+def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, bin_centers, batch_size, epochs,
+                     device, no_sync, seed):
     seed_everything(seed, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
-    classifier = EmbeddingClassifier(input_dim=latent_dim, data_type=data_type)
+    classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, bin_centers=bin_centers)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
@@ -69,7 +87,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, data_type, b
     return classifier
 
 
-def test_classifier(model, val_dataset, data_type, device, seed):
+def test_classifier(model, val_dataset, binary_classification, bin_centers, device, seed):
     seed_everything(seed, workers=True)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     model.eval().to(device)
@@ -77,11 +95,12 @@ def test_classifier(model, val_dataset, data_type, device, seed):
     for idx in tqdm(range(len(val_dataset))):
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
-        prediction = model(z).item()
-        prediction = (prediction > 0.5) if data_type == 'categorical' else prediction
+        prediction = model(z)
+        prediction = (prediction.item() > 0.5) if binary_classification else (torch.exp(prediction.detach()) @ bin_centers).item()
         predictions.append(prediction)
-        labels.append(target.item())
-    if data_type == 'categorical':
+        label = target.item() if binary_classification else (target @ bin_centers).item()
+        labels.append(label)
+    if binary_classification:
         acc = accuracy_score(labels, predictions)
         precision, recall = precision_score(labels, predictions), recall_score(labels, predictions)
         return acc, precision, recall
@@ -116,12 +135,12 @@ def sample(model, dataset, age, subject_id, device, save_path):
     print(f'Reconstructed MRI saved at {save_path / comparison_img_name}')
 
 
-def plot_embeddings(subjects_df, method, label, data_type, save_path, annotate_ids=False):
+def plot_embeddings(subjects_df, method, label, save_path, annotate_ids=False):
     if label not in subjects_df:
         raise ValueError(f'{label} not found in the dataframe')
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
-    if data_type == 'continuous':
+    if label != 'gender':
         subjects_df[label] = cut(subjects_df[label], bins=3)
         # remove middle category
         subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
@@ -144,67 +163,55 @@ def plot_embeddings(subjects_df, method, label, data_type, save_path, annotate_i
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('weights', type=str,
-                        help='checkpoint file')
-    parser.add_argument('--dataset', type=str, default='all',
-                        help='dataset name')
-    parser.add_argument('--splits_path', type=str, default='splits',
-                        help='path to the data splits')
-    parser.add_argument('--target', type=str, default='all',
-                        help='target dataset for predicting features')
-    parser.add_argument('--cfg', type=str, default='default',
-                        help='config file used for the trained model')
-    parser.add_argument('--device', type=str, default='cpu',
-                        help='device used for training and evaluation')
-    parser.add_argument('--batch_size', type=int, default=8,
-                        help='batch size used for training the age classifier')
-    parser.add_argument('--epochs', type=int, default=10,
-                        help='number of epochs used for training the age classifier')
+    parser.add_argument('weights', type=str, help='checkpoint file')
+    parser.add_argument('--ckpt_dataset', type=str, default='general',
+                        help='dataset on which the checkpoint file was trained')
+    parser.add_argument('--dataset', type=str, default='general', help='dataset on which to train the predictor')
+    parser.add_argument('--splits_path', type=str, default='splits', help='path to the data splits')
+    parser.add_argument('--target', type=str, default='general', help='target dataset for predicting features')
+    parser.add_argument('--cfg', type=str, default='default', help='config file used for the trained model')
+    parser.add_argument('--device', type=str, default='cpu', help='device used for training and evaluation')
+    parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
+    parser.add_argument('--epochs', type=int, default=10, help='number of epochs used for training the age classifier')
     parser.add_argument('--n_iters', type=int, default=10,
                         help='number of iterations (with different seeds) to evaluate the age classifier')
-    parser.add_argument('--sample', type=int, default=0,
-                        help='subject id from which to reconstruct MRI data')
-    parser.add_argument('--age', type=float, default=0.0,
-                        help='age of the subject to resample to, if using ICVAE')
+    parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
+    parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--manifold', type=str, default=None,
                         help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
     parser.add_argument('--label', type=str, default='age_at_scan',
                         help='label used for prediction and plotting latent representations (age; gender; bmi)'),
-    parser.add_argument('--data_type', type=str, default='continuous',
-                        help='data type: either continuous or categorical')
-    parser.add_argument('--set', type=str, default='val',
-                        help='set to evaluate (val or test)')
+    parser.add_argument('--set', type=str, default='val', help='set to evaluate (val or test)')
     parser.add_argument('--ukbb_size', type=float, default=0.15,
                         help='size of the validation split constructed from the ukbb set to evaluate')
     parser.add_argument('--val_size', type=float, default=0.3,
                         help='size of the validation split constructed from the set to evaluate')
-    parser.add_argument('--random_state', type=int, default=42,
-                        help='random state for reproducibility')
-    parser.add_argument('--sync', action='store_false',
-                        help='sync to wandb')
+    parser.add_argument('--random_state', type=int, default=42, help='random state for reproducibility')
+    parser.add_argument('--sync', action='store_false', help='sync to wandb')
     args = parser.parse_args()
 
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
-    weights_path = Path(CHECKPOINT_PATH, args.dataset, args.cfg, args.weights)
+    weights_path = Path(CHECKPOINT_PATH, args.ckpt_dataset, args.cfg, args.weights)
     save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
     save_path.mkdir(parents=True, exist_ok=True)
 
-    datapath = Path(DATA_PATH)
-    embeddings_df = subjects_embeddings(weights_path, config['input_shape'], config['latent_dim'], args.set,
-                                        datapath, args.splits_path, args.random_state, save_path)
+    datapath = get_datapath(args.dataset)
+    embeddings_df = subjects_embeddings(weights_path, args.dataset, config['input_shape'], config['latent_dim'],
+                                        args.set, datapath, args.splits_path, args.random_state, save_path)
+    data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
     if args.sample == 0 and not args.manifold:
-        predict_from_embeddings(embeddings_df, args.cfg, args.ukbb_size, args.val_size, config['latent_dim'],
-                                args.label, args.target, args.data_type, args.batch_size, args.epochs, args.n_iters,
-                                args.sync, args.device)
+        predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
+                                config['latent_dim'], age_range, bmi_range, args.label, args.target, args.batch_size,
+                                args.epochs, args.n_iters, args.sync, args.device)
     else:
         if args.sample > 0:
-            data, age_range = load_set(args.dataset, args.split, args.random_state)
+            data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
             if args.age > 0 and not age_range[0] < args.age < age_range[1]:
                 print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
-            dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['conditional_dim'],
-                                age_range, config['invariant'], testing=True)
+            dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['age_dim'],
+                                age_range, bmi_range, testing=True)
             device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
             model = load_model(weights_path, device)
             sample(model, dataset, args.age, args.sample, device, save_path)
         elif args.manifold:
-            plot_embeddings(embeddings_df, args.manifold.lower(), args.label, args.data_type, save_path)
+            plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path)

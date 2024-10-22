@@ -9,19 +9,21 @@ class Decoder(nn.Module):
                  input_shape,
                  latent_dim,
                  blocks,
-                 conditional_dim=0):
+                 age_dim=0,
+                 conditional=False):
         super(Decoder, self).__init__()
         self.input_shape = list(input_shape)
-        self.conditional_dim = conditional_dim
+        self.age_dim = age_dim
 
-        self.fc_input = nn.Linear(latent_dim + conditional_dim, np.prod(input_shape))
+        input_dim = latent_dim + age_dim if conditional else latent_dim
+        self.fc_input = nn.Linear(input_dim, np.prod(input_shape))
         self.tconv_blocks = build_modules(blocks)
 
     def forward(self, x, condition):
         if condition is not None:
-            if 0 < self.conditional_dim != condition.shape[-1]:
+            if 0 < self.age_dim != condition.shape[-1]:
                 raise ValueError('Conditional dimension does not match the input dimension')
-            x = cat([x, condition], dim=1) if self.conditional_dim > 0 else x + condition
+            x = cat([x, condition], dim=1) if self.age_dim > 0 else x + condition
         x = relu(self.fc_input(x))
         x = x.view(-1, *self.input_shape)
         x = self.tconv_blocks(x)

@@ -1,26 +1,23 @@
 from functools import partial
 import nibabel as nib
 import numpy as np
-from torch import from_numpy, tensor
+from torch import from_numpy, tensor, randn, float32
 from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
 from torchio import Compose, RandomSwap
 from models.utils import crop_center, num2vect, position_encoding
 
 
-def transform(t1_img):
-    return Compose([RandomSwap(p=0.6)])(t1_img)
-
-
 class T1Dataset(Dataset):
-    def __init__(self, input_shape, datapath, data, latent_dim, conditional_dim, age_range, invariant,
+    def __init__(self, input_shape, datapath, data, latent_dim, age_dim, age_range, bmi_range,
                  testing=False, transform=None):
         self.input_shape = input_shape
         self.datapath = datapath
         self.data = data
         self.transform = transform
         self.testing = testing
-        self.age_mapping = age_mapping_function(conditional_dim, latent_dim, age_range, invariant)
+        self.bmi_range = bmi_range
+        self.age_mapping = age_mapping_function(age_dim, latent_dim, age_range)
 
     def __len__(self):
         return len(self.data)
@@ -29,7 +26,12 @@ class T1Dataset(Dataset):
         sample = self.data.iloc[idx]
         t1_img, t1_transformed = self.load_and_process_img(sample)
         age = self.age_mapping(sample['age_at_scan'])
-        return t1_img, t1_transformed, age
+        gender = gender_to_onehot(sample['gender'])
+        if not np.isnan(sample['bmi']):
+            bmi = soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
+        else:
+            bmi = sample['bmi']
+        return t1_img, t1_transformed, age, gender, bmi
 
     def get_subject(self, subject_id):
         return self.data[self.data['subject_id'] == subject_id].iloc[0]
@@ -52,17 +54,16 @@ class T1Dataset(Dataset):
         return t1_img
 
 
-def age_mapping_function(conditional_dim, latent_dim, age_range, invariant):
+def age_mapping_function(age_dim, latent_dim, age_range):
     num_bins = age_range[1] - age_range[0]
-    if 1 < conditional_dim != num_bins:
-        raise ValueError('conditional_dim does not match the bins/classes for the age range')
+    if 1 < age_dim != num_bins:
+        raise ValueError('age_dim does not match the bins/classes for the age range')
     age_mapping = age_to_tensor
-    if invariant:
-        if conditional_dim == 0:
-            encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
-            age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
-        elif conditional_dim > 1:
-            age_mapping = partial(soft_age, lower=age_range[0], upper=age_range[1], bin_step=1, bin_sigma=1)
+    if age_dim == 0:
+        encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
+        age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
+    elif age_dim > 1:
+        age_mapping = partial(soft_label, lower=age_range[0], upper=age_range[1])
     return age_mapping
 
 
@@ -70,13 +71,23 @@ def sinusoidal_age(age, encoding_matrix):
     return from_numpy(encoding_matrix[round(age)])
 
 
-def soft_age(age, lower, upper, bin_step, bin_sigma):
+def soft_label(age, lower, upper, bin_step=1, bin_sigma=1):
     return from_numpy(num2vect(age, [lower, upper], bin_step, bin_sigma)[0])
-
-
-def age_to_onehot(age, lower, num_classes):
-    return one_hot(tensor(round(age) - lower), num_classes)
 
 
 def age_to_tensor(age):
     return tensor(float(age)).unsqueeze(dim=0)
+
+
+def transform(t1_img):
+    return Compose([RandomSwap(p=0.5)])(t1_img)
+
+
+def label_to_onehot(label, labels):
+    label_id = one_hot(tensor(labels.index(label)), len(labels))[0]
+    return label_id.to(float32).unsqueeze(dim=0)
+
+
+def gender_to_onehot(gender):
+    label = 0.0 if gender == 'male' else 1.0
+    return tensor(label).unsqueeze(dim=0)
