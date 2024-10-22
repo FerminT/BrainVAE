@@ -27,10 +27,10 @@ class T1Dataset(Dataset):
         t1_img, t1_transformed = self.load_and_process_img(sample)
         age = self.age_mapping(sample['age_at_scan'])
         gender = gender_to_onehot(sample['gender'])
-        if not np.isnan(sample['bmi']):
+        if between_bounds(self.bmi_range):
             bmi = soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
         else:
-            bmi = sample['bmi']
+            bmi = float_to_tensor(sample['bmi'])
         return t1_img, t1_transformed, age, gender, bmi
 
     def get_subject(self, subject_id):
@@ -58,7 +58,7 @@ def age_mapping_function(age_dim, latent_dim, age_range):
     num_bins = age_range[1] - age_range[0]
     if 1 < age_dim != num_bins:
         raise ValueError('age_dim does not match the bins/classes for the age range')
-    age_mapping = age_to_tensor
+    age_mapping = float_to_tensor
     if age_dim == 0:
         encoding_matrix = position_encoding(num_ages=100, embed_dim=latent_dim)
         age_mapping = partial(sinusoidal_age, encoding_matrix=encoding_matrix)
@@ -75,8 +75,8 @@ def soft_label(age, lower, upper, bin_step=1, bin_sigma=1):
     return from_numpy(num2vect(age, [lower, upper], bin_step, bin_sigma)[0])
 
 
-def age_to_tensor(age):
-    return tensor(float(age)).unsqueeze(dim=0)
+def float_to_tensor(data):
+    return tensor(float(data)).unsqueeze(dim=0)
 
 
 def transform(t1_img):
@@ -91,3 +91,7 @@ def label_to_onehot(label, labels):
 def gender_to_onehot(gender):
     label = 0.0 if gender == 'male' else 1.0
     return tensor(label).unsqueeze(dim=0)
+
+
+def between_bounds(range):
+    return range[0] != np.inf and range[1] != -np.inf

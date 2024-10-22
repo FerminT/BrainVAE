@@ -3,7 +3,6 @@ from os import cpu_count
 from numpy import inf
 from pandas import concat
 from torch.utils.data import DataLoader
-from torch import tensor
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from scripts.t1_dataset import T1Dataset
