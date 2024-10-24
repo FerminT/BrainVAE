@@ -1,11 +1,12 @@
 import pandas as pd
 from os import cpu_count
-from numpy import inf
+from numpy import inf, arange
 from pandas import concat
+from functools import partial
 from torch.utils.data import DataLoader
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from scripts.t1_dataset import T1Dataset
+from scripts.t1_dataset import T1Dataset, soft_label, label_to_onehot
 from scripts import constants
 
 
@@ -137,3 +138,37 @@ def upsample_datasets(train, n_upsampled):
             resampled = dataset_samples.sample(n=n_upsampled - n_samples, replace=True, random_state=42)
             train = concat([train, resampled])
     return train
+
+
+def create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled):
+    if dataset == 'general':
+        train, val = train_test_split(embeddings_df[embeddings_df['dataset'] != 'ukbb'], test_size=val_size,
+                                      random_state=42)
+        train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
+                                                random_state=42)
+        train = upsample_datasets(train, n_upsampled=n_upsampled)
+        train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
+        val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
+    else:
+        train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
+    if target_dataset != 'general' and target_dataset != 'diseased':
+        val = val[val['dataset'] == target_dataset]
+    return train, val
+
+
+def target_mapping(embeddings_df, label, age_range, bmi_range):
+    if label == 'age_at_scan':
+        transform_fn = partial(soft_label, lower=age_range[0], upper=age_range[1])
+        output_dim = age_range[1] - age_range[0]
+        data_range = age_range
+    elif label == 'bmi':
+        transform_fn = partial(soft_label, lower=bmi_range[0], upper=bmi_range[1])
+        output_dim = bmi_range[1] - bmi_range[0]
+        data_range = bmi_range
+    else:
+        labels = list(embeddings_df[label].unique())
+        transform_fn = partial(label_to_onehot, labels=labels)
+        output_dim = 1
+        data_range = [0, 1]
+    bin_centers = data_range[0] + 1.0 / 2 + 1.0 * arange(data_range[1] - data_range[0])
+    return transform_fn, output_dim, bin_centers

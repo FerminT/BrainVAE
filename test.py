@@ -1,8 +1,9 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
-from scripts.data_handler import get_loader, load_set, upsample_datasets, get_datapath
+from scripts.data_handler import (get_loader, get_datapath, load_set, upsample_datasets, create_test_splits,
+                                  target_mapping)
 from scripts.embedding_dataset import EmbeddingDataset
-from scripts.t1_dataset import T1Dataset, soft_label, label_to_onehot, transform
+from scripts.t1_dataset import T1Dataset, transform
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
@@ -12,8 +13,7 @@ from models.embedding_classifier import EmbeddingClassifier
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
-from functools import partial
-from numpy import array, random, arange
+from numpy import array, random
 from pandas import concat, cut, DataFrame
 from seaborn import scatterplot, kdeplot
 from PIL import ImageDraw, ImageFont
@@ -26,32 +26,8 @@ import argparse
 def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range, label,
                             target_dataset, batch_size, epochs, n_iters, no_sync, device):
     embeddings_df = embeddings_df[~embeddings_df[label].isna()]
-    if dataset == 'general':
-        train, val = train_test_split(embeddings_df[embeddings_df['dataset'] != 'ukbb'], test_size=val_size,
-                                      random_state=42)
-        train_ukbb, val_ukbb = train_test_split(embeddings_df[embeddings_df['dataset'] == 'ukbb'], test_size=ukbb_size,
-                                                random_state=42)
-        train = upsample_datasets(train, n_upsampled=180)
-        train = concat([train, train_ukbb]).sample(frac=1, random_state=42)
-        val = concat([val, val_ukbb]).sample(frac=1, random_state=42)
-    else:
-        train, val = train_test_split(embeddings_df, test_size=val_size, random_state=42)
-    if target_dataset != 'general' and target_dataset != 'diseased':
-        val = val[val['dataset'] == target_dataset]
-    if label == 'age_at_scan':
-        transform_fn = partial(soft_label, lower=age_range[0], upper=age_range[1])
-        output_dim = age_range[1] - age_range[0]
-        data_range = age_range
-    elif label == 'bmi':
-        transform_fn = partial(soft_label, lower=bmi_range[0], upper=bmi_range[1])
-        output_dim = bmi_range[1] - bmi_range[0]
-        data_range = bmi_range
-    else:
-        labels = list(embeddings_df[label].unique())
-        transform_fn = partial(label_to_onehot, labels=labels)
-        output_dim = 1
-        data_range = [0, 1]
-    bin_centers = data_range[0] + 1.0 / 2 + 1.0 * arange(data_range[1] - data_range[0])
+    train, val = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
+    transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, label, age_range, bmi_range)
     binary_classification = output_dim == 1
     train_dataset = EmbeddingDataset(train, target=label, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=label, transform_fn=transform_fn)
@@ -175,7 +151,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default='cpu', help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=10, help='number of epochs used for training the age classifier')
-    parser.add_argument('--n_iters', type=int, default=10,
+    parser.add_argument('--n_iters', type=int, default=3,
                         help='number of iterations (with different seeds) to evaluate the age classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
