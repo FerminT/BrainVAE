@@ -57,12 +57,13 @@ def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, la
     val_dataset = EmbeddingDataset(val, target=label, transform_fn=transform_fn)
     rnd_gen = random.default_rng(42)
     random_seeds = [rnd_gen.integers(1, 100) for _ in range(n_iters)]
-    all_results = []
+    all_results, all_preds, all_labels = [], [], []
     for seed in random_seeds:
         classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, bin_centers,
                                       batch_size, epochs, device, no_sync, seed)
         results = test_classifier(classifier, val_dataset, binary_classification, bin_centers, device, seed)
-        all_results.append(results)
+        all_results.append(results[:3])
+        all_preds.append(results[3]), all_labels.append(results[4])
     column_names = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
     results_df = DataFrame(all_results, columns=column_names)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
@@ -96,18 +97,19 @@ def test_classifier(model, val_dataset, binary_classification, bin_centers, devi
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
         prediction = model(z)
-        prediction = (prediction.item() > 0.5) if binary_classification else (torch.exp(prediction.detach()) @ bin_centers).item()
+        prediction = prediction.item() if binary_classification else (torch.exp(prediction.detach()) @ bin_centers).item()
         predictions.append(prediction)
         label = target.item() if binary_classification else (target @ bin_centers).item()
         labels.append(label)
     if binary_classification:
-        acc = accuracy_score(labels, predictions)
-        precision, recall = precision_score(labels, predictions), recall_score(labels, predictions)
-        return acc, precision, recall
+        predicted_classes = [1 if pred > 0.5 else 0 for pred in predictions]
+        acc = accuracy_score(labels, predicted_classes)
+        precision, recall = precision_score(labels, predicted_classes), recall_score(labels, predicted_classes)
+        return acc, precision, recall, predictions, labels
     else:
         mae = mean_absolute_error(labels, predictions)
         corr, p_value = pearsonr(predictions, labels)
-        return mae, corr, p_value
+        return mae, corr, p_value, predictions, labels
 
 
 def sample(model, dataset, age, subject_id, device, save_path):
