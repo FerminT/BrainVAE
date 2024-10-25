@@ -2,7 +2,8 @@ import pandas as pd
 import yaml
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
-from torch import cat, device, cuda
+from torch import cat, device, cuda, no_grad
+from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
@@ -64,15 +65,19 @@ def subjects_embeddings(weights_path, dataset_name, input_shape, latent_dim, spl
     if filename.exists():
         return pd.read_pickle(filename)
     model = load_model(weights_path, device_)
+    batch_size = 64  # Adjust batch size as needed
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     subjects = []
-    print('Computing embeddings...')
-    for idx in tqdm(range(len(dataset))):
-        t1_img, _, _, _, _ = dataset[idx]
-        t1_img = t1_img.unsqueeze(dim=0).to(device_)
-        z = get_latent_representation(t1_img, model.encoder)
-        subject_metadata = dataset.get_metadata(idx).copy()
-        subject_metadata['embedding'] = z.cpu().detach().squeeze().numpy()
-        subjects.append(subject_metadata)
+    print('Computing embeddings in batches...')
+    with no_grad():
+        for batch_idx, batch in enumerate(tqdm(dataloader)):
+            t1_imgs, *_ = batch
+            t1_imgs = t1_imgs.to(device_)
+            z = get_latent_representation(t1_imgs, model.encoder)
+            for idx, embedding in enumerate(z):
+                subject_metadata = dataset.get_metadata(batch_idx * batch_size + idx).copy()
+                subject_metadata['embedding'] = embedding.cpu().detach().numpy()
+                subjects.append(subject_metadata)
     subjects_df = pd.DataFrame(subjects).set_index('subject_id')
     subjects_df.to_pickle(filename)
     return subjects_df
