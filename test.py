@@ -117,7 +117,7 @@ def plot_embeddings(subjects_df, method, label, save_path, annotate_ids=False):
         raise ValueError(f'{label} not found in the dataframe')
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
-    if label != 'gender':
+    if label == 'age_at_scan' or label == 'bmi':
         subjects_df[label] = cut(subjects_df[label], bins=3)
         # remove middle category
         subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
