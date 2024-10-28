@@ -1,6 +1,6 @@
 import pandas as pd
 from os import cpu_count
-from numpy import inf, arange
+from numpy import inf, arange, zeros, abs
 from pandas import concat
 from functools import partial
 from torch.utils.data import DataLoader
@@ -154,6 +154,46 @@ def create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_datas
     if target_dataset != 'general' and target_dataset != 'diseased':
         val = val[val['dataset'] == target_dataset]
     return train, val
+
+
+def balance_dataset(embeddings_df, group_label):
+    minority_label = embeddings_df[group_label].value_counts().idxmin()
+    majority_label = embeddings_df[group_label].value_counts().idxmax()
+    embeddings_df_int_age = embeddings_df.copy()
+    embeddings_df_int_age['age_at_scan'] = embeddings_df_int_age['age_at_scan'].astype(int)
+    print('Balancing dataset...')
+    balanced_indices = get_balanced_indices(embeddings_df_int_age, group_label, minority_label, majority_label,
+                                            ['age_at_scan', 'gender'])
+    embeddings_df = embeddings_df.loc[balanced_indices]
+    return embeddings_df
+
+
+def get_balanced_indices(embeddings_df, group_label, minority_label, majority_label, balance_by):
+    embeddings_df['balance_by'] = embeddings_df[balance_by].astype(str).agg('-'.join, axis=1)
+    minority = embeddings_df[embeddings_df[group_label] == minority_label]
+    majority = embeddings_df[embeddings_df[group_label] == majority_label]
+    minority_groups = list(minority['balance_by'].unique())
+    minority_dist = minority['balance_by'].value_counts(sort=False).values
+    current_balance = zeros(len(minority_groups))
+    majority = majority[majority['balance_by'].isin(minority_groups)]
+    matched = []
+    while len(matched) < len(minority):
+        subject_found = None
+        imbalance_ratio = inf
+        for _, subject in majority.iterrows():
+            subject_group = minority_groups.index(subject['balance_by'])
+            current_balance[subject_group] += 1
+            if abs(current_balance - minority_dist).sum() < imbalance_ratio:
+                subject_found = subject
+                imbalance_ratio = abs(current_balance - minority_dist).sum()
+            current_balance[subject_group] -= 1
+        subject_group = minority_groups.index(subject_found['balance_by'])
+        current_balance[subject_group] += 1
+        matched.append(subject_found.name)
+        majority = majority[majority.index != subject_found.name]
+    balanced_majority = embeddings_df.loc[matched]
+    balanced_indices = concat([minority, balanced_majority]).index
+    return balanced_indices
 
 
 def target_mapping(embeddings_df, label, age_range, bmi_range):

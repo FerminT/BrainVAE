@@ -1,7 +1,7 @@
 from pathlib import Path
 from scripts.constants import DATA_PATH, CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import (get_loader, get_datapath, load_set, upsample_datasets, create_test_splits,
-                                  target_mapping)
+                                  get_balanced_indices, target_mapping, balance_dataset)
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.t1_dataset import T1Dataset, transform
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
@@ -25,7 +25,6 @@ import argparse
 
 def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range, label,
                             target_dataset, batch_size, epochs, n_iters, no_sync, device):
-    embeddings_df = embeddings_df[~embeddings_df[label].isna()]
     train, val = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, label, age_range, bmi_range)
     binary_classification = output_dim == 1
@@ -158,8 +157,9 @@ if __name__ == '__main__':
     parser.add_argument('--manifold', type=str, default=None,
                         help='Method to use for manifold learning (PCA, MDS, tSNE, Isomap)')
     parser.add_argument('--label', type=str, default='age_at_scan',
-                        help='label used for prediction and plotting latent representations (age; gender; bmi)'),
+                        help='label used for prediction and plotting latent representations'),
     parser.add_argument('--set', type=str, default='val', help='set to evaluate (val or test)')
+    parser.add_argument('--balance', action='store_true', help='balance the dataset by age and sex')
     parser.add_argument('--ukbb_size', type=float, default=0.15,
                         help='size of the validation split constructed from the ukbb set to evaluate')
     parser.add_argument('--val_size', type=float, default=0.3,
@@ -176,6 +176,10 @@ if __name__ == '__main__':
     datapath = get_datapath(args.dataset)
     embeddings_df = subjects_embeddings(weights_path, args.dataset, config['input_shape'], config['latent_dim'],
                                         args.set, datapath, args.splits_path, args.random_state, save_path)
+    embeddings_df = embeddings_df[~embeddings_df[args.label].isna()]
+    if args.balance:
+        embeddings_df = balance_dataset(embeddings_df, args.label)
+
     data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
     if args.sample == 0 and not args.manifold:
         predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
