@@ -204,28 +204,28 @@ if __name__ == '__main__':
     save_path.mkdir(parents=True, exist_ok=True)
 
     datapath = get_datapath(args.dataset)
-    embeddings_df = subjects_embeddings(weights_path, args.dataset, config['input_shape'], config['latent_dim'],
-                                        args.set, datapath, args.splits_path, args.random_state, save_path)
-    embeddings_df = embeddings_df[~embeddings_df[args.label].isna()]
-    if args.balance:
-        embeddings_df = balance_dataset(embeddings_df, args.label)
-    print(embeddings_df.groupby(args.label)['age_at_scan'].describe())
-    print(embeddings_df.groupby(args.label)['gender'].describe())
-
-    data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
-    if args.sample == 0 and not args.manifold:
-        predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
-                                config['latent_dim'], age_range, bmi_range, args.label, args.target, args.batch_size,
-                                args.epochs, args.n_iters, args.sync, args.device)
+    if args.sample > 0:
+        data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
+        if args.age > 0 and not age_range[0] < args.age < age_range[1]:
+            print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
+        dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['age_dim'],
+                            age_range, bmi_range, testing=True)
+        device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
+        model = load_model(weights_path, device)
+        sample(model, dataset, args.age, args.sample, device, save_path)
     else:
-        if args.sample > 0:
-            data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
-            if args.age > 0 and not age_range[0] < args.age < age_range[1]:
-                print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
-            dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['age_dim'],
-                                age_range, bmi_range, testing=True)
-            device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
-            model = load_model(weights_path, device)
-            sample(model, dataset, args.age, args.sample, device, save_path)
-        elif args.manifold:
+        embeddings_df = subjects_embeddings(weights_path, args.dataset, config['input_shape'], config['latent_dim'],
+                                            args.set, datapath, args.splits_path, args.random_state, save_path)
+        embeddings_df = embeddings_df[~embeddings_df[args.label].isna()]
+        if args.balance:
+            embeddings_df = balance_dataset(embeddings_df, args.label)
+        print(embeddings_df.groupby(args.label)['age_at_scan'].describe())
+        print(embeddings_df.groupby(args.label)['gender'].describe())
+
+        data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
+        if not args.manifold:
+            predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
+                                    config['latent_dim'], age_range, bmi_range, args.label, args.target, args.batch_size,
+                                    args.epochs, args.n_iters, args.sync, args.device)
+        else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
