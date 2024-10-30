@@ -31,11 +31,13 @@ def save_predictions(df, predictions, labels, target_name, model_name):
 
 
 def report_results(results_dict, target_label, name):
+    model_predictions = results_dict.pop('Predictions')
     results_df = DataFrame(results_dict)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['SE'] = results_df.sem(axis=0)
     print(f'Predictions for {target_label} using {name} model')
     print(mean_df)
+    return model_predictions
 
 
 def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
@@ -61,10 +63,10 @@ def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, la
         shuffled_labels = labels.copy()
         rnd_gen.shuffle(shuffled_labels)
         compute_metrics(shuffled_labels, labels, binary_classification, baseline_results)
-    report_results(baseline_results, target_label, name='baseline')
-    report_results(model_results, target_label, name=cfg)
-    save_predictions(val, model_results['Predictions'], labels, target_label, cfg)
-    save_predictions(val, baseline_results['Predictions'], labels, target_label, 'baseline')
+    baseline_preds = report_results(baseline_results, target_label, name='baseline')
+    model_preds = report_results(model_results, target_label, name=cfg)
+    save_predictions(val, model_preds, labels, target_label, cfg)
+    save_predictions(val, baseline_preds, labels, target_label, 'baseline')
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, bin_centers, batch_size, epochs,
