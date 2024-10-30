@@ -50,8 +50,8 @@ class EmbeddingClassifier(lg.LightningModule):
             self.log(f'{mode}_accuracy', ((predictions > 0.5) == targets).float().mean().item(), sync_dist=True)
         else:
             loss = nn.functional.kl_div(predictions, targets, reduction='batchmean')
-            predicted_values = exp(predictions.detach()) @ self.bin_centers
-            target_values = targets @ self.bin_centers
+            predicted_values = exp(predictions.cpu().detach()) @ self.bin_centers
+            target_values = targets.cpu() @ self.bin_centers
             self.log(f'{mode}_mae', abs(predicted_values - target_values).mean(), sync_dist=True)
             self.log(f'{mode}_prediction', predicted_values.mean().item(), sync_dist=True)
         return loss

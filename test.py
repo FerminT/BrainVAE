@@ -96,9 +96,9 @@ def test_classifier(model, val_dataset, model_results, binary_classification, bi
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
         prediction = model(z)
-        prediction = prediction.item() if binary_classification else (torch.exp(prediction.detach()) @ bin_centers).item()
+        prediction = prediction.item() if binary_classification else (torch.exp(prediction.cpu().detach()) @ bin_centers).item()
         predictions.append(prediction)
-        label = target.item() if binary_classification else (target @ bin_centers).item()
+        label = target.item() if binary_classification else (target.cpu() @ bin_centers).item()
         labels.append(label)
     compute_metrics(predictions, labels, binary_classification, model_results)
     return labels
