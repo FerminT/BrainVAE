@@ -38,21 +38,33 @@ def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, la
     val_dataset = EmbeddingDataset(val, target=target_label, transform_fn=transform_fn)
     rnd_gen = random.default_rng(seed=42)
     random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
-    all_metrics, all_preds, labels = [], [], []
+    metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
+    metrics.append('Predictions')
+    model_results = {metric: [] for metric in metrics}
+    baseline_results = {metric: [] for metric in metrics}
+    labels = []
     for seed in random_seeds:
         train = train.sample(frac=1, replace=True, random_state=seed)
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
         classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, bin_centers,
                                       batch_size, epochs, device, no_sync, seed=42)
-        results = test_classifier(classifier, val_dataset, binary_classification, bin_centers, device, seed=42)
-        all_metrics.append(results[:3]), all_preds.append(results[3])
-        labels = results[4]
-    column_names = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
-    results_df = DataFrame(all_metrics, columns=column_names)
+        labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers, device,
+                                  seed=42)
+        shuffled_labels = labels.copy()
+        rnd_gen.shuffle(shuffled_labels)
+        compute_metrics(shuffled_labels, labels, binary_classification, baseline_results)
+    print(f'Predictions for {target_label} using baseline model')
+    baseline_df = DataFrame(baseline_results)
+    mean_baseline = baseline_df.mean(axis=0).to_frame(name='Mean')
+    mean_baseline['SE'] = baseline_df.sem(axis=0)
+    print(mean_baseline)
+    print(f'Predictions for {target_label} using {cfg} model')
+    results_df = DataFrame(model_results)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['SE'] = results_df.sem(axis=0)
     print(mean_df)
-    save_predictions(val, all_preds, labels, target_label, cfg)
+    save_predictions(val, model_results['Predictions'], labels, target_label, cfg)
+    save_predictions(val, baseline_results['Predictions'], labels, target_label, 'baseline')
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, bin_centers, batch_size, epochs,
@@ -72,7 +84,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     return classifier
 
 
-def test_classifier(model, val_dataset, binary_classification, bin_centers, device, seed):
+def test_classifier(model, val_dataset, model_results, binary_classification, bin_centers, device, seed):
     seed_everything(seed, workers=True)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
     model.eval().to(device)
@@ -85,15 +97,25 @@ def test_classifier(model, val_dataset, binary_classification, bin_centers, devi
         predictions.append(prediction)
         label = target.item() if binary_classification else (target @ bin_centers).item()
         labels.append(label)
+    compute_metrics(predictions, labels, binary_classification, model_results)
+    return labels
+
+
+def compute_metrics(predictions, labels, binary_classification, results_dict):
     if binary_classification:
         predicted_classes = [1 if pred > 0.5 else 0 for pred in predictions]
         acc = accuracy_score(labels, predicted_classes)
         precision, recall = precision_score(labels, predicted_classes), recall_score(labels, predicted_classes)
-        return acc, precision, recall, predictions, labels
+        results_dict['Accuracy'].append(acc)
+        results_dict['Precision'].append(precision)
+        results_dict['Recall'].append(recall)
     else:
         mae = mean_absolute_error(labels, predictions)
         corr, p_value = pearsonr(predictions, labels)
-        return mae, corr, p_value, predictions, labels
+        results_dict['MAE'].append(mae)
+        results_dict['Corr'].append(corr)
+        results_dict['p_value'].append(p_value)
+    results_dict['Predictions'].append(predictions)
 
 
 def sample(model, dataset, age, subject_id, device, save_path):
@@ -219,8 +241,8 @@ if __name__ == '__main__':
         embeddings_df = embeddings_df[~embeddings_df[args.label].isna()]
         if args.balance:
             embeddings_df = balance_dataset(embeddings_df, args.label)
-        print(embeddings_df.groupby(args.label)['age_at_scan'].describe())
-        print(embeddings_df.groupby(args.label)['gender'].describe())
+            print(embeddings_df.groupby(args.label)['age_at_scan'].describe())
+            print(embeddings_df.groupby(args.label)['gender'].describe())
 
         data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
         if not args.manifold:
