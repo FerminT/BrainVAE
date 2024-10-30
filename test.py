@@ -23,8 +23,9 @@ import argparse
 
 
 def save_predictions(df, predictions, labels, target_name, model_name):
-    df['predicted'] = predictions
     df['label'] = labels
+    for i, preds in enumerate(predictions):
+        df[f'pred_{i}'] = preds
     df = df.drop(columns=['embedding'])
     df.to_csv(f'predictions_{model_name}_{target_name}.csv')
 
