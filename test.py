@@ -30,6 +30,14 @@ def save_predictions(df, predictions, labels, target_name, model_name):
     df.to_csv(f'predictions_{model_name}_{target_name}.csv')
 
 
+def report_results(results_dict, target_label, name):
+    results_df = DataFrame(results_dict)
+    mean_df = results_df.mean(axis=0).to_frame(name='Mean')
+    mean_df['SE'] = results_df.sem(axis=0)
+    print(f'Predictions for {target_label} using {name} model')
+    print(mean_df)
+
+
 def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
                             target_label, target_dataset, batch_size, epochs, n_iters, no_sync, device):
     train, val = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
@@ -53,16 +61,8 @@ def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, la
         shuffled_labels = labels.copy()
         rnd_gen.shuffle(shuffled_labels)
         compute_metrics(shuffled_labels, labels, binary_classification, baseline_results)
-    print(f'Predictions for {target_label} using baseline model')
-    baseline_df = DataFrame(baseline_results)
-    mean_baseline = baseline_df.mean(axis=0).to_frame(name='Mean')
-    mean_baseline['SE'] = baseline_df.sem(axis=0)
-    print(mean_baseline)
-    print(f'Predictions for {target_label} using {cfg} model')
-    results_df = DataFrame(model_results)
-    mean_df = results_df.mean(axis=0).to_frame(name='Mean')
-    mean_df['SE'] = results_df.sem(axis=0)
-    print(mean_df)
+    report_results(baseline_results, target_label, name='baseline')
+    report_results(model_results, target_label, name=cfg)
     save_predictions(val, model_results['Predictions'], labels, target_label, cfg)
     save_predictions(val, baseline_results['Predictions'], labels, target_label, 'baseline')
 
