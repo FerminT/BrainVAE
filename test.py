@@ -29,28 +29,29 @@ def save_predictions(df, predictions, labels, target_name, model_name):
     df.to_csv(f'predictions_{model_name}_{target_name}.csv')
 
 
-def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range, label,
-                            target_dataset, batch_size, epochs, n_iters, no_sync, device):
+def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
+                            target_label, target_dataset, batch_size, epochs, n_iters, no_sync, device):
     train, val = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
-    transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, label, age_range, bmi_range)
+    transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     binary_classification = output_dim == 1
-    train_dataset = EmbeddingDataset(train, target=label, transform_fn=transform_fn)
-    val_dataset = EmbeddingDataset(val, target=label, transform_fn=transform_fn)
-    rnd_gen = random.default_rng(42)
-    random_seeds = [rnd_gen.integers(1, 100) for _ in range(n_iters)]
-    all_results, all_preds, all_labels = [], [], []
+    val_dataset = EmbeddingDataset(val, target=target_label, transform_fn=transform_fn)
+    rnd_gen = random.default_rng(seed=42)
+    random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
+    all_metrics, all_preds, labels = [], [], []
     for seed in random_seeds:
+        train = train.sample(frac=1, replace=True, random_state=seed)
+        train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
         classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, bin_centers,
-                                      batch_size, epochs, device, no_sync, seed)
-        results = test_classifier(classifier, val_dataset, binary_classification, bin_centers, device, seed)
-        all_results.append(results[:3])
-        all_preds.append(results[3]), all_labels.append(results[4])
+                                      batch_size, epochs, device, no_sync, seed=42)
+        results = test_classifier(classifier, val_dataset, binary_classification, bin_centers, device, seed=42)
+        all_metrics.append(results[:3]), all_preds.append(results[3])
+        labels = results[4]
     column_names = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
-    results_df = DataFrame(all_results, columns=column_names)
+    results_df = DataFrame(all_metrics, columns=column_names)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
-    mean_df['Std'] = results_df.std(axis=0)
+    mean_df['SE'] = results_df.sem(axis=0)
     print(mean_df)
-    save_predictions(val, all_preds[0], all_labels[0], label, cfg)
+    save_predictions(val, all_preds, labels, target_label, cfg)
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, bin_centers, batch_size, epochs,
