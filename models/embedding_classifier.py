@@ -8,10 +8,14 @@ from torch import nn, optim, exp
 
 class EmbeddingClassifier(lg.LightningModule):
 
+    def forward(self, z):
+        return self.fc_layers(z)
+
     def __init__(self,
                  input_dim=354,
                  output_dim=1,
                  hidden_dims=(128, 64, 32),
+                 n_layers=3,
                  lr=0.1,
                  optimizer='AdamW',
                  momentum=0.9,
@@ -19,13 +23,10 @@ class EmbeddingClassifier(lg.LightningModule):
                  bin_centers=None):
         super(EmbeddingClassifier, self).__init__()
         self.save_hyperparameters()
-        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims)
+        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims, n_layers)
         self.lr, self.optimizer, self.output_dim = lr, optimizer, output_dim
         self.momentum, self.weight_decay = momentum, weight_decay
         self.bin_centers = bin_centers
-
-    def forward(self, z):
-        return self.fc_layers(z)
 
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
@@ -56,8 +57,11 @@ class EmbeddingClassifier(lg.LightningModule):
         return loss
 
 
-def create_fc_layers(input_dim, output_dim, hidden_dims):
+def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers):
     layers = list()
+    if n_layers > 3 or n_layers < 0:
+        raise ValueError('Number of layers must be between 0 and 3')
+    hidden_dims = hidden_dims[(-1) * n_layers:] if n_layers > 0 else []
     dims = [input_dim] + list(hidden_dims) + [output_dim]
     for i in range(len(dims) - 1):
         layers.append(nn.Linear(dims[i], dims[i + 1]))

@@ -41,7 +41,7 @@ def report_results(results_dict, target_label, name):
 
 
 def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
-                            target_label, target_dataset, batch_size, epochs, n_iters, no_sync, device):
+                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, no_sync, device):
     train, val = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     binary_classification = output_dim == 1
@@ -56,7 +56,7 @@ def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, la
     for seed in random_seeds:
         train = train.sample(frac=1, replace=True, random_state=seed)
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
-        classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, bin_centers,
+        classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, n_layers, bin_centers,
                                       batch_size, epochs, device, no_sync, seed=42)
         labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers, device,
                                   seed=42)
@@ -69,11 +69,12 @@ def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, la
     save_predictions(val, baseline_preds, labels, target_label, 'baseline')
 
 
-def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, bin_centers, batch_size, epochs,
-                     device, no_sync, seed):
+def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, batch_size,
+                     epochs, device, no_sync, seed):
     seed_everything(seed, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
-    classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, bin_centers=bin_centers)
+    classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
+                                     bin_centers=bin_centers)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
@@ -203,7 +204,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=10, help='number of epochs used for training the age classifier')
     parser.add_argument('--n_iters', type=int, default=3,
-                        help='number of iterations (with different seeds) to evaluate the age classifier')
+                        help='number of iterations (with different seeds) to evaluate the classifier')
+    parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--manifold', type=str, default=None,
@@ -249,7 +251,7 @@ if __name__ == '__main__':
         data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
         if not args.manifold:
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
-                                    config['latent_dim'], age_range, bmi_range, args.label, args.target, args.batch_size,
-                                    args.epochs, args.n_iters, args.sync, args.device)
+                                    config['latent_dim'], age_range, bmi_range, args.label, args.target,
+                                    args.batch_size, args.n_layers, args.epochs, args.n_iters, args.sync, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
