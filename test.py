@@ -240,8 +240,9 @@ if __name__ == '__main__':
         model = load_model(weights_path, device)
         sample(model, dataset, args.age, args.sample, device, save_path)
     else:
-        embeddings_df = subjects_embeddings(weights_path, args.dataset, config['input_shape'], config['latent_dim'],
-                                            args.set, datapath, args.splits_path, args.random_state, save_path)
+        embeddings_df = subjects_embeddings(weights_path, args.cfg, args.dataset, config['input_shape'],
+                                            config['latent_dim'], args.set, datapath, args.splits_path,
+                                            args.random_state, save_path)
         embeddings_df = embeddings_df[~embeddings_df[args.label].isna()]
         if args.balance:
             embeddings_df = balance_dataset(embeddings_df, args.label)

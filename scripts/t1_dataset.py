@@ -24,7 +24,9 @@ class T1Dataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        t1_img, t1_transformed = self.load_and_process_img(sample)
+        # t1_img, t1_transformed = self.load_and_process_img(sample)
+        t1_img = randn(1, *self.input_shape)
+        t1_transformed = randn(1, *self.input_shape)
         age = self.age_mapping(sample['age_at_scan'])
         gender = gender_to_onehot(sample['gender'])
         if between_bounds(self.bmi_range):

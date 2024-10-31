@@ -54,22 +54,22 @@ def get_weights(weights_path):
     return next(weights_path.parent.glob(f'{weights_path.name}*'))
 
 
-def subjects_embeddings(weights_path, dataset_name, input_shape, latent_dim, split, datapath, splits_path, random_state,
-                        save_path):
+def subjects_embeddings(weights_path, model_name, dataset_name, input_shape, latent_dim, split, datapath, splits_path,
+                        random_state, save_path):
     data, age_range, bmi_range = load_set(dataset_name, split, splits_path, random_state)
-    dataset = T1Dataset(input_shape, datapath, data, latent_dim, age_dim=0, age_range=age_range, bmi_range=bmi_range,
+    dataset = T1Dataset(input_shape, datapath, data, latent_dim, age_dim=1, age_range=age_range, bmi_range=bmi_range,
                         testing=True)
     device_ = device('cuda' if cuda.is_available() else 'cpu')
     filename = save_path / f'subjects_embeddings.pkl'
     if filename.exists():
         return pd.read_pickle(filename)
-    model = load_model(weights_path, device_)
+    model = load_model(weights_path, device_) if model_name != 'age' else 'age'
     subjects = []
     print('Computing embeddings...')
     for idx in tqdm(range(len(dataset))):
-        t1_img, _, _, _, _ = dataset[idx]
+        t1_img, _, age, _, _ = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device_)
-        z = get_latent_representation(t1_img, model.encoder)
+        z = get_latent_representation(t1_img, model.encoder) if model_name != 'age' else age
         subject_metadata = dataset.get_metadata(idx).copy()
         subject_metadata['embedding'] = z.cpu().detach().squeeze().numpy()
         subjects.append(subject_metadata)
