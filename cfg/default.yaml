@@ -65,7 +65,7 @@ layers:
 age_dim: 0
 bmi_dim: 46
 predict_age: no
-invariant: no
+invariance: no
 lr: 0.0004
 min_lr: 0.00004
 optimizer: 'AdamW'
