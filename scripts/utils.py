@@ -69,9 +69,9 @@ def subjects_embeddings(weights_path, model_name, dataset_name, input_shape, lat
     for idx in tqdm(range(len(dataset))):
         t1_img, _, age, _, _ = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device_)
-        z = get_latent_representation(t1_img, model.encoder) if model_name != 'age' else age
+        z = get_latent_representation(t1_img, model.encoder) if model_name != 'age' else age.unsqueeze(dim=0)
         subject_metadata = dataset.get_metadata(idx).copy()
-        subject_metadata['embedding'] = z.cpu().detach().squeeze().numpy()
+        subject_metadata['embedding'] = z.cpu().detach().squeeze(dim=0).numpy()
         subjects.append(subject_metadata)
     subjects_df = pd.DataFrame(subjects).set_index('subject_id')
     subjects_df.to_pickle(filename)
