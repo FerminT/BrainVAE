@@ -17,17 +17,22 @@ from pandas import DataFrame, cut
 from seaborn import scatterplot, kdeplot, set_theme, color_palette
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
+import yaml
 import torch
 import wandb
 import argparse
 
 
-def save_predictions(df, predictions, labels, target_name, model_name):
+def save_predictions(df, predictions, labels, target_name, params, save_path):
     df['label'] = labels
     for i, preds in enumerate(predictions):
         df[f'pred_{i}'] = preds
     df = df.drop(columns=['embedding'])
-    df.to_csv(f'predictions_{model_name}_{target_name}.csv')
+    if not save_path.exists():
+        save_path.mkdir(parents=True, exist_ok=True)
+    df.to_csv(save_path / f'{target_name}_predictions.csv')
+    with open(save_path / f'{target_name}_params.yaml', 'w') as file:
+        yaml.dump(params, file)
 
 
 def report_results(results_dict, target_label, name):
@@ -40,8 +45,9 @@ def report_results(results_dict, target_label, name):
     return model_predictions
 
 
-def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
-                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, no_sync, device):
+def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
+                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, save_path,
+                            no_sync, device):
     train, val = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     binary_classification = output_dim == 1
@@ -56,17 +62,20 @@ def predict_from_embeddings(embeddings_df, cfg, dataset, ukbb_size, val_size, la
     for seed in random_seeds:
         train = train.sample(frac=1, replace=True, random_state=seed)
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
-        classifier = train_classifier(train_dataset, val_dataset, cfg, latent_dim, output_dim, n_layers, bin_centers,
-                                      batch_size, epochs, device, no_sync, seed=42)
+        classifier = train_classifier(train_dataset, val_dataset, cfg_name, latent_dim, output_dim, n_layers,
+                                      bin_centers, batch_size, epochs, device, no_sync, seed=42)
         labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers, device,
-                                  seed=42)
+                                 seed=42)
         shuffled_labels = labels.copy()
         rnd_gen.shuffle(shuffled_labels)
         compute_metrics(shuffled_labels, labels, binary_classification, baseline_results)
+    params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
+              'n_layers': n_layers, 'epochs': epochs}
     baseline_preds = report_results(baseline_results, target_label, name='baseline')
-    model_preds = report_results(model_results, target_label, name=cfg)
-    save_predictions(val, model_preds, labels, target_label, cfg)
-    save_predictions(val, baseline_preds, labels, target_label, 'baseline')
+    model_preds = report_results(model_results, target_label, name=cfg_name)
+    save_predictions(val, model_preds, labels, target_label, params, save_path)
+    baseline_savepath = save_path.parents[1] / 'baseline' / 'shuffle'
+    save_predictions(val, baseline_preds, labels, target_label, params, baseline_savepath)
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, batch_size,
@@ -248,11 +257,14 @@ if __name__ == '__main__':
             embeddings_df = balance_dataset(embeddings_df, args.label)
             print(embeddings_df.groupby(args.label)['age_at_scan'].describe())
             print(embeddings_df.groupby(args.label)['gender'].describe())
+            save_path = Path(EVALUATION_PATH, args.dataset + '_balanced', args.set, args.cfg) / weights_path.parent.name
+            save_path.mkdir(parents=True, exist_ok=True)
 
         data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
         if not args.manifold:
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
-                                    args.batch_size, args.n_layers, args.epochs, args.n_iters, args.sync, args.device)
+                                    args.batch_size, args.n_layers, args.epochs, args.n_iters, save_path,
+                                    args.sync, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
