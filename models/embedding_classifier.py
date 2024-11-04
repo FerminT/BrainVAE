@@ -1,15 +1,9 @@
-""" Fully connected neural network that takes the latent representation of the MRI data as input
-    and predicts the age of the subject as output."""
-
 import lightning as lg
 from models.utils import init_optimizer
 from torch import nn, optim, exp
 
 
 class EmbeddingClassifier(lg.LightningModule):
-
-    def forward(self, z):
-        return self.fc_layers(z)
 
     def __init__(self,
                  input_dim=354,
@@ -34,6 +28,9 @@ class EmbeddingClassifier(lg.LightningModule):
         lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
                                                      total_steps=self.trainer.estimated_stepping_batches)
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
+
+    def forward(self, z):
+        return self.fc_layers(z)
 
     def training_step(self, batch, batch_idx):
         return self._step(batch, 'train')

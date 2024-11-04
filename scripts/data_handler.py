@@ -1,4 +1,5 @@
 import pandas as pd
+import yaml
 from os import cpu_count
 from numpy import inf, arange, zeros, abs
 from pandas import concat
@@ -212,3 +213,15 @@ def target_mapping(embeddings_df, label, age_range, bmi_range):
         data_range = [0, 1]
     bin_centers = data_range[0] + 1.0 / 2 + 1.0 * arange(data_range[1] - data_range[0])
     return transform_fn, output_dim, bin_centers
+
+
+def save_predictions(df, predictions, labels, target_name, params, save_path):
+    df['label'] = labels
+    for i, preds in enumerate(predictions):
+        df[f'pred_{i}'] = preds
+    df = df.drop(columns=['embedding'])
+    if not save_path.exists():
+        save_path.mkdir(parents=True, exist_ok=True)
+    df.to_csv(save_path / f'{target_name}_predictions.csv')
+    with open(save_path / f'{target_name}_params.yaml', 'w') as file:
+        yaml.dump(params, file)

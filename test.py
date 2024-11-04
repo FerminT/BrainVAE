@@ -1,7 +1,7 @@
 from pathlib import Path
 from scripts.constants import CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import (get_loader, get_datapath, load_set, create_test_splits, target_mapping,
-                                  balance_dataset)
+                                  balance_dataset, save_predictions)
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.t1_dataset import T1Dataset
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
@@ -17,22 +17,9 @@ from pandas import DataFrame, cut
 from seaborn import scatterplot, kdeplot, set_theme, color_palette
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
-import yaml
 import torch
 import wandb
 import argparse
-
-
-def save_predictions(df, predictions, labels, target_name, params, save_path):
-    df['label'] = labels
-    for i, preds in enumerate(predictions):
-        df[f'pred_{i}'] = preds
-    df = df.drop(columns=['embedding'])
-    if not save_path.exists():
-        save_path.mkdir(parents=True, exist_ok=True)
-    df.to_csv(save_path / f'{target_name}_predictions.csv')
-    with open(save_path / f'{target_name}_params.yaml', 'w') as file:
-        yaml.dump(params, file)
 
 
 def report_results(results_dict, target_label, name):
