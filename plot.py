@@ -19,7 +19,7 @@ CFGS_RENAMING = {'default': 'Age-agnostic',
                  'baseline': 'Shuffled'}
 
 
-def plot(results_path, cfgs, target_labels, age_windows):
+def plot(results_path, cfgs, target_labels, bars, age_windows):
     evaluated_cfgs = []
     labels_results = {label: {} for label in target_labels}
     for cfg in cfgs:
@@ -51,12 +51,100 @@ def plot(results_path, cfgs, target_labels, age_windows):
                                                              model_at_label[model_at_label['age_window'] == i]['age_at_scan'].max())
                                               for i in range(age_windows)}
 
-    roc_curves = build_roc_curves(labels_results, target_labels, evaluated_cfgs, age_windows)
-    pr_curves = build_precision_recall_curves(labels_results, target_labels, evaluated_cfgs, age_windows)
-    plot_curves(roc_curves, 'False Positive Rate', 'True Positive Rate', True, 25,
-                results_path / 'roc_curves.png', age_windows_ranges)
-    plot_curves(pr_curves, 'Recall', 'Precision', False, 25,
-                results_path / 'pr_curves.png', age_windows_ranges)
+    if bars:
+        metrics = compute_metrics(labels_results, target_labels, evaluated_cfgs)
+        plot_bar_plots(metrics, target_labels, results_path)
+    else:
+        roc_curves = build_roc_curves(labels_results, target_labels, evaluated_cfgs, age_windows)
+        pr_curves = build_precision_recall_curves(labels_results, target_labels, evaluated_cfgs, age_windows)
+        plot_curves(roc_curves, 'False Positive Rate', 'True Positive Rate', True, 25,
+                    results_path / 'roc_curves.png', age_windows_ranges)
+        plot_curves(pr_curves, 'Recall', 'Precision', False, 25,
+                    results_path / 'pr_curves.png', age_windows_ranges)
+
+
+def plot_bar_plots(metrics, target_labels, results_path):
+    sns.set_theme(font_scale=1.5)
+    fig, axs = plt.subplots(1, len(target_labels), figsize=(13, 6))
+
+    for ax, label in zip(axs.flat, target_labels):
+        data = []
+        for model in metrics[label]:
+            if 'MAE_mean' in metrics[label][model]:
+                data.append({
+                    'Model': model,
+                    'Metric': 'MAE',
+                    'Value': metrics[label][model]['MAE_mean'],
+                    'Error': metrics[label][model]['MAE_stderr']
+                })
+                data.append({
+                    'Model': model,
+                    'Metric': 'Correlation',
+                    'Value': metrics[label][model]['Correlation_mean'],
+                    'Error': metrics[label][model]['Correlation_stderr']
+                })
+            if 'Accuracy_mean' in metrics[label][model]:
+                data.append({
+                    'Model': model,
+                    'Metric': 'Accuracy',
+                    'Value': metrics[label][model]['Accuracy_mean'],
+                    'Error': metrics[label][model]['Accuracy_stderr']
+                })
+
+        df = pd.DataFrame(data)
+        sns.barplot(x='Model', y='Value', hue='Metric', data=df, ax=ax, ci=None)
+        for i, bar in enumerate(ax.patches):
+            error = df.iloc[i // len(metrics[label])]['Error']
+            ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=error, fmt='none', c='black')
+
+        ax.set_title(label)
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        ax.grid(False)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+
+    fig.tight_layout()
+    fig.patch.set_alpha(0)
+    plt.savefig(results_path / 'bar_plots.png', format='png', bbox_inches='tight')
+    plt.subplots_adjust(wspace=0.4)
+    plt.show()
+
+
+def compute_metrics(labels_results, target_labels, evaluated_cfgs):
+    metrics = {label: {} for label in target_labels}
+    for label in target_labels:
+        for model in evaluated_cfgs:
+            model_results = labels_results[label][model]
+            mae_list = []
+            corr_list = []
+            acc_list = []
+            for run in model_results.columns:
+                if run.startswith('pred_'):
+                    predictions = model_results[run].values
+                    true_values = model_results['label'].values
+
+                    if np.issubdtype(true_values.dtype, np.number):
+                        mae = mean_absolute_error(true_values, predictions)
+                        corr = np.corrcoef(true_values, predictions)[0, 1]
+                        mae_list.append(mae)
+                        corr_list.append(corr)
+                    else:
+                        acc = accuracy_score(true_values, predictions >= 0.5)
+                        acc_list.append(acc)
+            if mae_list:
+                metrics[label][model] = {
+                    'MAE_mean': np.mean(mae_list),
+                    'MAE_stderr': sem(mae_list),
+                    'Correlation_mean': np.mean(corr_list),
+                    'Correlation_stderr': sem(corr_list)
+                }
+            if acc_list:
+                metrics[label][model] = {
+                    'Accuracy_mean': np.mean(acc_list),
+                    'Accuracy_stderr': sem(acc_list)
+                }
+
+    return metrics
 
 
 def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_windows_ranges):
@@ -257,6 +345,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dataset', type=str, default='diseased', help='dataset where to look for results')
     parser.add_argument('-t', '--targets', type=str, nargs='+', default=['dvh', 'dvp', 'hvp'],
                         help='target labels to plot')
+    parser.add_argument('-b', '--bars', action='store_true', help='plot bars instead of curves')
     parser.add_argument('-c', '--cfgs', nargs='+', type=str, default=['default', 'invariant_float', 'age_predictor'],
                         help='configurations to plot')
     parser.add_argument('-w', '--age_windows', type=int, default=0,
@@ -265,4 +354,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     results_path = Path(EVALUATION_PATH, args.dataset, args.set)
 
-    plot(results_path, args.cfgs, args.targets, args.age_windows)
+    plot(results_path, args.cfgs, args.targets, args.bars, args.age_windows)
