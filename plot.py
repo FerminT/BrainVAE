@@ -2,12 +2,13 @@ from pandas import read_csv
 from pathlib import Path
 from scripts.constants import EVALUATION_PATH
 from scipy.interpolate import interp1d
+from scipy.stats import sem
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import argparse
-from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import precision_recall_curve, mean_absolute_error, accuracy_score
 
 
 CFGS_RENAMING = {'default': 'Age-agnostic',
@@ -53,7 +54,7 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
 
     if bars:
         metrics = compute_metrics(labels_results, target_labels, evaluated_cfgs)
-        plot_bar_plots(metrics, target_labels, results_path)
+        plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path)
     else:
         roc_curves = build_roc_curves(labels_results, target_labels, evaluated_cfgs, age_windows)
         pr_curves = build_precision_recall_curves(labels_results, target_labels, evaluated_cfgs, age_windows)
@@ -63,9 +64,9 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
                     results_path / 'pr_curves.png', age_windows_ranges)
 
 
-def plot_bar_plots(metrics, target_labels, results_path):
+def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     sns.set_theme(font_scale=1.5)
-    fig, axs = plt.subplots(1, len(target_labels), figsize=(13, 6))
+    fig, axs = plt.subplots(1, len(target_labels), figsize=(10, 6))
 
     for ax, label in zip(axs.flat, target_labels):
         data = []
@@ -92,21 +93,34 @@ def plot_bar_plots(metrics, target_labels, results_path):
                 })
 
         df = pd.DataFrame(data)
-        sns.barplot(x='Model', y='Value', hue='Metric', data=df, ax=ax, ci=None)
+        metric = 'MAE' if 'MAE' in df['Metric'].values else 'Accuracy'
+        sns.barplot(x='Model', y='Value', hue='Model', data=df[df['Metric'] == metric], ax=ax, errorbar=None, width=1.0)
         for i, bar in enumerate(ax.patches):
             error = df.iloc[i // len(metrics[label])]['Error']
             ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=error, fmt='none', c='black')
 
+        if metric == 'MAE':
+            ax2 = ax.twinx()
+            sns.lineplot(x='Model', y='Value', data=df[df['Metric'] == 'Correlation'], ax=ax2,
+                         marker='o', linestyle='--', color='red', markeredgecolor='black')
+            ax2.set_ylabel('Correlation')
+            ax2.set_ylim(0, 1)
+            ax2.grid(False)
+
         ax.set_title(label)
+        ax.set_ylabel(metric)
         ax.set_xlabel('')
-        ax.set_ylabel('')
         ax.grid(False)
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+        ax.set_xticklabels([])
 
     fig.tight_layout()
     fig.patch.set_alpha(0)
-    plt.savefig(results_path / 'bar_plots.png', format='png', bbox_inches='tight')
-    plt.subplots_adjust(wspace=0.4)
+    colors = sns.color_palette('tab10', len(evaluated_cfgs))
+    fig.legend(handles=[plt.Line2D([0], [0], color=color, lw=4) for color in colors],
+               labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(evaluated_cfgs),
+               fontsize='large')
+    fig.savefig(results_path / 'bar_plots.png', format='png', bbox_inches='tight', transparent=True)
+    plt.subplots_adjust(wspace=1.0)
     plt.show()
 
 
@@ -123,7 +137,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                     predictions = model_results[run].values
                     true_values = model_results['label'].values
 
-                    if np.issubdtype(true_values.dtype, np.number):
+                    if not np.array_equal(true_values, true_values.astype(bool)):
                         mae = mean_absolute_error(true_values, predictions)
                         corr = np.corrcoef(true_values, predictions)[0, 1]
                         mae_list.append(mae)
@@ -135,7 +149,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                 metrics[label][model] = {
                     'MAE_mean': np.mean(mae_list),
                     'MAE_stderr': sem(mae_list),
-                    'Correlation_mean': np.mean(corr_list),
+                    'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0 else 0,
                     'Correlation_stderr': sem(corr_list)
                 }
             if acc_list:
