@@ -198,8 +198,10 @@ def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_w
             plt.subplots_adjust(wspace=0.3)
 
             handles, labels = axs[0].get_legend_handles_labels()
-            fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=len(labels), fontsize=fontsize)
-            plt.savefig(f'{filename.stem}_{label}{filename.suffix}', format='png', bbox_inches='tight')
+            fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=len(labels),
+                       fontsize=fontsize)
+            plt.savefig(filename.parent / f'{filename.stem}_{label}{filename.suffix}', format='png',
+                        bbox_inches='tight')
             plt.show()
     else:
         fig, axs = plt.subplots(1, len(curves.keys()), figsize=(18, 7), sharey=True)
