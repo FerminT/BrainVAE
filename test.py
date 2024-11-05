@@ -155,8 +155,11 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
         color_by_is_float = subjects_df[color_by].dtype == 'float64'
         if color_by_is_float:
             subjects_df[color_by] = subjects_df[color_by].astype(int)
+            palette = 'viridis_r'
+        else:
+            palette = color_palette()
         scatter = scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=color_by, style=label, ax=ax, alpha=0.5,
-                              size=.3, palette='viridis_r')
+                              size=.3, palette=palette)
         handles_scatter, labels_scatter = scatter.get_legend_handles_labels()
         kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax, alpha=0.8)
         if color_by_is_float:
@@ -165,10 +168,15 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
             sm.set_array([])
             cbar = plt.colorbar(sm, ax=ax)
             cbar.set_label(color_by)
+            handles_scatter, labels_scatter = handles_scatter[-2:], labels_scatter[-2:]
+            labels_kde = labels_scatter
+        else:
+            handles_scatter = handles_scatter[1:3] + handles_scatter[-2:]
+            labels_scatter = labels_scatter[1:3] + labels_scatter[-2:]
+            labels_kde = labels_scatter[-2:]
         handles_kde = [plt.Line2D([0], [0], color=color_palette()[0]),
                        plt.Line2D([0], [0], color=color_palette()[1])]
-        labels_kde = labels_scatter[-2:]
-        ax.legend(handles_scatter[-2:] + handles_kde, labels_scatter[-2:] + labels_kde,
+        ax.legend(handles_scatter + handles_kde, labels_scatter + labels_kde,
                   loc='lower center', ncol=2)
     else:
         if label == 'age_at_scan' or label == 'bmi':
