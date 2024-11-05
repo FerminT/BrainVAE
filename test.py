@@ -157,7 +157,7 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
             subjects_df[color_by] = subjects_df[color_by].astype(int)
             palette = 'viridis_r'
         else:
-            palette = color_palette()
+            palette = color_palette()[2:4]
         scatter = scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=color_by, style=label, ax=ax, alpha=0.5,
                               size=.3, palette=palette)
         handles_scatter, labels_scatter = scatter.get_legend_handles_labels()
