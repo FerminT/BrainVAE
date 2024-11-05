@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import argparse
-from sklearn.metrics import precision_recall_curve, mean_absolute_error, accuracy_score
+from sklearn.metrics import precision_recall_curve, mean_absolute_error, accuracy_score, auc
 
 
 CFGS_RENAMING = {'default': 'Age-agnostic',
@@ -183,24 +183,26 @@ def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_w
                                                  np.array(mean_tpr) - np.array(stderr_tpr),
                                                  np.array(mean_tpr) + np.array(stderr_tpr),
                                                  alpha=0.2)
-                        print(f'{label} Ages {window_age_range[0]}-{window_age_range[1]} {model} '
-                              f'AUC: {np.trapz(mean_tpr, mean_fpr):.2f}')
+                        model = model.split('_')[0]
+                        print(f'{label} Ages {window_age_range[0]:.1f}-{window_age_range[1]:.1f} {model} '
+                              f'AUC: {auc(mean_fpr, mean_tpr):.2f}')
 
                 axs[window].set_xlabel(xlabel, fontsize=fontsize)
                 if identity_line:
                     axs[window].plot([0, 1], [0, 1], 'k--', alpha=0.5)
                 if window == 0:
                     axs[window].set_ylabel(ylabel, fontsize=fontsize)
-                window_title = f'Age {window_age_range[0]:1f}-{window_age_range[1]:1f}'
+                window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
                 axs[window].set_title(window_title, fontsize=fontsize)
             fig.suptitle(f'{label.upper()}', fontsize=fontsize)
             fig.patch.set_alpha(0)
             plt.subplots_adjust(wspace=0.3)
 
             handles, labels = axs[0].get_legend_handles_labels()
+            labels = [label.split('_')[0] for label in labels]
             fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=len(labels),
                        fontsize=fontsize)
-            plt.savefig(filename.parent / f'{filename.stem}_{label}{filename.suffix}', format='png',
+            plt.savefig(filename.parent / f'age_{filename.stem}_{label}{filename.suffix}', format='png',
                         bbox_inches='tight')
             plt.show()
     else:
@@ -218,7 +220,8 @@ def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_w
                                     np.array(mean_tpr) - np.array(stderr_tpr),
                                     np.array(mean_tpr) + np.array(stderr_tpr),
                                     alpha=0.2)
-                print(f'{label} {model} AUC: {np.trapz(mean_tpr, mean_fpr)}')
+                print(f'{label} {model} AUC: {auc(mean_fpr, mean_tpr):.2f}')
+            print('\n')
             axs[i].set_xlabel(xlabel, fontsize=fontsize)
             if identity_line:
                 axs[i].plot([0, 1], [0, 1], 'k--', alpha=0.5)
