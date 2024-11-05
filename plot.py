@@ -163,7 +163,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
 
 def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_windows_ranges):
     sns.set_theme()
-    if any(age_windows_ranges):
+    if any(age_windows_ranges.values()):
         for label in curves:
             n_windows = len(age_windows_ranges[label].keys())
             fig, axs = plt.subplots(1, n_windows, figsize=(18, 7), sharey=True)
@@ -229,7 +229,8 @@ def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_w
         plt.subplots_adjust(wspace=0.05)
 
         handles, labels = axs[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.00), ncol=len(labels), fontsize=fontsize)
+        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.00),
+                   ncol=len(labels), fontsize=fontsize)
         plt.savefig(filename, format='png', bbox_inches='tight')
         plt.show()
 
