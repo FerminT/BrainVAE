@@ -115,7 +115,7 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
 
     fig.tight_layout()
     fig.patch.set_alpha(0)
-    colors = sns.color_palette('tab10', len(evaluated_cfgs))
+    colors = sns.color_palette(n_colors=len(evaluated_cfgs))
     fig.legend(handles=[plt.Line2D([0], [0], color=color, lw=4) for color in colors],
                labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(evaluated_cfgs) // 2,
                fontsize='large')
