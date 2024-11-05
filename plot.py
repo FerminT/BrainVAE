@@ -15,7 +15,7 @@ CFGS_RENAMING = {'default': 'Age-agnostic',
                  'invariant_float': 'Age-invariant',
                  'age_predictor': 'Age-aware',
                  'bmi_invariant': 'BMI-invariant',
-                 'gender_invariant': 'Gender-invariant',
+                 'gender_invariant': 'Sex-invariant',
                  'age': 'Age',
                  'baseline': 'Shuffled'}
 
@@ -66,7 +66,7 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
 
 def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     sns.set_theme(font_scale=1.5)
-    fig, axs = plt.subplots(1, len(target_labels), figsize=(10, 6))
+    fig, axs = plt.subplots(1, len(target_labels), figsize=(12, 6))
 
     for ax, label in zip(axs.flat, target_labels):
         data = []
@@ -102,7 +102,7 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
         if metric == 'MAE':
             ax2 = ax.twinx()
             sns.lineplot(x='Model', y='Value', data=df[df['Metric'] == 'Correlation'], ax=ax2,
-                         marker='o', linestyle='--', color='red', markeredgecolor='black')
+                         marker='o', linestyle='--', color='#d4aa00ff', markeredgecolor='black')
             ax2.set_ylabel('Correlation')
             ax2.set_ylim(0, 1)
             ax2.grid(False)
@@ -117,10 +117,10 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     fig.patch.set_alpha(0)
     colors = sns.color_palette('tab10', len(evaluated_cfgs))
     fig.legend(handles=[plt.Line2D([0], [0], color=color, lw=4) for color in colors],
-               labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(evaluated_cfgs),
+               labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(evaluated_cfgs) // 2,
                fontsize='large')
     fig.savefig(results_path / 'bar_plots.png', format='png', bbox_inches='tight', transparent=True)
-    plt.subplots_adjust(wspace=1.0)
+    plt.subplots_adjust(wspace=0.8)
     plt.show()
 
 
@@ -362,7 +362,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--targets', type=str, nargs='+', default=['dvh', 'dvp', 'hvp'],
                         help='target labels to plot')
     parser.add_argument('-b', '--bars', action='store_true', help='plot bars instead of curves')
-    parser.add_argument('-c', '--cfgs', nargs='+', type=str, default=['default', 'invariant_float', 'age_predictor'],
+    parser.add_argument('-c', '--cfgs', nargs='+', type=str, default=['invariant_float', 'default', 'age_predictor'],
                         help='configurations to plot')
     parser.add_argument('-w', '--age_windows', type=int, default=0,
                         help='Divide classifications in n equidistant age windows')
