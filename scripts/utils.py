@@ -1,13 +1,20 @@
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
 import yaml
+from pandas import read_csv
+from scipy.stats import sem
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
+from sklearn.metrics import mean_absolute_error, accuracy_score
 from torch import cat, device, cuda
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
 from models.utils import get_latent_representation
 from models.icvae import ICVAE
+from plot import CFGS_RENAMING
 from scripts.t1_dataset import T1Dataset
 from scripts.data_handler import load_set
 import umap
@@ -100,3 +107,84 @@ def init_embedding(method, n_components=2):
         raise NotImplementedError(f'Method {method} not implemented')
 
     return embedding
+
+
+def load_predictions(target_labels, cfgs, results_path):
+    evaluated_cfgs = []
+    labels_results = {label: {} for label in target_labels}
+    for cfg in cfgs:
+        cfg_path = Path(results_path, cfg)
+        if len(Path(cfg).parts) == 1:
+            models = [dir_ for dir_ in cfg_path.iterdir() if dir_.is_dir()]
+            if len(models) == 0:
+                raise ValueError(f'No models found in {cfg_path}')
+            model = models[-1]
+            name = CFGS_RENAMING.get(cfg, cfg)
+            evaluated_cfgs.append(name)
+        else:
+            model = cfg_path
+            name = CFGS_RENAMING.get(model.parent.name, model.parent.name)
+            evaluated_cfgs.append(name)
+        for label in target_labels:
+            results = read_csv(Path(model, f'{label}_predictions.csv'))
+            labels_results[label][name] = results
+    return labels_results, evaluated_cfgs
+
+
+def get_age_windows(labels_predictions, target_labels, evaluated_cfgs, age_windows):
+    age_windows_ranges = {label: {} for label in target_labels}
+    if age_windows > 0:
+        for label in target_labels:
+            for model in evaluated_cfgs:
+                model_at_label = labels_predictions[label][model]
+                model_at_label['age_window'] = pd.qcut(model_at_label['age_at_scan'], age_windows, labels=False)
+                age_windows_ranges[label] = {f'window_{i}': (model_at_label[model_at_label['age_window'] == i]
+                                                             ['age_at_scan'].min(),
+                                                             model_at_label[model_at_label['age_window'] == i]
+                                                             ['age_at_scan'].max())
+                                              for i in range(age_windows)}
+    return age_windows_ranges
+
+
+def compute_metrics(labels_results, target_labels, evaluated_cfgs):
+    metrics = {label: {} for label in target_labels}
+    for label in target_labels:
+        for model in evaluated_cfgs:
+            model_results = labels_results[label][model]
+            mae_list, corr_list, acc_list = [], [], []
+            for run in model_results.columns:
+                if run.startswith('pred_'):
+                    predictions = model_results[run].values
+                    true_values = model_results['label'].values
+
+                    if not np.array_equal(true_values, true_values.astype(bool)):
+                        mae = mean_absolute_error(true_values, predictions)
+                        corr = np.corrcoef(true_values, predictions)[0, 1]
+                        mae_list.append(mae), corr_list.append(corr)
+                    else:
+                        acc = accuracy_score(true_values, predictions >= 0.5)
+                        acc_list.append(acc)
+            if mae_list:
+                metrics[label][model] = {'MAE_mean': np.mean(mae_list), 'MAE_stderr': sem(mae_list),
+                                         'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0 else 0,
+                                         'Correlation_stderr': sem(corr_list)}
+            if acc_list:
+                metrics[label][model] = {'Accuracy_mean': np.mean(acc_list), 'Accuracy_stderr': sem(acc_list)}
+
+    return metrics
+
+
+def metrics_to_df(metrics, label):
+    data = []
+    for model in metrics[label]:
+        if 'MAE_mean' in metrics[label][model]:
+            data.append({'Model': model, 'Metric': 'MAE', 'Value': metrics[label][model]['MAE_mean'],
+                         'Error': metrics[label][model]['MAE_stderr']})
+            data.append({'Model': model, 'Metric': 'Correlation', 'Value': metrics[label][model]['Correlation_mean'],
+                         'Error': metrics[label][model]['Correlation_stderr']})
+        if 'Accuracy_mean' in metrics[label][model]:
+            data.append({'Model': model, 'Metric': 'Accuracy', 'Value': metrics[label][model]['Accuracy_mean'],
+                         'Error': metrics[label][model]['Accuracy_stderr']})
+
+    df = pd.DataFrame(data)
+    return df
