@@ -22,16 +22,6 @@ import wandb
 import argparse
 
 
-def report_results(results_dict, target_label, name):
-    model_predictions = results_dict.pop('Predictions')
-    results_df = DataFrame(results_dict)
-    mean_df = results_df.mean(axis=0).to_frame(name='Mean')
-    mean_df['SE'] = results_df.sem(axis=0)
-    print(f'Predictions for {target_label} using {name} model')
-    print(mean_df)
-    return model_predictions
-
-
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
                             target_label, target_dataset, batch_size, n_layers, epochs, n_iters, save_path,
                             no_sync, device):
@@ -53,19 +43,13 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
                                       bin_centers, batch_size, epochs, device, no_sync, seed=42)
         labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers,
                                  device, seed=42)
-        random_labels = labels.copy()
-        if binary_classification:
-            positive_proportion = sum(labels) / len(labels)
-            random_labels = rnd_gen.binomial(1, positive_proportion, size=len(labels))
-        else:
-            rnd_gen.shuffle(random_labels)
-        compute_metrics(random_labels, labels, binary_classification, baseline_results)
+        add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
     params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
               'n_layers': n_layers, 'epochs': epochs}
     baseline_preds = report_results(baseline_results, target_label, name='baseline')
     model_preds = report_results(model_results, target_label, name=cfg_name)
-    save_predictions(val, model_preds, labels, target_label, params, save_path)
     baseline_savepath = save_path.parents[1] / 'baseline' / 'random'
+    save_predictions(val, model_preds, labels, target_label, params, save_path)
     save_predictions(val, baseline_preds, labels, target_label, params, baseline_savepath)
 
 
@@ -122,6 +106,26 @@ def compute_metrics(predictions, labels, binary_classification, results_dict):
         results_dict['Corr'].append(corr)
         results_dict['p_value'].append(p_value)
     results_dict['Predictions'].append(predictions)
+
+
+def report_results(results_dict, target_label, name):
+    model_predictions = results_dict.pop('Predictions')
+    results_df = DataFrame(results_dict)
+    mean_df = results_df.mean(axis=0).to_frame(name='Mean')
+    mean_df['SE'] = results_df.sem(axis=0)
+    print(f'Predictions for {target_label} using {name} model')
+    print(mean_df)
+    return model_predictions
+
+
+def add_baseline_results(labels, binary_classification, baseline_results, rnd_gen):
+    random_labels = labels.copy()
+    if binary_classification:
+        positive_proportion = sum(labels) / len(labels)
+        random_labels = rnd_gen.binomial(1, positive_proportion, size=len(labels))
+    else:
+        rnd_gen.shuffle(random_labels)
+    compute_metrics(random_labels, labels, binary_classification, baseline_results)
 
 
 def sample(model, dataset, age, subject_id, device, save_path):
