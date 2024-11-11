@@ -20,14 +20,14 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
     else:
         roc_curves = build_roc_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
         pr_curves = build_precision_recall_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
-        plot_curves(roc_curves, 'False Positive Rate', 'True Positive Rate', True, 25,
-                    results_path / 'roc_curves.png', age_windows_ranges)
-        plot_curves(pr_curves, 'Recall', 'Precision', False, 25,
-                    results_path / 'pr_curves.png', age_windows_ranges)
-        plot_aucs(roc_curves, evaluated_cfgs, 'ROC-AUC', 25, results_path / 'roc_aucs.png',
-                  age_windows_ranges)
-        plot_aucs(pr_curves, evaluated_cfgs, 'PR-AUC', 25, results_path / 'pr_aucs.png',
-                  age_windows_ranges)
+        plot_data(roc_curves, evaluated_cfgs, 'False Positive Rate', 'True Positive Rate', None, True, 25,
+                  results_path / 'roc_curves.png', age_windows_ranges, type='curve')
+        plot_data(pr_curves, evaluated_cfgs, 'Recall', 'Precision', None, False, 25,
+                  results_path / 'pr_curves.png', age_windows_ranges, type='curve')
+        plot_data(roc_curves, evaluated_cfgs, '', 'ROC-AUC', (0.4, 1.0), False, 25,
+                  results_path / 'roc_aucs.png', age_windows_ranges, type='auc')
+        plot_data(pr_curves, evaluated_cfgs, '', 'PR-AUC', (0.4, 1.0), False, 25,
+                  results_path / 'pr_aucs.png', age_windows_ranges, type='auc')
 
 
 def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
@@ -68,42 +68,14 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     plt.show()
 
 
-def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_windows_ranges):
+def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsize, filename, age_windows_ranges, type):
     sns.set_theme()
     has_windows = any(age_windows_ranges.values())
-    fig, axs = create_subplots(1, len(curves.keys()), figsize=(18, 7), sharey=True)
-    for i, label in enumerate(curves):
-        if has_windows:
-            n_columns = len(age_windows_ranges[label].keys())
-            fig, axs = create_subplots(1, n_columns, figsize=(18, 7), sharey=True)
-            fig.suptitle(f'{label.upper()}', fontsize=fontsize)
-            label_age_ranges = age_windows_ranges[label]
-            filename = filename.parent / f'age_{filename.stem}_{label}{filename.suffix}'
-            for window in range(n_columns):
-                for model in curves[label]:
-                    if f'window_{window}' in model:
-                        plot_mean(curves[label][model]['mean'], curves[label][model]['stderr'], model.split('_')[0],
-                                  axs[window])
-
-                window_age_range = label_age_ranges[f'window_{window}']
-                window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
-                configure_axes(axs[window], xlabel, ylabel, None, identity_line, fontsize, window_title, window == 0)
-            show_plot(fig, axs[0].get_legend_handles_labels(), fontsize, filename)
-        else:
-            for model in curves[label]:
-                plot_mean(curves[label][model]['mean'], curves[label][model]['stderr'], model, axs[i])
-            configure_axes(axs[i], xlabel, ylabel, None, identity_line, fontsize, label, i == 0)
-    if not has_windows:
-        show_plot(fig, axs[0].get_legend_handles_labels(), fontsize, filename)
-
-
-def plot_aucs(curves, evaluated_cfgs, ylabel, fontsize, filename, age_windows_ranges):
-    sns.set_theme()
-    has_windows = any(age_windows_ranges.values())
-    fig, axs = create_subplots(1, len(curves.keys()), figsize=(18, 7), sharey=True)
+    fig, axs = create_subplots(1, len(data.keys()), figsize=(18, 7), sharey=True)
     colors = sns.color_palette(n_colors=len(evaluated_cfgs))
     handles = [plt.Line2D([0], [0], color=color, lw=4) for color in colors]
-    for i, label in enumerate(curves):
+
+    for i, label in enumerate(data):
         if has_windows:
             n_columns = len(age_windows_ranges[label].keys())
             fig, axs = create_subplots(1, n_columns, figsize=(18, 7), sharey=True)
@@ -111,24 +83,35 @@ def plot_aucs(curves, evaluated_cfgs, ylabel, fontsize, filename, age_windows_ra
             label_age_ranges = age_windows_ranges[label]
             filename = filename.parent / f'age_{filename.stem}_{label}{filename.suffix}'
             for window in range(n_columns):
-                for model in curves[label]:
+                for model in data[label]:
                     if f'window_{window}' in model:
-                        auc_values = curves[label][model]['aucs']
-                        axs[window].violinplot(auc_values)
+                        model_name = model.split('_')[0]
+                        if type == 'curve':
+                            plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model_name, axs[window])
+                        else:
+                            plot_violin(data[label], 'aucs', axs[window], colors)
 
                 window_age_range = label_age_ranges[f'window_{window}']
                 window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
-                configure_axes(axs[window], '', (0.4, 1.0), ylabel, False, fontsize, window_title, window == 0)
+                configure_axes(axs[window], xlabel, ylabel, ylim, identity_line, fontsize, window_title, window == 0)
             show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
         else:
-            results_df = DataFrame.from_dict(curves[label], orient='index')
-            results_df = results_df.reset_index().rename(columns={'index': 'Model'})
-            results_df = results_df.explode('aucs')[['Model', 'aucs']]
-            results_df['aucs'] = results_df['aucs'].astype(float)
-            sns.violinplot(x='Model', y='aucs', data=results_df, hue='Model', ax=axs[i], palette=colors)
-            configure_axes(axs[i], '', ylabel, (0.4, 1.0), False, fontsize, label, i == 0)
+            if type == 'curve':
+                for model in data[label]:
+                    plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model, axs[i])
+            else:
+                plot_violin(data[label], 'aucs', axs[i], colors)
+            configure_axes(axs[i], xlabel, ylabel, ylim, identity_line, fontsize, label, i == 0)
     if not has_windows:
         show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
+
+
+def plot_violin(data, label, ax, colors):
+    results_df = DataFrame.from_dict(data, orient='index')
+    results_df = results_df.reset_index().rename(columns={'index': 'Model'})
+    results_df = results_df.explode(label)[['Model', label]]
+    results_df[label] = results_df[label].astype(float)
+    sns.violinplot(x='Model', y=label, data=results_df, hue='Model', ax=ax, palette=colors)
 
 
 def plot_mean(mean_data, stderr_data, model_label, ax):
@@ -238,10 +221,7 @@ def mean_pr(data, common_recall, label, model_name, pr_curves):
 
 
 def count_tp_fp_tn_fn(predictions, labels, threshold):
-    tp = 0
-    fp = 0
-    tn = 0
-    fn = 0
+    tp, fp, tn, fn = 0, 0, 0, 0
     for i in range(len(predictions)):
         if predictions[i] >= threshold:
             if labels[i] == 1:
