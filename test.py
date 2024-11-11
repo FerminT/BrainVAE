@@ -51,8 +51,8 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
         classifier = train_classifier(train_dataset, val_dataset, cfg_name, latent_dim, output_dim, n_layers,
                                       bin_centers, batch_size, epochs, device, no_sync, seed=42)
-        labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers, device,
-                                 seed=42)
+        labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers,
+                                 device, seed=42)
         shuffled_labels = labels.copy()
         rnd_gen.shuffle(shuffled_labels)
         compute_metrics(shuffled_labels, labels, binary_classification, baseline_results)
@@ -67,6 +67,8 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, batch_size,
                      epochs, device, no_sync, seed):
+    if config_name == 'age':
+        return None
     seed_everything(seed, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
@@ -86,12 +88,13 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
 def test_classifier(model, val_dataset, model_results, binary_classification, bin_centers, device, seed):
     seed_everything(seed, workers=True)
     device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
-    model.eval().to(device)
+    if model:
+        model.eval().to(device)
     predictions, labels = [], []
     for idx in tqdm(range(len(val_dataset))):
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
-        prediction = model(z)
+        prediction = model(z) if model else z
         prediction = prediction.item() if binary_classification else (torch.exp(prediction.cpu().detach()) @ bin_centers).item()
         predictions.append(prediction)
         label = target.item() if binary_classification else (target.cpu() @ bin_centers).item()
