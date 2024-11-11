@@ -1,11 +1,12 @@
 from pathlib import Path
 from scripts.constants import EVALUATION_PATH
 from scipy.interpolate import interp1d
+from pandas import DataFrame
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
-from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import precision_recall_curve, auc
 from scripts.utils import load_predictions, get_age_windows, compute_metrics, metrics_to_df
 
 
@@ -23,6 +24,10 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
                     results_path / 'roc_curves.png', age_windows_ranges)
         plot_curves(pr_curves, 'Recall', 'Precision', False, 25,
                     results_path / 'pr_curves.png', age_windows_ranges)
+        plot_aucs(roc_curves, evaluated_cfgs, 'ROC-AUC', 25, results_path / 'roc_aucs.png',
+                  age_windows_ranges)
+        plot_aucs(pr_curves, evaluated_cfgs, 'PR-AUC', 25, results_path / 'pr_aucs.png',
+                  age_windows_ranges)
 
 
 def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
@@ -82,14 +87,48 @@ def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_w
 
                 window_age_range = label_age_ranges[f'window_{window}']
                 window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
-                configure_axes(axs[window], xlabel, ylabel, identity_line, fontsize, window_title, window == 0)
+                configure_axes(axs[window], xlabel, ylabel, None, identity_line, fontsize, window_title, window == 0)
             show_plot(fig, axs[0].get_legend_handles_labels(), fontsize, filename)
         else:
             for model in curves[label]:
                 plot_mean(curves[label][model]['mean'], curves[label][model]['stderr'], model, axs[i])
-            configure_axes(axs[i], xlabel, ylabel, identity_line, fontsize, label, i == 0)
+            configure_axes(axs[i], xlabel, ylabel, None, identity_line, fontsize, label, i == 0)
     if not has_windows:
         show_plot(fig, axs[0].get_legend_handles_labels(), fontsize, filename)
+
+
+def plot_aucs(curves, evaluated_cfgs, ylabel, fontsize, filename, age_windows_ranges):
+    sns.set_theme()
+    has_windows = any(age_windows_ranges.values())
+    fig, axs = create_subplots(1, len(curves.keys()), figsize=(18, 7), sharey=True)
+    colors = sns.color_palette(n_colors=len(evaluated_cfgs))
+    handles = [plt.Line2D([0], [0], color=color, lw=4) for color in colors]
+    for i, label in enumerate(curves):
+        if has_windows:
+            n_columns = len(age_windows_ranges[label].keys())
+            fig, axs = create_subplots(1, n_columns, figsize=(18, 7), sharey=True)
+            fig.suptitle(f'{label.upper()}', fontsize=fontsize)
+            label_age_ranges = age_windows_ranges[label]
+            filename = filename.parent / f'age_{filename.stem}_{label}{filename.suffix}'
+            for window in range(n_columns):
+                for model in curves[label]:
+                    if f'window_{window}' in model:
+                        auc_values = curves[label][model]['aucs']
+                        axs[window].violinplot(auc_values)
+
+                window_age_range = label_age_ranges[f'window_{window}']
+                window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
+                configure_axes(axs[window], '', (0.4, 1.0), ylabel, False, fontsize, window_title, window == 0)
+            show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
+        else:
+            results_df = DataFrame.from_dict(curves[label], orient='index')
+            results_df = results_df.reset_index().rename(columns={'index': 'Model'})
+            results_df = results_df.explode('aucs')[['Model', 'aucs']]
+            results_df['aucs'] = results_df['aucs'].astype(float)
+            sns.violinplot(x='Model', y='aucs', data=results_df, hue='Model', ax=axs[i], palette=colors)
+            configure_axes(axs[i], '', ylabel, (0.4, 1.0), False, fontsize, label, i == 0)
+    if not has_windows:
+        show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
 
 
 def plot_mean(mean_data, stderr_data, model_label, ax):
@@ -101,10 +140,14 @@ def plot_mean(mean_data, stderr_data, model_label, ax):
                     alpha=0.2)
 
 
-def configure_axes(ax, xlabel, ylabel, identity_line, fontsize, label, is_first_column):
+def configure_axes(ax, xlabel, ylabel, ylim, identity_line, fontsize, label, is_first_column):
     ax.set_xlabel(xlabel, fontsize=fontsize)
+    if len(xlabel) == 0:
+        ax.set_xticks([])
     if identity_line:
         ax.plot([0, 1], [0, 1], 'k--', alpha=0.5)
+    if ylim:
+        ax.set_ylim(ylim)
     if is_first_column:
         ax.set_ylabel(ylabel, fontsize=fontsize)
     ax.set_title(label.upper(), fontsize=fontsize)
@@ -139,23 +182,6 @@ def build_roc_curves(labels_results, labels, models, age_windows):
     return roc_curves
 
 
-def mean_roc(data, thresholds, label, model_name, roc_curves):
-    all_fpr, all_tpr = [], []
-    for run in data.columns:
-        if run.startswith('pred_'):
-            fpr_tpr = []
-            for threshold in thresholds:
-                tp, fp, tn, fn = count_tp_fp_tn_fn(data[run].values, data['label'].values, threshold)
-                tpr = tp / (tp + fn)
-                fpr = fp / (fp + tn)
-                fpr_tpr.append((fpr, tpr))
-            all_fpr.append([x[0] for x in fpr_tpr])
-            all_tpr.append([x[1] for x in fpr_tpr])
-    mean_fpr, mean_tpr = np.mean(all_fpr, axis=0), np.mean(all_tpr, axis=0)
-    stderr_tpr = np.std(all_tpr, axis=0) / np.sqrt(len(all_tpr))
-    roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'stderr': list(zip(mean_fpr, stderr_tpr))}
-
-
 def build_precision_recall_curves(labels_results, labels, models, age_windows):
     pr_curves = {label: {} for label in labels}
     common_recall = np.linspace(0, 1, 100)
@@ -171,9 +197,27 @@ def build_precision_recall_curves(labels_results, labels, models, age_windows):
     return pr_curves
 
 
+def mean_roc(data, thresholds, label, model_name, roc_curves):
+    all_fpr, all_tpr, all_auc = [], [], []
+    for run in data.columns:
+        if run.startswith('pred_'):
+            fpr_tpr = []
+            for threshold in thresholds:
+                tp, fp, tn, fn = count_tp_fp_tn_fn(data[run].values, data['label'].values, threshold)
+                tpr = tp / (tp + fn)
+                fpr = fp / (fp + tn)
+                fpr_tpr.append((fpr, tpr))
+            all_fpr.append([x[0] for x in fpr_tpr])
+            all_tpr.append([x[1] for x in fpr_tpr])
+            all_auc.append(auc(all_fpr[-1], all_tpr[-1]))
+    mean_fpr, mean_tpr = np.mean(all_fpr, axis=0), np.mean(all_tpr, axis=0)
+    stderr_tpr = np.std(all_tpr, axis=0) / np.sqrt(len(all_tpr))
+    roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'stderr': list(zip(mean_fpr, stderr_tpr)),
+                                     'aucs': all_auc}
+
+
 def mean_pr(data, common_recall, label, model_name, pr_curves):
-    all_precision = []
-    all_recall = []
+    all_precision, all_recall, all_aucs = [], [], []
     for run in data.columns:
         if run.startswith('pred_'):
             precision, recall, _ = precision_recall_curve(data['label'].values, data[run].values)
@@ -182,12 +226,15 @@ def mean_pr(data, common_recall, label, model_name, pr_curves):
     interpolated_precisions = []
     for precision, recall in zip(all_precision, all_recall):
         interp_func = interp1d(recall, precision, bounds_error=False, fill_value=(0, 0))
-        interpolated_precisions.append(interp_func(common_recall))
+        interp_prec = interp_func(common_recall)
+        all_aucs.append(auc(common_recall, interp_prec))
+        interpolated_precisions.append(interp_prec)
     interpolated_precisions = np.array(interpolated_precisions)
     mean_precision = np.mean(interpolated_precisions, axis=0)
     std_error_precision = np.std(interpolated_precisions, axis=0) / np.sqrt(len(interpolated_precisions))
     pr_curves[label][model_name] = {'mean': list(zip(common_recall, mean_precision)),
-                                    'stderr': list(zip(common_recall, std_error_precision))}
+                                    'stderr': list(zip(common_recall, std_error_precision)),
+                                    'aucs': all_aucs}
 
 
 def count_tp_fp_tn_fn(predictions, labels, threshold):
