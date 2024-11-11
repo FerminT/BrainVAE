@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import yaml
@@ -14,7 +13,7 @@ from torchvision.transforms import Resize
 from tqdm import tqdm
 from models.utils import get_latent_representation
 from models.icvae import ICVAE
-from plot import CFGS_RENAMING
+from scripts.constants import CFGS_RENAMING
 from scripts.t1_dataset import T1Dataset
 from scripts.data_handler import load_set
 import umap

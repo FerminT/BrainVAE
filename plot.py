@@ -8,14 +8,6 @@ import argparse
 from sklearn.metrics import precision_recall_curve
 from scripts.utils import load_predictions, get_age_windows, compute_metrics, metrics_to_df
 
-CFGS_RENAMING = {'default': 'Age-agnostic',
-                 'invariant_float': 'Age-invariant',
-                 'age_predictor': 'Age-aware',
-                 'bmi_invariant': 'BMI-invariant',
-                 'gender_invariant': 'Sex-invariant',
-                 'age': 'Age',
-                 'baseline': 'Shuffled'}
-
 
 def plot(results_path, cfgs, target_labels, bars, age_windows):
     labels_predictions, evaluated_cfgs = load_predictions(target_labels, cfgs, results_path)
@@ -74,12 +66,11 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
 def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_windows_ranges):
     sns.set_theme()
     has_windows = any(age_windows_ranges.values())
+    fig, axs = create_subplots(1, len(curves.keys()), figsize=(18, 7), sharey=True)
     for i, label in enumerate(curves):
-        n_columns = len(age_windows_ranges[label].keys()) if has_windows else len(curves.keys())
-        fig, axs = plt.subplots(1, n_columns, figsize=(18, 7), sharey=True)
-        fig.patch.set_alpha(0)
-        plt.subplots_adjust(wspace=0.03)
         if has_windows:
+            n_columns = len(age_windows_ranges[label].keys())
+            fig, axs = create_subplots(1, n_columns, figsize=(18, 7), sharey=True)
             fig.suptitle(f'{label.upper()}', fontsize=fontsize)
             label_age_ranges = age_windows_ranges[label]
             filename = filename.parent / f'age_{filename.stem}_{label}{filename.suffix}'
@@ -92,15 +83,13 @@ def plot_curves(curves, xlabel, ylabel, identity_line, fontsize, filename, age_w
                 window_age_range = label_age_ranges[f'window_{window}']
                 window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
                 configure_axes(axs[window], xlabel, ylabel, identity_line, fontsize, window_title, window == 0)
+            show_plot(fig, axs[0].get_legend_handles_labels(), fontsize, filename)
         else:
             for model in curves[label]:
                 plot_mean(curves[label][model]['mean'], curves[label][model]['stderr'], model, axs[i])
             configure_axes(axs[i], xlabel, ylabel, identity_line, fontsize, label, i == 0)
-        handles, labels = axs[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.00),
-                   ncol=len(labels), fontsize=fontsize)
-        plt.savefig(filename, format='png', bbox_inches='tight')
-        plt.show()
+    if not has_windows:
+        show_plot(fig, axs[0].get_legend_handles_labels(), fontsize, filename)
 
 
 def plot_mean(mean_data, stderr_data, model_label, ax):
@@ -119,6 +108,21 @@ def configure_axes(ax, xlabel, ylabel, identity_line, fontsize, label, is_first_
     if is_first_column:
         ax.set_ylabel(ylabel, fontsize=fontsize)
     ax.set_title(label.upper(), fontsize=fontsize)
+
+
+def create_subplots(nrows, ncolumns, figsize, sharey):
+    fig, axs = plt.subplots(nrows, ncolumns, figsize=figsize, sharey=sharey)
+    fig.patch.set_alpha(0)
+    plt.subplots_adjust(wspace=0.03)
+    return fig, axs
+
+
+def show_plot(fig, handles_and_labels, fontsize, filename):
+    handles, labels = handles_and_labels
+    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.00),
+               ncol=len(labels), fontsize=fontsize)
+    plt.savefig(filename, format='png', bbox_inches='tight')
+    plt.show()
 
 
 def build_roc_curves(labels_results, labels, models, age_windows):
