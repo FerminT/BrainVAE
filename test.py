@@ -54,6 +54,9 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
         labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers,
                                  device, seed=42)
         shuffled_labels = labels.copy()
+        if binary_classification:
+            positive_proportion = sum(labels) / len(labels)
+            shuffled_labels = [positive_proportion] * len(labels)
         rnd_gen.shuffle(shuffled_labels)
         compute_metrics(shuffled_labels, labels, binary_classification, baseline_results)
     params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
