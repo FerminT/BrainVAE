@@ -65,7 +65,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
-                      precision='bf16',
+                      precision='bf16-mixed',
                       logger=wandb_logger,
                       )
     trainer.fit(classifier, train_dataloader, val_dataloader)
