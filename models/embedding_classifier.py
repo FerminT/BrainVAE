@@ -42,7 +42,7 @@ class EmbeddingClassifier(lg.LightningModule):
         z, targets = batch
         predictions = self(z)
         if self.output_dim == 1:
-            loss = nn.functional.binary_cross_entropy(predictions, targets)
+            loss = nn.functional.binary_cross_entropy_with_logits(predictions, targets)
             self.log(f'{mode}_bce', loss.item(), sync_dist=True)
             self.log(f'{mode}_accuracy', ((predictions > 0.5) == targets).float().mean().item(), sync_dist=True)
         else:
@@ -64,9 +64,6 @@ def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers):
         layers.append(nn.Linear(dims[i], dims[i + 1]))
         if i < len(dims) - 2:
             layers.append(nn.ReLU())
-        if i == len(dims) - 2:
-            if output_dim == 1:
-                layers.append(nn.Sigmoid())
-            else:
-                layers.append(nn.LogSoftmax(dim=1))
+        if i == len(dims) - 2 and output_dim > 1:
+            layers.append(nn.LogSoftmax(dim=1))
     return nn.Sequential(*layers)
