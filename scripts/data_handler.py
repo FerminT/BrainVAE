@@ -25,6 +25,18 @@ def load_metadata(datapath):
     return metadata, age_range, bmi_range
 
 
+def load_datasets(dataset, input_shape, latent_dim, age_dim, sample_size,
+                  val_size, test_size, splits_path, redo_splits, shuffle, random_state):
+    datapath = get_datapath(dataset)
+    datasets = get_datasets(dataset)
+    train, val, test, age_range, bmi_range = combine_datasets(datasets, sample_size, val_size, test_size, splits_path,
+                                                              redo_splits, shuffle, random_state)
+    train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, age_dim, age_range, bmi_range, testing=False)
+    val_dataset = T1Dataset(input_shape, datapath, val, latent_dim, age_dim, age_range, bmi_range, testing=True)
+    test_dataset = T1Dataset(input_shape, datapath, test, latent_dim, age_dim, age_range, bmi_range, testing=True)
+    return train_dataset, val_dataset, test_dataset
+
+
 def combine_datasets(datasets, sample_size, val_size, test_size, splits_path, redo_splits, shuffle, random_state):
     train_datasets, val_datasets, test_datasets = [], [], []
     age_range, bmi_range = [inf, -inf], [inf, -inf]
@@ -41,18 +53,6 @@ def combine_datasets(datasets, sample_size, val_size, test_size, splits_path, re
     train, val, test = (shuffle_data(train, random_state), shuffle_data(val, random_state),
                         shuffle_data(test, random_state))
     return train, val, test, age_range, bmi_range
-
-
-def load_datasets(dataset, input_shape, latent_dim, age_dim, sample_size,
-                  val_size, test_size, splits_path, redo_splits, shuffle, random_state):
-    datapath = get_datapath(dataset)
-    datasets = get_datasets(dataset)
-    train, val, test, age_range, bmi_range = combine_datasets(datasets, sample_size, val_size, test_size, splits_path,
-                                                              redo_splits, shuffle, random_state)
-    train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, age_dim, age_range, bmi_range, testing=False)
-    val_dataset = T1Dataset(input_shape, datapath, val, latent_dim, age_dim, age_range, bmi_range, testing=True)
-    test_dataset = T1Dataset(input_shape, datapath, test, latent_dim, age_dim, age_range, bmi_range, testing=True)
-    return train_dataset, val_dataset, test_dataset
 
 
 def load_splits(datapath, metadata, sample_size, val_size, test_size, splits_path, redo, shuffle, random_state):

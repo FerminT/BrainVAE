@@ -17,7 +17,8 @@ from pandas import DataFrame, cut
 from seaborn import scatterplot, kdeplot, set_theme, color_palette
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
-import torch
+from torch import cat, exp, device as dev, cuda
+from torch.nn.functional import sigmoid
 import wandb
 import argparse
 
@@ -75,7 +76,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
 
 def test_classifier(model, val_dataset, model_results, binary_classification, bin_centers, device, seed):
     seed_everything(seed, workers=True)
-    device = torch.device('cuda' if device == 'gpu' and torch.cuda.is_available() else 'cpu')
+    device = dev('cuda' if device == 'gpu' and cuda.is_available() else 'cpu')
     if model:
         model.eval().to(device)
     predictions, labels = [], []
@@ -83,7 +84,10 @@ def test_classifier(model, val_dataset, model_results, binary_classification, bi
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
         prediction = model(z) if model else z
-        prediction = prediction.item() if binary_classification else (torch.exp(prediction.cpu().detach()) @ bin_centers).item()
+        if binary_classification:
+            prediction = sigmoid(prediction).item()
+        else:
+            prediction = (exp(prediction.cpu().detach()) @ bin_centers).item()
         predictions.append(prediction)
         label = target.item() if binary_classification else (target.cpu() @ bin_centers).item()
         labels.append(label)
@@ -141,7 +145,7 @@ def sample(model, dataset, age, subject_id, device, save_path):
     age = dataset.age_mapping(sample['age_at_scan']).unsqueeze(dim=0)
     reconstructed = model.decoder(z, age.to(device))
     axes_comparisons, _ = reconstruction_comparison_grid(t1_img, reconstructed, 1, 50, 0)
-    comparison = torch.cat(axes_comparisons, dim=2)
+    comparison = cat(axes_comparisons, dim=2)
     comparison_img = wandb.Image(comparison).image
     draw, font = ImageDraw.Draw(comparison_img), ImageFont.truetype("LiberationSans-Regular.ttf", 25)
     draw.text((225, 183), f'Age: {int(sample["age_at_scan"])}', (255, 255, 255), font=font)
@@ -251,7 +255,7 @@ if __name__ == '__main__':
             print(f'age {args.age} is not within the training range of {age_range[0]} and {age_range[1]}')
         dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], config['age_dim'],
                             age_range, bmi_range, testing=True)
-        device = torch.device('cuda' if args.device == 'gpu' and torch.cuda.is_available() else 'cpu')
+        device = dev('cuda' if args.device == 'gpu' and cuda.is_available() else 'cpu')
         model = load_model(weights_path, device)
         sample(model, dataset, args.age, args.sample, device, save_path)
     else:
