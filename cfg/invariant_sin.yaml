@@ -65,16 +65,16 @@ layers:
 age_dim: 0
 bmi_dim: 46
 predict_age: no
-invariant: yes
+invariance: age
 lr: 0.0004
 min_lr: 0.00004
 optimizer: 'AdamW'
 momentum: 0.9
 weight_decay: 0.01
 losses_weights:
-  reconstruction: 3.0
-  prior: 0.00001
-  marginal: 0.001
+  reconstruction: 6.0
+  prior: 0.000001
+  marginal: 0.003
   gender: 1.0
   bmi: 100.0
   age: 0.0
