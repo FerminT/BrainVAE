@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from pandas import read_csv
-from scipy.stats import sem
+from scipy.stats import sem, pearsonr
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_absolute_error, accuracy_score
@@ -151,7 +151,8 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
     for label in target_labels:
         for model in evaluated_cfgs:
             model_results = labels_results[label][model]
-            mae_list, corr_list, acc_list = [], [], []
+            mae_list, corr_list, pvalues_list = [], [], []
+            acc_list = []
             for run in model_results.columns:
                 if run.startswith('pred_'):
                     predictions = model_results[run].values
@@ -159,8 +160,8 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
 
                     if not np.array_equal(true_values, true_values.astype(bool)):
                         mae = mean_absolute_error(true_values, predictions)
-                        corr = np.corrcoef(true_values, predictions)[0, 1]
-                        mae_list.append(mae), corr_list.append(corr)
+                        corr = pearsonr(true_values, predictions)
+                        mae_list.append(mae), corr_list.append(corr[0]), pvalues_list.append(corr[1])
                     else:
                         acc = accuracy_score(true_values, predictions >= 0.5)
                         acc_list.append(acc)
@@ -168,8 +169,11 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                 metrics[label][model] = {'MAE_mean': np.mean(mae_list), 'MAE_stderr': sem(mae_list),
                                          'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0 else 0,
                                          'Correlation_stderr': sem(corr_list)}
+                print(f'{model} {label} MAE: {np.mean(mae_list):.4f} Correlation: {np.mean(corr_list):.4f} (p: '
+                      f'{np.mean(pvalues_list):.4f})')
             if acc_list:
                 metrics[label][model] = {'Accuracy_mean': np.mean(acc_list), 'Accuracy_stderr': sem(acc_list)}
+                print(f'{model} {label} Accuracy: {np.mean(acc_list):.4f}')
 
     return metrics
 
