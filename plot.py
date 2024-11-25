@@ -63,7 +63,7 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     fig.legend(handles=[plt.Line2D([0], [0], color=color, lw=4) for color in colors],
                labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(evaluated_cfgs) // 2,
                fontsize='large')
-    fig.savefig(results_path / 'bar_plots.png', format='png', bbox_inches='tight', transparent=True)
+    fig.savefig(results_path / 'bar_plots.png', format='png', bbox_inches='tight', transparent=True, dpi=150)
     plt.subplots_adjust(wspace=0.8)
     plt.show()
 
@@ -197,6 +197,8 @@ def mean_roc(data, thresholds, label, model_name, roc_curves):
     stderr_tpr = np.std(all_tpr, axis=0) / np.sqrt(len(all_tpr))
     roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'stderr': list(zip(mean_fpr, stderr_tpr)),
                                      'aucs': all_auc}
+    print(f'{model_name} {label} AUC: {np.median(all_auc):.4f} '
+          f'IQR: {np.percentile(all_auc, 75) - np.percentile(all_auc, 25):.4f}')
 
 
 def mean_pr(data, common_recall, label, model_name, pr_curves):
