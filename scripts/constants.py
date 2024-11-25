@@ -10,4 +10,4 @@ CFGS_RENAMING = {'default': 'Age-agnostic',
                  'bmi_invariant': 'BMI-invariant',
                  'gender_invariant': 'Sex-invariant',
                  'age': 'Age',
-                 'baseline': 'Shuffled'}
+                 'baseline': 'Random'}
