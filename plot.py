@@ -1,6 +1,7 @@
 from pathlib import Path
 from scripts.constants import EVALUATION_PATH
 from scipy.interpolate import interp1d
+from scipy.stats import wilcoxon
 from pandas import DataFrame
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -100,18 +101,28 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
                 for model in data[label]:
                     plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model, axs[i])
             else:
-                plot_violin(data[label], 'aucs', axs[i], colors)
+                plot_violin(data[label], label, 'aucs', axs[i], colors)
             configure_axes(axs[i], xlabel, ylabel, ylim, identity_line, fontsize, label, i == 0)
     if not has_windows:
         show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
 
 
-def plot_violin(data, label, ax, colors):
+def plot_violin(data, task, results_label, ax, colors):
     results_df = DataFrame.from_dict(data, orient='index')
+    report_significance(results_df, results_label, task)
     results_df = results_df.reset_index().rename(columns={'index': 'Model'})
-    results_df = results_df.explode(label)[['Model', label]]
-    results_df[label] = results_df[label].astype(float)
-    sns.violinplot(x='Model', y=label, data=results_df, hue='Model', ax=ax, palette=colors)
+    results_df = results_df.explode(results_label)[['Model', results_label]]
+    results_df[results_label] = results_df[results_label].astype(float)
+    sns.violinplot(x='Model', y=results_label, data=results_df, hue='Model', ax=ax, palette=colors)
+
+
+def report_significance(results_df, results_label, task):
+    print(f'{task.upper()} {results_label.upper()}')
+    for model in results_df.index:
+        for other_model in results_df.index:
+            if model != other_model:
+                stat, p = wilcoxon(results_df.loc[model, results_label], results_df.loc[other_model, results_label])
+                print(f'{model} vs {other_model} p-value: {p:.4f}')
 
 
 def plot_mean(mean_data, stderr_data, model_label, ax):
