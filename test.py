@@ -26,36 +26,37 @@ import argparse
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
                             target_label, target_dataset, batch_size, n_layers, epochs, n_iters, save_path,
                             no_sync, device):
-    train, val = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
+    train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     binary_classification = output_dim == 1
-    val_dataset = EmbeddingDataset(val, target=target_label, transform_fn=transform_fn)
+    train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
+    classifier = train_classifier(train_dataset, cfg_name, latent_dim, output_dim, n_layers,
+                                  bin_centers, batch_size, epochs, device, no_sync, seed=42)
+
     rnd_gen = random.default_rng(seed=42)
-    random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
     metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
     metrics.append('Predictions')
     model_results = {metric: [] for metric in metrics}
     baseline_results = {metric: [] for metric in metrics}
+    random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
     labels = []
-    for seed in random_seeds:
-        train = train.sample(frac=1, replace=True, random_state=seed)
-        train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
-        classifier = train_classifier(train_dataset, val_dataset, cfg_name, latent_dim, output_dim, n_layers,
-                                      bin_centers, batch_size, epochs, device, no_sync, seed=42)
-        labels = test_classifier(classifier, val_dataset, model_results, binary_classification, bin_centers,
-                                 device, seed=42)
+    for seed in tqdm(random_seeds, desc='Evaluating classifier'):
+        test_resampled = test.sample(frac=1, replace=True, random_state=seed)
+        test_dataset = EmbeddingDataset(test_resampled, target=target_label, transform_fn=transform_fn)
+        labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, device,
+                                 seed=42)
         add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
     params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
               'n_layers': n_layers, 'epochs': epochs}
     baseline_preds = report_results(baseline_results, target_label, name='baseline')
     model_preds = report_results(model_results, target_label, name=cfg_name)
     baseline_savepath = save_path.parents[1] / 'baseline' / 'random'
-    save_predictions(val, model_preds, labels, target_label, params, save_path)
-    save_predictions(val, baseline_preds, labels, target_label, params, baseline_savepath)
+    save_predictions(test, model_preds, labels, target_label, params, save_path)
+    save_predictions(test, baseline_preds, labels, target_label, params, baseline_savepath)
 
 
-def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, batch_size,
-                     epochs, device, no_sync, seed):
+def train_classifier(train_data, config_name, latent_dim, output_dim, n_layers, bin_centers, batch_size, epochs, device,
+                     no_sync, seed):
     if config_name == 'age':
         return None
     seed_everything(seed, workers=True)
@@ -63,13 +64,12 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
                                      bin_centers=bin_centers)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
-    val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='bf16-mixed',
                       logger=wandb_logger,
                       )
-    trainer.fit(classifier, train_dataloader, val_dataloader)
+    trainer.fit(classifier, train_dataloader)
     wandb.finish()
     return classifier
 
@@ -80,7 +80,7 @@ def test_classifier(model, val_dataset, model_results, binary_classification, bi
     if model:
         model.eval().to(device)
     predictions, labels = [], []
-    for idx in tqdm(range(len(val_dataset))):
+    for idx in range(len(val_dataset)):
         z, target = val_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
         prediction = model(z) if model else z
