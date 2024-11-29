@@ -167,7 +167,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                         acc_list.append(acc)
             if mae_list:
                 metrics[label][model] = {'MAE_mean': np.mean(mae_list), 'MAE_stderr': sem(mae_list),
-                                         'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0 else 0,
+                                         'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0.01 else 0.01,
                                          'Correlation_stderr': sem(corr_list)}
                 print(f'{model} {label} MAE: {np.mean(mae_list):.4f} Correlation: {np.mean(corr_list):.4f} (p: '
                       f'{np.mean(pvalues_list):.4f})')

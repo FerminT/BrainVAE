@@ -39,7 +39,7 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
         data = metrics_to_df(metrics, label)
         metric = 'MAE' if 'MAE' in data['Metric'].values else 'Accuracy'
         sns.barplot(x='Model', y='Value', hue='Model', data=data[data['Metric'] == metric], ax=ax, errorbar=None,
-                    width=1.0)
+                    width=1.0, alpha=1.0)
         for i, bar in enumerate(ax.patches):
             error = data.iloc[i // len(metrics[label])]['Error']
             ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=error, fmt='none', c='black')
@@ -47,7 +47,7 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
         if metric == 'MAE':
             ax2 = ax.twinx()
             sns.lineplot(x='Model', y='Value', data=data[data['Metric'] == 'Correlation'], ax=ax2,
-                         marker='o', linestyle='--', color='#d4aa00ff', markeredgecolor='black')
+                         marker='o', linestyle='--', color='black', linewidth=2.0)
             ax2.set_ylabel('Correlation')
             ax2.set_ylim(0, 1)
             ax2.grid(False)
@@ -90,7 +90,7 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
                         if type == 'curve':
                             plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model_name, axs[window])
                         else:
-                            plot_violin(data[label], 'aucs', axs[window], colors)
+                            plot_violin(data[label], label, 'aucs', axs[window], colors)
 
                 window_age_range = label_age_ranges[f'window_{window}']
                 window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
