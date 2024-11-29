@@ -43,8 +43,7 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
     for seed in tqdm(random_seeds, desc='Evaluating classifier'):
         test_resampled = test.sample(frac=1, replace=True, random_state=seed)
         test_dataset = EmbeddingDataset(test_resampled, target=target_label, transform_fn=transform_fn)
-        labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, device,
-                                 seed=42)
+        labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, device)
         add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
     params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
               'n_layers': n_layers, 'epochs': epochs}
@@ -74,8 +73,7 @@ def train_classifier(train_data, config_name, latent_dim, output_dim, n_layers, 
     return classifier
 
 
-def test_classifier(model, val_dataset, model_results, binary_classification, bin_centers, device, seed):
-    seed_everything(seed, workers=True)
+def test_classifier(model, val_dataset, model_results, binary_classification, bin_centers, device):
     device = dev('cuda' if device == 'gpu' and cuda.is_available() else 'cpu')
     if model:
         model.eval().to(device)
@@ -219,11 +217,11 @@ if __name__ == '__main__':
     parser.add_argument('--splits_path', type=str, default='splits', help='path to the data splits')
     parser.add_argument('--target', type=str, default='general', help='target dataset for predicting features')
     parser.add_argument('--cfg', type=str, default='default', help='config file used for the trained model')
-    parser.add_argument('--device', type=str, default='cpu', help='device used for training and evaluation')
+    parser.add_argument('--device', type=str, default='gpu', help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=10, help='number of epochs used for training the age classifier')
-    parser.add_argument('--n_iters', type=int, default=3,
-                        help='number of iterations (with different seeds) to evaluate the classifier')
+    parser.add_argument('--n_iters', type=int, default=2000,
+                        help='number of bootstrapping iterations to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
