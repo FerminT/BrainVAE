@@ -195,9 +195,10 @@ def mean_roc(data, thresholds, label, model_name, roc_curves):
     all_fpr, all_tpr, all_auc = [], [], []
     for run in data.columns:
         if run.startswith('pred_'):
+            run_number = run[5:]
             fpr_tpr = []
             for threshold in thresholds:
-                tp, fp, tn, fn = count_tp_fp_tn_fn(data[run].values, data['label'].values, threshold)
+                tp, fp, tn, fn = count_tp_fp_tn_fn(data[run].values, data[f'label_{run_number}'].values, threshold)
                 tpr = tp / (tp + fn)
                 fpr = fp / (fp + tn)
                 fpr_tpr.append((fpr, tpr))
@@ -216,7 +217,8 @@ def mean_pr(data, common_recall, label, model_name, pr_curves):
     all_precision, all_recall, all_aucs = [], [], []
     for run in data.columns:
         if run.startswith('pred_'):
-            precision, recall, _ = precision_recall_curve(data['label'].values, data[run].values)
+            run_number = run[5:]
+            precision, recall, _ = precision_recall_curve(data[f'label_{run_number}'].values, data[run].values)
             all_precision.append(precision)
             all_recall.append(recall)
     interpolated_precisions = []

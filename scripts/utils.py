@@ -155,8 +155,9 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
             acc_list = []
             for run in model_results.columns:
                 if run.startswith('pred_'):
+                    run_number = run[5:]
                     predictions = model_results[run].values
-                    true_values = model_results['label'].values
+                    true_values = model_results[f'label_{run_number}'].values
 
                     if not np.array_equal(true_values, true_values.astype(bool)):
                         mae = mean_absolute_error(true_values, predictions)
