@@ -38,7 +38,7 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
     metrics.append('Predictions')
     model_results = {metric: [] for metric in metrics}
     baseline_results = {metric: [] for metric in metrics}
-    random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
+    random_seeds = [rnd_gen.integers(1, n_iters * 10) for _ in range(n_iters)]
     labels = []
     for seed in tqdm(random_seeds, desc='Evaluating classifier'):
         test_resampled = test.sample(frac=1, replace=True, random_state=seed)
