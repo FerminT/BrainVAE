@@ -43,8 +43,10 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
     for seed in tqdm(random_seeds, desc='Evaluating classifier'):
         test_resampled = test.sample(frac=1, replace=True, random_state=seed)
         test_dataset = EmbeddingDataset(test_resampled, target=target_label, transform_fn=transform_fn)
-        labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, device)
-        add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
+        iter_labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers,
+                                      device)
+        labels.append(iter_labels)
+        add_baseline_results(iter_labels, binary_classification, baseline_results, rnd_gen)
     params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
               'n_layers': n_layers, 'epochs': epochs}
     baseline_preds = report_results(baseline_results, target_label, name='baseline')
