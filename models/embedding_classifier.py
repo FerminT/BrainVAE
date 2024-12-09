@@ -35,6 +35,9 @@ class EmbeddingClassifier(lg.LightningModule):
     def training_step(self, batch, batch_idx):
         return self._step(batch, 'train')
 
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, 'val')
+
     def _step(self, batch, mode):
         z, targets = batch
         predictions = self(z)

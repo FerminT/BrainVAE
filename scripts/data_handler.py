@@ -216,10 +216,10 @@ def target_mapping(embeddings_df, label, age_range, bmi_range):
 
 
 def save_predictions(df, predictions, labels, target_name, params, save_path):
-    labels_df = pd.DataFrame({f'label_{i}': labels for i, labels in enumerate(labels)}, index=df.index)
+    df['label'] = labels
     predictions_df = pd.DataFrame({f'pred_{i}': preds for i, preds in enumerate(predictions)}, index=df.index)
     df = df.drop(columns=['embedding'])
-    df = pd.concat([df, labels_df, predictions_df], axis=1)
+    df = pd.concat([df, predictions_df], axis=1)
     if not save_path.exists():
         save_path.mkdir(parents=True, exist_ok=True)
     df.to_csv(save_path / f'{target_name}_predictions.csv')
