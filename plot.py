@@ -21,10 +21,6 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
     else:
         roc_curves = build_roc_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
         pr_curves = build_precision_recall_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
-        plot_data(roc_curves, evaluated_cfgs, 'False Positive Rate', 'True Positive Rate', None, True, 25,
-                  results_path / 'roc_curves.png', age_windows_ranges, type='curve')
-        plot_data(pr_curves, evaluated_cfgs, 'Recall', 'Precision', None, False, 25,
-                  results_path / 'pr_curves.png', age_windows_ranges, type='curve')
         plot_data(roc_curves, evaluated_cfgs, '', 'ROC-AUC', (0.4, 1.0), False, 25,
                   results_path / 'roc_aucs.png', age_windows_ranges, type='auc')
         plot_data(pr_curves, evaluated_cfgs, '', 'PR-AUC', (0.4, 1.0), False, 25,
@@ -219,11 +215,11 @@ def mean_pr(data, common_recall, label, model_name, pr_curves):
             precision, recall, _ = precision_recall_curve(data['label'].values, data[run].values)
             all_precision.append(precision)
             all_recall.append(recall)
+            all_aucs.append(auc(recall, precision))
     interpolated_precisions = []
     for precision, recall in zip(all_precision, all_recall):
         interp_func = interp1d(recall, precision, bounds_error=False, fill_value=(0, 0))
         interp_prec = interp_func(common_recall)
-        all_aucs.append(auc(common_recall, interp_prec))
         interpolated_precisions.append(interp_prec)
     interpolated_precisions = np.array(interpolated_precisions)
     mean_precision = np.mean(interpolated_precisions, axis=0)
