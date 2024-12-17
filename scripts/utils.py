@@ -49,9 +49,9 @@ def load_yaml(filepath):
         return yaml.safe_load(file)
 
 
-def load_model(weights_path, device):
+def load_model(weights_path, config, device):
     weights = get_weights(weights_path)
-    model = ICVAE.load_from_checkpoint(weights).to(device)
+    model = ICVAE.load_from_checkpoint(weights, **config).to(device)
     model.eval()
     return model
 
@@ -60,16 +60,16 @@ def get_weights(weights_path):
     return next(weights_path.parent.glob(f'{weights_path.name}*'))
 
 
-def subjects_embeddings(weights_path, model_name, dataset_name, input_shape, latent_dim, split, datapath, splits_path,
+def subjects_embeddings(weights_path, model_name, dataset_name, config, split, datapath, splits_path,
                         random_state, save_path):
     data, age_range, bmi_range = load_set(dataset_name, split, splits_path, random_state)
-    dataset = T1Dataset(input_shape, datapath, data, latent_dim, age_dim=1, age_range=age_range, bmi_range=bmi_range,
-                        testing=True)
+    dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], age_dim=1, age_range=age_range,
+                        bmi_range=bmi_range, testing=True)
     device_ = device('cuda' if cuda.is_available() else 'cpu')
     filename = save_path / f'subjects_embeddings.pkl'
     if filename.exists():
         return pd.read_pickle(filename)
-    model = load_model(weights_path, device_) if model_name != 'age' else None
+    model = load_model(weights_path, config, device_) if model_name != 'age' else None
     subjects = []
     print('Computing embeddings...')
     for idx in tqdm(range(len(dataset))):
