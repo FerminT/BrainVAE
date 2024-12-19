@@ -38,8 +38,8 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
     baseline_results = {metric: [] for metric in metrics}
     labels = []
     for seed in tqdm(random_seeds, desc='Bootstrapping train'):
-        train = train.sample(frac=1, replace=True, random_state=seed)
-        train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
+        train_resampled = train.sample(frac=1, replace=True, random_state=seed)
+        train_dataset = EmbeddingDataset(train_resampled, target=target_label, transform_fn=transform_fn)
         classifier = train_classifier(train_dataset, test_dataset, cfg_name, latent_dim, output_dim, n_layers,
                                       bin_centers, batch_size, epochs, device, no_sync, seed=42)
         labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, device)
