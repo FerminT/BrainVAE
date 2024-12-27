@@ -105,20 +105,41 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
 
 def plot_violin(data, task, results_label, ax, colors):
     results_df = DataFrame.from_dict(data, orient='index')
-    report_significance(results_df, results_label, task)
+    models_pvalues = significance_against(results_df, results_label, task, base_model='Age-invariant')
     results_df = results_df.reset_index().rename(columns={'index': 'Model'})
     results_df = results_df.explode(results_label)[['Model', results_label]]
     results_df[results_label] = results_df[results_label].astype(float)
     sns.violinplot(x='Model', y=results_label, data=results_df, hue='Model', ax=ax, palette=colors)
+    add_significance_asterisks(ax, results_df, results_label, models_pvalues, base_model='Age-invariant')
 
 
-def report_significance(results_df, results_label, task):
-    print(f'{task.upper()} {results_label.upper()}')
+def add_significance_asterisks(ax, results_df, results_label, models_pvalues, base_model):
+    for i, model in enumerate(results_df['Model'].unique()):
+        if model != base_model:
+            p_value = models_pvalues[model]
+            if p_value < 0.05:
+                y = results_df[results_df['Model'] == model][results_label].max()
+                ax.annotate(significance_asterisks(p_value), xy=(i, y + 0.05), ha='center', va='center', fontsize=20)
+
+
+def significance_asterisks(p):
+    if p < 0.001:
+        return '***'
+    elif p < 0.01:
+        return '**'
+    elif p < 0.05:
+        return '*'
+    else:
+        return ''
+
+
+def significance_against(results_df, results_label, task, base_model):
+    models_significance = {}
     for model in results_df.index:
-        for other_model in results_df.index:
-            if model != other_model:
-                stat, p = wilcoxon(results_df.loc[model, results_label], results_df.loc[other_model, results_label])
-                print(f'{model} vs {other_model} p-value: {p:.4f}')
+        if model != base_model:
+            stat, p = wilcoxon(results_df.loc[model, results_label], results_df.loc[base_model, results_label])
+            models_significance[model] = p
+    return models_significance
 
 
 def plot_mean(mean_data, stderr_data, model_label, ax):
