@@ -86,7 +86,7 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
                         if type == 'curve':
                             plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model_name, axs[window])
                         else:
-                            plot_violin(data[label], label, 'aucs', axs[window], colors)
+                            plot_violin(data[label], 'aucs', axs[window], colors)
 
                 window_age_range = label_age_ranges[f'window_{window}']
                 window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
@@ -97,29 +97,48 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
                 for model in data[label]:
                     plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model, axs[i])
             else:
-                plot_violin(data[label], label, 'aucs', axs[i], colors)
+                plot_violin(data[label], 'aucs', axs[i], colors)
             configure_axes(axs[i], xlabel, ylabel, ylim, identity_line, fontsize, label, i == 0)
     if not has_windows:
         show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
 
 
-def plot_violin(data, task, results_label, ax, colors):
+def plot_violin(data, results_label, ax, colors):
     results_df = DataFrame.from_dict(data, orient='index')
-    models_pvalues = significance_against(results_df, results_label, task, base_model='Age-invariant')
+    significance_to_invariant = significance_against(results_df, results_label, base_model='Age-invariant')
+    significance_to_baseline = significance_against(results_df, results_label, base_model='Age-agnostic')
     results_df = results_df.reset_index().rename(columns={'index': 'Model'})
     results_df = results_df.explode(results_label)[['Model', results_label]]
     results_df[results_label] = results_df[results_label].astype(float)
     sns.violinplot(x='Model', y=results_label, data=results_df, hue='Model', ax=ax, palette=colors)
-    add_significance_asterisks(ax, results_df, results_label, models_pvalues, base_model='Age-invariant')
+    add_significance_asterisks(ax, results_df, results_label, significance_to_invariant,
+                               reference_model='Age-invariant')
+    add_significance_to_baseline(ax, results_df, results_label, significance_to_baseline, reference_model='Age-aware',
+                                 base_model='Age-agnostic')
 
 
-def add_significance_asterisks(ax, results_df, results_label, models_pvalues, base_model):
+def add_significance_asterisks(ax, results_df, results_label, pvalues, reference_model):
     for i, model in enumerate(results_df['Model'].unique()):
-        if model != base_model:
-            p_value = models_pvalues[model]
+        if model != reference_model:
+            p_value = pvalues[model]
             if p_value < 0.05:
                 y = results_df[results_df['Model'] == model][results_label].max()
                 ax.annotate(significance_asterisks(p_value), xy=(i, y + 0.05), ha='center', va='center', fontsize=20)
+
+
+def add_significance_to_baseline(ax, results_df, results_label, pvalues, reference_model, base_model):
+    significance = pvalues[reference_model]
+    if significance < 0.05:
+        reference_index = results_df[results_df['Model'] == reference_model].index[0]
+        base_index = results_df[results_df['Model'] == base_model].index[0]
+        y = max(results_df[results_df['Model'] == reference_model][results_label].max(),
+                results_df[results_df['Model'] == base_model][results_label].max())
+        asterisks = significance_asterisks(significance)
+        h = 0.005
+        y += 0.1
+        ax.plot([base_index, base_index, reference_index, reference_index], [y, y+h, y+h, y], lw=1.5, color='black')
+        ax.text((base_index + reference_index) / 2, y+h, asterisks, ha='center', va='bottom', color='black',
+                fontsize=20)
 
 
 def significance_asterisks(p):
@@ -133,7 +152,7 @@ def significance_asterisks(p):
         return ''
 
 
-def significance_against(results_df, results_label, task, base_model):
+def significance_against(results_df, results_label, base_model):
     models_significance = {}
     for model in results_df.index:
         if model != base_model:
