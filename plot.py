@@ -156,8 +156,9 @@ def significance_against(results_df, results_label, base_model):
     models_significance = {}
     for model in results_df.index:
         if model != base_model:
-            stat, p = wilcoxon(results_df.loc[model, results_label], results_df.loc[base_model, results_label])
-            models_significance[model] = p
+            model_results = np.array(results_df.loc[model, results_label])
+            base_results = np.array(results_df.loc[base_model, results_label])
+            models_significance[model] = 1.0 - (model_results > base_results).sum() / len(model_results)
     return models_significance
 
 
