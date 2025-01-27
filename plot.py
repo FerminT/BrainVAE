@@ -55,10 +55,8 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
         if metric == 'MSE':
             for i, bar in enumerate(ax.patches):
                 for j in range(i + 1, len(ax.patches)):
+                    # TODO: get significance values from metrics
                     values = data.iloc[i // len(metrics[label])]['Value'], data.iloc[j // len(metrics[label])]['Value']
-                    proportion = max((values[0] > values[1]).sum() / len(values[0]),
-                                     (values[1] > values[0]).sum() / len(values[0]))
-                    significance = 1.0 - proportion
                     plot_significance_against(ax, [i, j], bar.get_height(),
                                               significance, offset=0.1, ns=True)
 

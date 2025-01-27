@@ -169,18 +169,30 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                     mse_list = model_results[run].values
 
             if mae_list:
-                metrics[label][model] = {'MAE_mean': np.mean(mae_list), 'MAE_stderr': sem(mae_list),
+                metrics[label][model] = {'MAE_mean': np.mean(mae_list), 'MAE_stderr': sem(mae_list), 'MAE': mae_list,
                                          'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0.01 else 0.01,
                                          'Correlation_stderr': sem(corr_list)}
                 print(f'{model} {label} MAE: {np.mean(mae_list):.4f} Correlation: {np.mean(corr_list):.4f} (p: '
                       f'{np.mean(pvalues_list):.4f})')
             if acc_list:
-                metrics[label][model] = {'Accuracy_mean': np.mean(acc_list), 'Accuracy_stderr': sem(acc_list)}
+                metrics[label][model] = {'Accuracy_mean': np.mean(acc_list), 'Accuracy_stderr': sem(acc_list),
+                                         'Accuracy': acc_list}
                 print(f'{model} {label} Accuracy: {np.mean(acc_list):.4f}')
             if np.any(mse_list):
-                metrics[label][model] = {'MSE_mean': np.mean(mse_list), 'MSE_stderr': sem(mse_list)}
+                metrics[label][model] = {'MSE_mean': np.mean(mse_list), 'MSE_stderr': sem(mse_list),
+                                         'MSE': mse_list}
                 print(f'{model} {label} MSE: {np.mean(mse_list):.4f}')
 
+        for model_1, model_2 in zip(evaluated_cfgs, evaluated_cfgs):
+            if model_1 != model_2:
+                measure = [measure for measure in metrics[label][model_1] if 'stderr' not in measure and
+                           'mean' not in measure][0]
+                model1_values = metrics[label][model_1][measure]
+                model2_values = metrics[label][model_2][measure]
+                proportion = max((model1_values > model2_values).sum() / len(model1_values),
+                                 (model2_values > model1_values).sum() / len(model1_values))
+                significance = 1.0 - proportion
+                metrics[label][model_1][f'{model_2}_significance'] = significance
     return metrics
 
 
