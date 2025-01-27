@@ -1,7 +1,6 @@
 from pathlib import Path
 from scripts.constants import EVALUATION_PATH
 from scipy.interpolate import interp1d
-from scipy.stats import wilcoxon
 from pandas import DataFrame
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -30,10 +29,16 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
 def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     sns.set_theme(font_scale=1.5)
     fig, axs = plt.subplots(1, len(target_labels), figsize=(12, 6))
+    axs = axs.flat if len(target_labels) > 1 else [axs]
 
-    for ax, label in zip(axs.flat, target_labels):
+    for ax, label in zip(axs, target_labels):
         data = metrics_to_df(metrics, label)
-        metric = 'MAE' if 'MAE' in data['Metric'].values else 'Accuracy'
+        if 'MAE' in data['Metric'].values:
+            metric = 'MAE'
+        elif 'MSE' in data['Metric'].values:
+            metric = 'MSE'
+        else:
+            metric = 'Accuracy'
         sns.barplot(x='Model', y='Value', hue='Model', data=data[data['Metric'] == metric], ax=ax, errorbar=None,
                     width=1.0, alpha=1.0)
         for i, bar in enumerate(ax.patches):
@@ -57,8 +62,9 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     fig.tight_layout()
     fig.patch.set_alpha(0)
     colors = sns.color_palette(n_colors=len(evaluated_cfgs))
+    ncols = len(evaluated_cfgs) if len(evaluated_cfgs) < 6 else len(evaluated_cfgs) // 2
     fig.legend(handles=[plt.Line2D([0], [0], color=color, lw=4) for color in colors],
-               labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=len(evaluated_cfgs) // 2,
+               labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=ncols,
                fontsize='large')
     fig.savefig(results_path / 'bar_plots.png', format='png', bbox_inches='tight', transparent=True, dpi=150)
     plt.subplots_adjust(wspace=0.8)

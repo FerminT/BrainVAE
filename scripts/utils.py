@@ -151,7 +151,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
     for label in target_labels:
         for model in evaluated_cfgs:
             model_results = labels_results[label][model]
-            mae_list, corr_list, pvalues_list = [], [], []
+            mse_list, mae_list, corr_list, pvalues_list = [], [], [], []
             acc_list = []
             for run in model_results.columns:
                 if run.startswith('pred_'):
@@ -165,6 +165,9 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                     else:
                         acc = accuracy_score(true_values, predictions >= 0.5)
                         acc_list.append(acc)
+                if label == 'reconstruction_error' and run.startswith('reconstruction_error'):
+                    mse_list = model_results[run].values
+
             if mae_list:
                 metrics[label][model] = {'MAE_mean': np.mean(mae_list), 'MAE_stderr': sem(mae_list),
                                          'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0.01 else 0.01,
@@ -174,6 +177,9 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
             if acc_list:
                 metrics[label][model] = {'Accuracy_mean': np.mean(acc_list), 'Accuracy_stderr': sem(acc_list)}
                 print(f'{model} {label} Accuracy: {np.mean(acc_list):.4f}')
+            if np.any(mse_list):
+                metrics[label][model] = {'MSE_mean': np.mean(mse_list), 'MSE_stderr': sem(mse_list)}
+                print(f'{model} {label} MSE: {np.mean(mse_list):.4f}')
 
     return metrics
 
@@ -189,6 +195,9 @@ def metrics_to_df(metrics, label):
         if 'Accuracy_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'Accuracy', 'Value': metrics[label][model]['Accuracy_mean'],
                          'Error': metrics[label][model]['Accuracy_stderr']})
+        if 'MSE_mean' in metrics[label][model]:
+            data.append({'Model': model, 'Metric': 'MSE', 'Value': metrics[label][model]['MSE_mean'],
+                         'Error': metrics[label][model]['MSE_stderr']})
 
     df = pd.DataFrame(data)
     return df
