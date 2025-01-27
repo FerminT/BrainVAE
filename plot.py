@@ -52,6 +52,15 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
             ax2.set_ylabel('Correlation')
             ax2.set_ylim(0, 1)
             ax2.grid(False)
+        if metric == 'MSE':
+            for i, bar in enumerate(ax.patches):
+                for j in range(i + 1, len(ax.patches)):
+                    values = data.iloc[i // len(metrics[label])]['Value'], data.iloc[j // len(metrics[label])]['Value']
+                    proportion = max((values[0] > values[1]).sum() / len(values[0]),
+                                     (values[1] > values[0]).sum() / len(values[0]))
+                    significance = 1.0 - proportion
+                    plot_significance_against(ax, [i, j], bar.get_height(),
+                                              significance, offset=0.1, ns=True)
 
         ax.set_title(label)
         ax.set_ylabel(metric)
@@ -134,20 +143,23 @@ def add_significance_asterisks(ax, results_df, results_label, pvalues, reference
 
 def add_significance_to_baseline(ax, results_df, results_label, pvalues, reference_model, base_model):
     significance = pvalues[reference_model]
-    if significance < 0.05:
-        reference_index = results_df[results_df['Model'] == reference_model].index[0]
-        base_index = results_df[results_df['Model'] == base_model].index[0]
-        y = max(results_df[results_df['Model'] == reference_model][results_label].max(),
-                results_df[results_df['Model'] == base_model][results_label].max())
-        asterisks = significance_asterisks(significance)
+    reference_index = results_df[results_df['Model'] == reference_model].index[0]
+    base_index = results_df[results_df['Model'] == base_model].index[0]
+    y = max(results_df[results_df['Model'] == reference_model][results_label].max(),
+            results_df[results_df['Model'] == base_model][results_label].max())
+    plot_significance_against(ax, [base_index, reference_index], y, significance)
+
+
+def plot_significance_against(ax, indices, y, p_value, offset=0.1, ns=False):
+    asterisks = significance_asterisks(p_value, ns)
+    if len(asterisks):
         h = 0.005
-        y += 0.1
-        ax.plot([base_index, base_index, reference_index, reference_index], [y, y+h, y+h, y], lw=1.5, color='black')
-        ax.text((base_index + reference_index) / 2, y+h, asterisks, ha='center', va='bottom', color='black',
-                fontsize=20)
+        y += offset
+        ax.plot([indices[0], indices[0], indices[1], indices[1]], [y, y+h, y+h, y], lw=1.5, color='black')
+        ax.text((indices[0] + indices[1]) / 2, y+h, asterisks, ha='center', va='bottom', color='black', fontsize=20)
 
 
-def significance_asterisks(p):
+def significance_asterisks(p, ns=False):
     if p < 0.001:
         return '***'
     elif p < 0.01:
@@ -155,7 +167,7 @@ def significance_asterisks(p):
     elif p < 0.05:
         return '*'
     else:
-        return ''
+        return 'ns' if ns else ''
 
 
 def significance_against(results_df, results_label, base_model):
