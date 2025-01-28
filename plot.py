@@ -28,7 +28,7 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
 
 def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     sns.set_theme(font_scale=1.5)
-    fig, axs = plt.subplots(1, len(target_labels), figsize=(12, 6))
+    fig, axs = plt.subplots(1, len(target_labels), figsize=(4 * len(target_labels), 6))
     axs = axs.flat if len(target_labels) > 1 else [axs]
 
     for ax, label in zip(axs, target_labels):
@@ -53,12 +53,16 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
             ax2.set_ylim(0, 1)
             ax2.grid(False)
         if metric == 'MSE':
+            max_height, offset, text_height, separation = 0.0, 0.02, 0.002, 0.001
             for i, bar in enumerate(ax.patches):
                 for j in range(i + 1, len(ax.patches)):
                     model1, model2 = data.iloc[i]['Model'], data.iloc[j]['Model']
                     significance = metrics[label][model1][f'{model2}_significance']
-                    plot_significance_against(ax, [i, j], bar.get_height(),
-                                              significance, offset=0.1, ns=True)
+                    max_height = max(max(bar.get_height(), ax.patches[j].get_height()), max_height)
+                    plot_significance_against(ax, [i, j], max_height, significance, text_height=text_height,
+                                              offset=offset, ns=True)
+                    max_height += offset + text_height + separation
+            fig.set_figheight(6 + max_height)
 
         ax.set_title(label)
         ax.set_ylabel(metric)
@@ -148,13 +152,12 @@ def add_significance_to_baseline(ax, results_df, results_label, pvalues, referen
     plot_significance_against(ax, [base_index, reference_index], y, significance)
 
 
-def plot_significance_against(ax, indices, y, p_value, offset=0.1, ns=False):
+def plot_significance_against(ax, indices, y, p_value, text_height=0.005, offset=0.1, ns=False):
     asterisks = significance_asterisks(p_value, ns)
     if len(asterisks):
-        h = 0.005
         y += offset
-        ax.plot([indices[0], indices[0], indices[1], indices[1]], [y, y+h, y+h, y], lw=1.5, color='black')
-        ax.text((indices[0] + indices[1]) / 2, y+h, asterisks, ha='center', va='bottom', color='black', fontsize=20)
+        ax.plot([indices[0], indices[0], indices[1], indices[1]], [y, y+text_height, y+text_height, y], lw=1.5, color='black')
+        ax.text((indices[0] + indices[1]) / 2, y+text_height, asterisks, ha='center', va='bottom', color='black', fontsize=20)
 
 
 def significance_asterisks(p, ns=False):
