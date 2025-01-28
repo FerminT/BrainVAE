@@ -55,7 +55,7 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
         if metric == 'MSE':
             for i, bar in enumerate(ax.patches):
                 for j in range(i + 1, len(ax.patches)):
-                    model1, model2 = data.iloc[i // len(metrics[label])]['Model'], data.iloc[j // len(metrics[label])]['Model']
+                    model1, model2 = data.iloc[i]['Model'], data.iloc[j]['Model']
                     significance = metrics[label][model1][f'{model2}_significance']
                     plot_significance_against(ax, [i, j], bar.get_height(),
                                               significance, offset=0.1, ns=True)
