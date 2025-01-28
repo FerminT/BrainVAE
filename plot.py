@@ -53,16 +53,23 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
             ax2.set_ylim(0, 1)
             ax2.grid(False)
         if metric == 'MSE':
-            max_height, offset, text_height, separation = 0.0, 0.02, 0.002, 0.001
+            heights_drawn = []
+            offset, text_height, separation = 0.02, 0.002, 0.05
             for i, bar in enumerate(ax.patches):
                 for j in range(i + 1, len(ax.patches)):
                     model1, model2 = data.iloc[i]['Model'], data.iloc[j]['Model']
                     significance = metrics[label][model1][f'{model2}_significance']
-                    max_height = max(max(bar.get_height(), ax.patches[j].get_height()), max_height)
+                    max_height = max(bar.get_height(), ax.patches[j].get_height())
+                    height_found = True
+                    while height_found:
+                        if max_height in heights_drawn:
+                            max_height += separation
+                        else:
+                            height_found = False
                     plot_significance_against(ax, [i, j], max_height, significance, text_height=text_height,
                                               offset=offset, ns=True)
-                    max_height += offset + text_height + separation
-            fig.set_figheight(6 + max_height)
+                    heights_drawn.append(max_height)
+            fig.set_figheight(6 + max(heights_drawn))
 
         ax.set_title(label)
         ax.set_ylabel(metric)
