@@ -183,16 +183,17 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                                          'MSE': mse_list}
                 print(f'{model} {label} MSE: {np.mean(mse_list):.4f}')
 
-        for model_1, model_2 in zip(evaluated_cfgs, evaluated_cfgs):
-            if model_1 != model_2:
-                measure = [measure for measure in metrics[label][model_1] if 'stderr' not in measure and
-                           'mean' not in measure][0]
-                model1_values = metrics[label][model_1][measure]
-                model2_values = metrics[label][model_2][measure]
-                proportion = max((model1_values > model2_values).sum() / len(model1_values),
-                                 (model2_values > model1_values).sum() / len(model1_values))
-                significance = 1.0 - proportion
-                metrics[label][model_1][f'{model_2}_significance'] = significance
+        models_to_compare = [(model_1, model_2) for model_1 in evaluated_cfgs for model_2 in evaluated_cfgs if
+                             model_1 != model_2]
+        for model_1, model_2 in models_to_compare:
+            measure = [measure for measure in metrics[label][model_1].keys() if 'stderr' not in measure and
+                       'mean' not in measure][0]
+            model1_values = metrics[label][model_1][measure]
+            model2_values = metrics[label][model_2][measure]
+            proportion = max((model1_values > model2_values).sum() / len(model1_values),
+                             (model2_values > model1_values).sum() / len(model1_values))
+            significance = 1.0 - proportion
+            metrics[label][model_1][f'{model_2}_significance'] = significance
     return metrics
 
 
