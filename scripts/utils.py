@@ -149,52 +149,51 @@ def get_age_windows(labels_predictions, target_labels, evaluated_cfgs, age_windo
 def compute_metrics(labels_results, target_labels, evaluated_cfgs):
     metrics = {label: {} for label in target_labels}
     for label in target_labels:
+        measure_name = 'MAE'
         for model in evaluated_cfgs:
             model_results = labels_results[label][model]
-            mse_list, mae_list, corr_list, pvalues_list = [], [], [], []
-            acc_list = []
+            measure_list, corr_list, pvalues_list = [], [], []
             for run in model_results.columns:
                 if run.startswith('pred_'):
                     predictions = model_results[run].values
                     true_values = model_results['label'].values
 
                     if not np.array_equal(true_values, true_values.astype(bool)):
-                        mae = mean_absolute_error(true_values, predictions)
                         corr = pearsonr(true_values, predictions)
-                        mae_list.append(mae), corr_list.append(corr[0]), pvalues_list.append(corr[1])
+                        corr_list.append(corr[0]), pvalues_list.append(corr[1])
+                        measure_list.append(mean_absolute_error(true_values, predictions))
                     else:
-                        acc = accuracy_score(true_values, predictions >= 0.5)
-                        acc_list.append(acc)
+                        measure_name = 'Accuracy'
+                        measure_list.append(accuracy_score(true_values, predictions >= 0.5))
                 if label == 'reconstruction_error' and run.startswith('reconstruction_error'):
-                    mse_list = model_results[run].values
+                    measure_name = 'MSE'
+                    measure_list = list(model_results[run].values)
 
-            if mae_list:
-                metrics[label][model] = {'MAE_mean': np.mean(mae_list), 'MAE_stderr': sem(mae_list), 'MAE': mae_list,
-                                         'Correlation_mean': np.mean(corr_list) if np.mean(corr_list) > 0.01 else 0.01,
-                                         'Correlation_stderr': sem(corr_list)}
-                print(f'{model} {label} MAE: {np.mean(mae_list):.4f} Correlation: {np.mean(corr_list):.4f} (p: '
-                      f'{np.mean(pvalues_list):.4f})')
-            if acc_list:
-                metrics[label][model] = {'Accuracy_mean': np.mean(acc_list), 'Accuracy_stderr': sem(acc_list),
-                                         'Accuracy': acc_list}
-                print(f'{model} {label} Accuracy: {np.mean(acc_list):.4f}')
-            if np.any(mse_list):
-                metrics[label][model] = {'MSE_mean': np.mean(mse_list), 'MSE_stderr': sem(mse_list),
-                                         'MSE': mse_list}
-                print(f'{model} {label} MSE: {np.mean(mse_list):.4f}')
+            metrics[label][model] = {f'{measure_name}_mean': np.mean(measure_list),
+                                     f'{measure_name}_stderr': sem(measure_list),
+                                        measure_name: measure_list}
+            print(f'{model} {label} {measure_name}: {np.mean(measure_list):.4f}')
+            if measure_name == 'MAE':
+                metrics[label][model]['Correlation_mean'] = max(np.mean(corr_list), 0.001)
+                metrics[label][model]['Correlation_stderr'] = sem(corr_list)
+                print(f'{model} {label} Correlation: {np.mean(corr_list):.4f} (p: {np.mean(pvalues_list):.4f})')
 
-        models_to_compare = [(model_1, model_2) for model_1 in evaluated_cfgs for model_2 in evaluated_cfgs if
-                             model_1 != model_2]
-        for model_1, model_2 in models_to_compare:
-            measure = [measure for measure in metrics[label][model_1].keys() if 'stderr' not in measure and
-                       'mean' not in measure][0]
-            model1_values = metrics[label][model_1][measure]
-            model2_values = metrics[label][model_2][measure]
-            proportion = max((model1_values > model2_values).sum() / len(model1_values),
-                             (model2_values > model1_values).sum() / len(model1_values))
-            significance = 1.0 - proportion
-            metrics[label][model_1][f'{model_2}_significance'] = significance
+        test_significance(metrics, label, evaluated_cfgs)
     return metrics
+
+
+def test_significance(metrics, label, evaluated_cfgs):
+    models_to_compare = [(model_1, model_2) for model_1 in evaluated_cfgs for model_2 in evaluated_cfgs if
+                         model_1 != model_2]
+    for model_1, model_2 in models_to_compare:
+        measure = [measure for measure in metrics[label][model_1].keys() if 'stderr' not in measure and
+                   'mean' not in measure][0]
+        model1_values = metrics[label][model_1][measure]
+        model2_values = metrics[label][model_2][measure]
+        proportion = max((model1_values > model2_values).sum() / len(model1_values),
+                         (model2_values > model1_values).sum() / len(model1_values))
+        significance = 1.0 - proportion
+        metrics[label][model_1][f'{model_2}_significance'] = significance
 
 
 def metrics_to_df(metrics, label):

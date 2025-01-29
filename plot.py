@@ -163,8 +163,10 @@ def plot_significance_against(ax, indices, y, p_value, text_height=0.005, offset
     asterisks = significance_asterisks(p_value, ns)
     if len(asterisks):
         y += offset
-        ax.plot([indices[0], indices[0], indices[1], indices[1]], [y, y+text_height, y+text_height, y], lw=1.5, color='black')
-        ax.text((indices[0] + indices[1]) / 2, y+text_height, asterisks, ha='center', va='bottom', color='black', fontsize=20)
+        ax.plot([indices[0], indices[0], indices[1], indices[1]], [y, y+text_height, y+text_height, y], lw=1.5,
+                color='black')
+        ax.text((indices[0] + indices[1]) / 2, y+text_height, asterisks, ha='center', va='bottom', color='black',
+                fontsize=20)
 
 
 def significance_asterisks(p, ns=False):
