@@ -188,8 +188,8 @@ def test_significance(metrics, label, evaluated_cfgs):
     for model_1, model_2 in models_to_compare:
         measure = [measure for measure in metrics[label][model_1].keys() if 'stderr' not in measure and
                    'mean' not in measure][0]
-        model1_values = metrics[label][model_1][measure]
-        model2_values = metrics[label][model_2][measure]
+        model1_values = np.array(metrics[label][model_1][measure])
+        model2_values = np.array(metrics[label][model_2][measure])
         proportion = max((model1_values > model2_values).sum() / len(model1_values),
                          (model2_values > model1_values).sum() / len(model1_values))
         significance = 1.0 - proportion
