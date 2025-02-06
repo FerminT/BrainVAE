@@ -58,6 +58,8 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
             for i, bar in enumerate(ax.patches):
                 for j in range(i + 1, len(ax.patches)):
                     model1, model2 = data.iloc[i]['Model'], data.iloc[j]['Model']
+                    if model1 == 'Random' or model2 == 'Random':
+                        continue
                     significance = metrics[label][model1][f'{model2}_significance']
                     max_height = max(bar.get_height(), ax.patches[j].get_height())
                     height_found = True
