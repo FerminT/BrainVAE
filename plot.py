@@ -141,6 +141,7 @@ def plot_violin(data, results_label, ax, colors):
                                reference_model='Age-invariant')
     add_significance_to_baseline(ax, results_df, results_label, significance_to_baseline, reference_model='Age-aware',
                                  base_model='Age-agnostic')
+    ax.axhline(0.5, color='black', linestyle='--', alpha=0.5)
 
 
 def add_significance_asterisks(ax, results_df, results_label, pvalues, reference_model):
@@ -225,7 +226,7 @@ def show_plot(fig, handles_and_labels, fontsize, filename):
     handles, labels = handles_and_labels
     fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.00),
                ncol=len(labels), fontsize=fontsize)
-    plt.savefig(filename, format='png', bbox_inches='tight')
+    plt.savefig(filename, format='png', bbox_inches='tight', dpi=150)
     plt.show()
 
 
