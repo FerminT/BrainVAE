@@ -323,7 +323,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--targets', type=str, nargs='+', default=['dvh', 'dvp', 'hvp'],
                         help='target labels to plot')
     parser.add_argument('-b', '--bars', action='store_true', help='plot bars instead of curves')
-    parser.add_argument('-c', '--cfgs', nargs='+', type=str, default=['invariant_float', 'default', 'age_predictor'],
+    parser.add_argument('-c', '--cfgs', nargs='+', type=str, default=['age_invariant', 'age_agnostic', 'age_aware'],
                         help='configurations to plot')
     parser.add_argument('-w', '--age_windows', type=int, default=0,
                         help='Divide classifications in n equidistant age windows')

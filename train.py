@@ -40,7 +40,7 @@ def train(config, train_data, val_data, batch_size, epochs, precision, log_inter
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='general', help='dataset name')
-    parser.add_argument('--cfg', type=str, default='default', help='config file')
+    parser.add_argument('--cfg', type=str, default='age_agnostic', help='config file')
     parser.add_argument('--batch_size', type=int, default=16, help='batch size')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
     parser.add_argument('--precision', type=str, default='32', help='precision (16-mixed or 32)')

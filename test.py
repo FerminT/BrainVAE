@@ -216,7 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='general', help='dataset on which to train the predictor')
     parser.add_argument('--splits_path', type=str, default='splits', help='path to the data splits')
     parser.add_argument('--target', type=str, default='general', help='target dataset for predicting features')
-    parser.add_argument('--cfg', type=str, default='default', help='config file used for the trained model')
+    parser.add_argument('--cfg', type=str, default='age_agnostic', help='config file used for the trained model')
     parser.add_argument('--device', type=str, default='gpu', help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
     parser.add_argument('--epochs', type=int, default=10, help='number of epochs used for training the age classifier')
