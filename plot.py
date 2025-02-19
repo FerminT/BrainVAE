@@ -30,6 +30,7 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
     sns.set_theme(font_scale=1.5)
     fig, axs = plt.subplots(1, len(target_labels), figsize=(4 * len(target_labels), 6))
     axs = axs.flat if len(target_labels) > 1 else [axs]
+    random_model = 'Random'
 
     for ax, label in zip(axs, target_labels):
         data = metrics_to_df(metrics, label)
@@ -39,11 +40,16 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
             metric = 'MSE'
         else:
             metric = 'Accuracy'
-        sns.barplot(x='Model', y='Value', hue='Model', data=data[data['Metric'] == metric], ax=ax, errorbar=None,
-                    width=1.0, alpha=1.0)
-        for i, bar in enumerate(ax.patches):
-            error = data.iloc[i // len(metrics[label])]['Error']
-            ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=error, fmt='none', c='black')
+        bars = sns.barplot(x='Model', y='Value', hue='Model', data=data[data['Metric'] == metric], ax=ax, errorbar=None,
+                           width=1.0, alpha=1.0, dodge=False)
+        for bar, model, error in zip(bars.patches, data[data['Metric'] == metric]['Model'], data[data['Metric'] == metric]['Error']):
+            if model == random_model:
+                color = bar.get_facecolor()
+                bar.set_facecolor('none')
+                bar.set_edgecolor(color)
+                bar.set_hatch('////')
+            else:
+                ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=error, fmt='none', c='black')
 
         if metric == 'MAE':
             ax2 = ax.twinx()
