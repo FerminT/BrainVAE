@@ -16,7 +16,7 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
 
     if bars:
         metrics = compute_metrics(labels_predictions, target_labels, evaluated_cfgs)
-        plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path)
+        plot_bar_plots(metrics, evaluated_cfgs, results_path)
     else:
         roc_curves = build_roc_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
         pr_curves = build_precision_recall_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
@@ -26,11 +26,11 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
                   results_path / 'pr_aucs.png', age_windows_ranges, type='auc')
 
 
-def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
+def plot_bar_plots(metrics, evaluated_cfgs, results_path):
     sns.set_theme(font_scale=1.5)
+    target_labels = list(metrics.keys())
     fig, axs = plt.subplots(1, len(target_labels), figsize=(4 * len(target_labels), 6))
     axs = axs.flat if len(target_labels) > 1 else [axs]
-    random_model = 'Random'
 
     for ax, label in zip(axs, target_labels):
         data = metrics_to_df(metrics, label)
@@ -38,26 +38,21 @@ def plot_bar_plots(metrics, target_labels, evaluated_cfgs, results_path):
             metric = 'MAE'
         elif 'MSE' in data['Metric'].values:
             metric = 'MSE'
+        elif 'Correlation' in data['Metric'].values:
+            metric = 'Correlation'
         else:
             metric = 'Accuracy'
-        bars = sns.barplot(x='Model', y='Value', hue='Model', data=data[data['Metric'] == metric], ax=ax, errorbar=None,
+        data_metric = data[data['Metric'] == metric]
+        bars = sns.barplot(x='Model', y='Value', hue='Model', data=data_metric, ax=ax, errorbar=None,
                            width=1.0, alpha=1.0, dodge=False)
-        for bar, model, error in zip(bars.patches, data[data['Metric'] == metric]['Model'], data[data['Metric'] == metric]['Error']):
-            if model == random_model:
+        for bar, model, error in zip(bars.patches, data_metric['Model'], data_metric['Error']):
+            if model == 'Random':
                 color = bar.get_facecolor()
                 bar.set_facecolor('none')
                 bar.set_edgecolor(color)
-                bar.set_hatch('////')
             else:
                 ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=error, fmt='none', c='black')
 
-        if metric == 'MAE':
-            ax2 = ax.twinx()
-            sns.lineplot(x='Model', y='Value', data=data[data['Metric'] == 'Correlation'], ax=ax2,
-                         marker='o', linestyle='--', color='black', linewidth=2.0)
-            ax2.set_ylabel('Correlation')
-            ax2.set_ylim(0, 1)
-            ax2.grid(False)
         if metric == 'MSE':
             heights_drawn = []
             offset, text_height, separation = 0.02, 0.002, 0.05

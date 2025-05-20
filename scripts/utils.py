@@ -147,9 +147,10 @@ def get_age_windows(labels_predictions, target_labels, evaluated_cfgs, age_windo
 
 
 def compute_metrics(labels_results, target_labels, evaluated_cfgs):
-    metrics = {label: {} for label in target_labels}
+    metrics = {}
     for label in target_labels:
         measure_name = 'MAE'
+        metrics[label] = {}
         for model in evaluated_cfgs:
             model_results = labels_results[label][model]
             measure_list, corr_list, pvalues_list = [], [], []
@@ -174,8 +175,13 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                                         measure_name: measure_list}
             print(f'{model} {label} {measure_name}: {np.mean(measure_list):.4f}')
             if measure_name == 'MAE':
-                metrics[label][model]['Correlation_mean'] = max(np.mean(corr_list), 0.001)
-                metrics[label][model]['Correlation_stderr'] = sem(corr_list)
+                label_name = f'{label}_correlation'
+                if label_name not in metrics:
+                    metrics[label_name] = {model: {}}
+                else:
+                    metrics[label_name][model] = {}
+                metrics[label_name][model]['Correlation_mean'] = max(np.mean(corr_list), 0.001)
+                metrics[label_name][model]['Correlation_stderr'] = sem(corr_list)
                 print(f'{model} {label} Correlation: {np.mean(corr_list):.4f} (p: {np.mean(pvalues_list):.4f})')
 
         test_significance(metrics, label, evaluated_cfgs)
@@ -202,6 +208,7 @@ def metrics_to_df(metrics, label):
         if 'MAE_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'MAE', 'Value': metrics[label][model]['MAE_mean'],
                          'Error': metrics[label][model]['MAE_stderr']})
+        if 'Correlation_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'Correlation', 'Value': metrics[label][model]['Correlation_mean'],
                          'Error': metrics[label][model]['Correlation_stderr']})
         if 'Accuracy_mean' in metrics[label][model]:
