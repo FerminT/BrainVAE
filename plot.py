@@ -234,7 +234,9 @@ def show_plot(fig, handles_and_labels, fontsize, filename):
 def build_roc_curves(labels_results, labels, models, age_windows):
     thresholds = np.linspace(0, 1, 100)
     roc_curves = {label: {} for label in labels}
+    print('**********ROC-AUCs values**********')
     for label in labels:
+        print(f'{label.upper()}:')
         for model in models:
             if age_windows > 0:
                 for window in range(age_windows):
@@ -248,7 +250,9 @@ def build_roc_curves(labels_results, labels, models, age_windows):
 def build_precision_recall_curves(labels_results, labels, models, age_windows):
     pr_curves = {label: {} for label in labels}
     common_recall = np.linspace(0, 1, 100)
+    print('**********PR-AUCs values**********')
     for label in labels:
+        print(f'{label.upper()}:')
         for model in models:
             model_preds = labels_results[label][model]
             if age_windows > 0:
@@ -261,7 +265,7 @@ def build_precision_recall_curves(labels_results, labels, models, age_windows):
 
 
 def mean_roc(data, thresholds, label, model_name, roc_curves):
-    all_fpr, all_tpr, all_auc = [], [], []
+    all_fpr, all_tpr, all_aucs = [], [], []
     for run in data.columns:
         if run.startswith('pred_'):
             fpr_tpr = []
@@ -272,13 +276,13 @@ def mean_roc(data, thresholds, label, model_name, roc_curves):
                 fpr_tpr.append((fpr, tpr))
             all_fpr.append([x[0] for x in fpr_tpr])
             all_tpr.append([x[1] for x in fpr_tpr])
-            all_auc.append(auc(all_fpr[-1], all_tpr[-1]))
+            all_aucs.append(auc(all_fpr[-1], all_tpr[-1]))
     mean_fpr, mean_tpr = np.mean(all_fpr, axis=0), np.mean(all_tpr, axis=0)
     stderr_tpr = np.std(all_tpr, axis=0) / np.sqrt(len(all_tpr))
     roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'stderr': list(zip(mean_fpr, stderr_tpr)),
-                                     'aucs': all_auc}
-    print(f'{model_name} {label} AUC: {np.median(all_auc):.4f} '
-          f'IQR: {np.percentile(all_auc, 75) - np.percentile(all_auc, 25):.4f}')
+                                     'aucs': all_aucs}
+    print(f'{model_name} {label} AUC: {np.median(all_aucs):.4f} '
+          f'IQR: {np.percentile(all_aucs, 75) - np.percentile(all_aucs, 25):.4f}')
 
 
 def mean_pr(data, common_recall, label, model_name, pr_curves):
@@ -300,6 +304,8 @@ def mean_pr(data, common_recall, label, model_name, pr_curves):
     pr_curves[label][model_name] = {'mean': list(zip(common_recall, mean_precision)),
                                     'stderr': list(zip(common_recall, std_error_precision)),
                                     'aucs': all_aucs}
+    print(f'{model_name} {label} AUC: {np.median(all_aucs):.4f} '
+          f'IQR: {np.percentile(all_aucs, 75) - np.percentile(all_aucs, 25):.4f}')
 
 
 def count_tp_fp_tn_fn(predictions, labels, threshold):
