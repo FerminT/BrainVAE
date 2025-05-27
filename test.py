@@ -177,7 +177,7 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
         kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax, alpha=0.8)
         if color_by_is_float:
             norm = plt.Normalize(subjects_df[color_by].min(), subjects_df[color_by].max())
-            sm = plt.cm.ScalarMappable(cmap='viridis_r', norm=norm)
+            sm = plt.cm.ScalarMappable(cmap=palette, norm=norm)
             sm.set_array([])
             cbar = plt.colorbar(sm, ax=ax)
             cbar.set_label(color_by)
