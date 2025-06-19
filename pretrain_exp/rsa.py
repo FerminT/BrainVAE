@@ -129,29 +129,34 @@ def compare_rdms(rdms_dict1, rdms_dict2, layers_dict):
 
 def compare_models(tasks, models, layers, rdms_path, sample_size, n_iters, random_state):
     models_comparison = {}
+    training_modes = ['pretrained', 'tl']
     for task in tasks:
         task_rdms, task_df = load_task_rdms(rdms_path, task)
         random_seeds = [random_state + i for i in range(n_iters)]
         models_comparison[task] = {}
-        for model in models:
-            model_rdms = task_rdms[model]
-            base_model = 'pretrained'
-            if model == 'none':
-                base_model = 'tl'
-            base_model_rdm = model_rdms[base_model]
-            models_comparison[task][f'{model}_pretrained'] = {}
-            for other_model in models:
-                other_model_rdms = task_rdms[other_model]
-                ft_rdm = other_model_rdms['tl']
-                pretrained_rdm = other_model_rdms['pretrained']
-                models_comparison[task][f'{model}_pretrained'][f'{other_model}_pretrained'] = {layer: [] for layer in layers}
-                models_comparison[task][f'{model}_pretrained'][f'{other_model}_finetuned'] = {layer: [] for layer in layers}
-                for seed in random_seeds:
-                    pt_rdm_seed = subsample_rdm(pretrained_rdm, sample_size, len(task_df), seed)
-                    ft_rdm_seed = subsample_rdm(ft_rdm, sample_size, len(task_df), seed)
-                    base_model_rdm_seed = subsample_rdm(base_model_rdm, sample_size, len(task_df), seed)
-                    compare_rdms(base_model_rdm_seed, pt_rdm_seed, models_comparison[task][f'{model}_pretrained'][f'{other_model}_pretrained'])
-                    compare_rdms(base_model_rdm_seed, ft_rdm_seed, models_comparison[task][f'{model}_pretrained'][f'{other_model}_finetuned'])
+        for training_mode in training_modes:
+            for model in models:
+                if training_mode == 'pretrained' and model == 'none':
+                    continue
+                model_rdms = task_rdms[model]
+                base_model_rdm = model_rdms[training_mode]
+                models_comparison[task][f'{model}_{training_mode}'] = {}
+                for other_model in models:
+                    other_model_rdms = task_rdms[other_model]
+                    ft_rdm = other_model_rdms[training_modes[1]]
+                    training_mode_dct = models_comparison[task][f'{model}_{training_mode}']
+                    if training_mode != 'tl':
+                        training_mode_dct[f'{other_model}_pretrained'] = {layer: [] for layer in layers}
+                        pretrained_rdm = other_model_rdms[training_modes[0]]
+                    training_mode_dct[f'{other_model}_tl'] = {layer: [] for layer in layers}
+                    for seed in random_seeds:
+                        base_model_rdm_seed = subsample_rdm(base_model_rdm, sample_size, len(task_df), seed)
+                        if training_mode != 'tl':
+                            pt_rdm_seed = subsample_rdm(pretrained_rdm, sample_size, len(task_df), seed)
+                            compare_rdms(base_model_rdm_seed, pt_rdm_seed,
+                                         training_mode_dct[f'{other_model}_pretrained'])
+                        ft_rdm_seed = subsample_rdm(ft_rdm, sample_size, len(task_df), seed)
+                        compare_rdms(base_model_rdm_seed, ft_rdm_seed, training_mode_dct[f'{other_model}_tl'])
 
     return models_comparison
 
