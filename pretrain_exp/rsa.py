@@ -116,9 +116,7 @@ def calc_baseline_rdms(task_df, datapath):
 
 
 def compare_rdms(rdms_dict1, rdms_dict2, layers_dict):
-    if rdms_dict1.keys() != rdms_dict2.keys() or rdms_dict1.keys() != layers_dict.keys():
-        raise ValueError("Dictionaries have different keys")
-    for layer in rdms_dict1:
+    for layer in layers_dict:
         rdm1 = rdms_dict1[layer]
         rdm2 = rdms_dict2[layer]
         rdm1 = rdm1.flatten()
