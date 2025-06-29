@@ -128,6 +128,7 @@ def compare_rdms(rdms_dict1, rdms_dict2, layers_dict):
 def compare_models(tasks, models, layers, rdms_path, sample_size, n_iters, random_state):
     models_comparison = {}
     training_modes = ['pretrained', 'tl']
+    other_models = models + ['baseline']
     for task in tasks:
         task_rdms, task_df = load_task_rdms(rdms_path, task)
         random_seeds = [random_state + i for i in range(n_iters)]
@@ -139,17 +140,18 @@ def compare_models(tasks, models, layers, rdms_path, sample_size, n_iters, rando
                 model_rdms = task_rdms[model]
                 base_model_rdm = model_rdms[training_mode]
                 models_comparison[task][f'{model}_{training_mode}'] = {}
-                for other_model in models:
+                for other_model in other_models:
+                    compare_with_pretrained = training_mode == 'pretrained' and other_model != 'baseline'
                     other_model_rdms = task_rdms[other_model]
-                    ft_rdm = other_model_rdms[training_modes[1]]
+                    ft_rdm = other_model_rdms[training_modes[1]] if other_model != 'baseline' else other_model_rdms
                     training_mode_dct = models_comparison[task][f'{model}_{training_mode}']
-                    if training_mode != 'tl':
+                    if compare_with_pretrained:
                         training_mode_dct[f'{other_model}_pretrained'] = {layer: [] for layer in layers}
                         pretrained_rdm = other_model_rdms[training_modes[0]]
                     training_mode_dct[f'{other_model}_tl'] = {layer: [] for layer in layers}
                     for seed in random_seeds:
                         base_model_rdm_seed = subsample_rdm(base_model_rdm, sample_size, len(task_df), seed)
-                        if training_mode != 'tl':
+                        if compare_with_pretrained:
                             pt_rdm_seed = subsample_rdm(pretrained_rdm, sample_size, len(task_df), seed)
                             compare_rdms(base_model_rdm_seed, pt_rdm_seed,
                                          training_mode_dct[f'{other_model}_pretrained'])
