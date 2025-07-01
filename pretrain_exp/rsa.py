@@ -125,7 +125,7 @@ def compare_rdms(rdms_dict1, rdms_dict2, layers_dict):
         layers_dict[layer].append(correlation)
 
 
-def compare_models(tasks, models, layers, rdms_path, sample_size, n_iters, random_state):
+def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
     models_comparison = {}
     training_modes = ['pretrained', 'tl']
     other_models = models + ['baseline']
@@ -150,21 +150,21 @@ def compare_models(tasks, models, layers, rdms_path, sample_size, n_iters, rando
                         pretrained_rdm = other_model_rdms[training_modes[0]]
                     training_mode_dct[f'{other_model}_tl'] = {layer: [] for layer in layers}
                     for seed in random_seeds:
-                        base_model_rdm_seed = subsample_rdm(base_model_rdm, sample_size, len(task_df), seed)
+                        base_model_rdm_seed = subsample_rdm(base_model_rdm, len(task_df), seed)
                         if compare_with_pretrained:
-                            pt_rdm_seed = subsample_rdm(pretrained_rdm, sample_size, len(task_df), seed)
+                            pt_rdm_seed = subsample_rdm(pretrained_rdm, len(task_df), seed)
                             compare_rdms(base_model_rdm_seed, pt_rdm_seed,
                                          training_mode_dct[f'{other_model}_pretrained'])
-                        ft_rdm_seed = subsample_rdm(ft_rdm, sample_size, len(task_df), seed)
+                        ft_rdm_seed = subsample_rdm(ft_rdm, len(task_df), seed)
                         compare_rdms(base_model_rdm_seed, ft_rdm_seed, training_mode_dct[f'{other_model}_tl'])
 
     return models_comparison
 
 
-def subsample_rdm(rdm, sample_size, dataset_size, random_state):
+def subsample_rdm(rdm, dataset_size, random_state):
     rng = random.default_rng(random_state)
     indices = list(range(dataset_size // 2))
-    fst_group_indices = rng.choice(indices, size=sample_size // 2, replace=False)
+    fst_group_indices = rng.choice(indices, size=dataset_size // 2, replace=True)
     snd_group_indices = fst_group_indices + dataset_size // 2
     indices = concatenate([fst_group_indices, snd_group_indices])
     subsampled_rdm = {}
