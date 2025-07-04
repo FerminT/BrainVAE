@@ -295,6 +295,24 @@ def load_imgs(dataset, indices):
     return imgs_tensor
 
 
+def load_precomputed_rdms(rdms_file, models, training_modes, layers, dataset_size):
+    if rdms_file.exists():
+        with open(rdms_file, 'rb') as f:
+            task_rdms_dict = pickle.load(f)
+        for model in models:
+            if model not in task_rdms_dict:
+                task_rdms_dict[model] = {}
+            for mode in training_modes:
+                if mode not in task_rdms_dict[model]:
+                    task_rdms_dict[model][mode] = {}
+                for layer in layers:
+                    if layer not in task_rdms_dict[model][mode]:
+                        task_rdms_dict[model][mode][layer] = zeros((dataset_size, dataset_size))
+    else:
+        task_rdms_dict = {model: {mode: {layer: zeros((dataset_size, dataset_size)) for layer in layers} for mode in training_modes} for model in models}
+    return task_rdms_dict
+
+
 def task_rdms(task, models, training_modes, layers, pretrained_layers, datasets_path, datapath, splits_path, split, batch_size, save_path):
     task_df = load_dataset(datasets_path, task, splits_path, split)
     task_df = task_df.reset_index(names='idx')
@@ -319,7 +337,8 @@ def task_rdms(task, models, training_modes, layers, pretrained_layers, datasets_
 
 
 def pairwise_batch_rdms(batches, models, datapath, dataset_size, batch_size, training_modes, layers, pretrained_layers, task_name, save_path):
-    task_rdms_dict = {model: {mode: {layer: zeros((dataset_size, dataset_size)) for layer in layers} for mode in training_modes} for model in models}
+    rdms_file = save_path / f'rdms.pkl'
+    task_rdms_dict = load_precomputed_rdms(rdms_file, models, training_modes, layers, dataset_size)
     for first_half_idx, first_batch_df in enumerate(tqdm(batches)):
         for snd_half_idx in range(first_half_idx + 1, len(batches)):
             snd_batch_df = batches[snd_half_idx]
@@ -327,6 +346,8 @@ def pairwise_batch_rdms(batches, models, datapath, dataset_size, batch_size, tra
             batch_dataset = T1Dataset(constants.BRAIN_MASK, datapath, batch_df, 250, 1, [20, 90], [inf, -inf], testing=True)
             batch_imgs_tensor = load_imgs(batch_dataset, range(len(batch_dataset)))
             for model_name in models:
+                if model_name == 'baseline':
+                    continue
                 for training_mode in training_modes:
                     training_mode_dict = training_modes[training_mode]
                     model_path, model_filename = training_mode_dict['path'], training_mode_dict['ckpt_filename']
@@ -353,7 +374,6 @@ def pairwise_batch_rdms(batches, models, datapath, dataset_size, batch_size, tra
                                                snd_half_idx * batch_size:end_index] = rdms_dict[layer_name][:batch_size, batch_size:] 
                         model_dict[layer_name][snd_half_idx * batch_size:end_index,
                                                first_half_idx * batch_size:(first_half_idx + 1) * batch_size] = rdms_dict[layer_name][batch_size:, :batch_size]
-                    rdms_file = save_path / f'rdms.pkl'
                     with open(rdms_file, 'wb') as f:
                         pickle.dump(task_rdms_dict, f)
 
