@@ -207,8 +207,8 @@ def bootstrapping_significance(x_samples, y_samples, n_bootstraps=1000, random_s
     rng = np.random.default_rng(random_state)
     count = 0
     for _ in range(n_bootstraps):
-        x_prime = rng.choice(indices, size=x_size)
-        y_prime = rng.choice(indices, size=y_size)
+        x_prime = combined_samples[rng.choice(indices, size=x_size)]
+        y_prime = combined_samples[rng.choice(indices, size=y_size)]
         diff = np.abs(np.mean(x_prime) - np.mean(y_prime))
         if diff >= obs_diff:
             count += 1
