@@ -17,7 +17,7 @@ import seaborn as sns
 import pickle
 
 
-def plot_maps(model_features, model_name, class_labels):
+def plot_maps(model_features, model_name, class_labels, layers=None):
     """
     Plots representational dissimilarity matrices (RDMs) across different layers of a model.
 
@@ -30,6 +30,8 @@ def plot_maps(model_features, model_name, class_labels):
     # and we add one plot per reference point
     gs = fig.add_gridspec(1, len(model_features))
     fig.subplots_adjust(wspace=0.2, hspace=0.2)
+    if layers is not None:
+        model_features = {k: model_features[k] for k in layers if k in model_features}
 
     for l in range(len(model_features)):
 
@@ -118,6 +120,8 @@ def calc_baseline_rdms(task_df, datapath):
 def compare_rdms(rdms_dict1, rdms_dict2, layers_dict):
     for layer in layers_dict:
         rdm1 = rdms_dict1[layer]
+        if layer not in rdms_dict2:
+            breakpoint()
         rdm2 = rdms_dict2[layer]
         rdm1 = rdm1.flatten()
         rdm2 = rdm2.flatten()
