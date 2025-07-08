@@ -199,7 +199,7 @@ def test_significance(metrics, label, evaluated_cfgs):
         metrics[label][model_1][f'{model_2}_significance'] = bootstrapping_significance(model1_values, model2_values)
 
 
-def bootstrapping_significance(x_samples, y_samples, n_bootstraps=1000, random_state=23):
+def bootstrapping_significance(x_samples, y_samples, n_bootstraps=50000, random_state=23):
     obs_diff = np.abs(np.mean(x_samples) - np.mean(y_samples))
     combined_samples = np.concatenate((x_samples, y_samples))
     x_size, y_size = len(x_samples), len(y_samples)

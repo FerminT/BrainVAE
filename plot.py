@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 from sklearn.metrics import precision_recall_curve, auc
-from scripts.utils import load_predictions, get_age_windows, compute_metrics, metrics_to_df
+from scripts.utils import load_predictions, get_age_windows, compute_metrics, metrics_to_df, bootstrapping_significance
 
 
 def plot(results_path, cfgs, target_labels, bars, age_windows):
@@ -190,7 +190,7 @@ def significance_against(results_df, results_label, base_model):
         if model != base_model:
             model_results = np.array(results_df.loc[model, results_label])
             base_results = np.array(results_df.loc[base_model, results_label])
-            models_significance[model] = 1.0 - (model_results > base_results).sum() / len(model_results)
+            models_significance[model] = bootstrapping_significance(model_results, base_results)
     return models_significance
 
 
