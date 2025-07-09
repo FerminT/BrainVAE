@@ -135,7 +135,7 @@ def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
     other_models = models + ['baseline']
     for task in tasks:
         task_rdms, task_df = load_task_rdms(rdms_path, task)
-        random_seeds = [random_state + i for i in range(n_iters)]
+        rng = random.default_rng(random_state)
         models_comparison[task] = {}
         for training_mode in training_modes:
             for model in models:
@@ -153,22 +153,21 @@ def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
                         training_mode_dct[f'{other_model}_pretrained'] = {layer: [] for layer in layers}
                         pretrained_rdm = other_model_rdms[training_modes[0]]
                     training_mode_dct[f'{other_model}_tl'] = {layer: [] for layer in layers}
-                    for seed in random_seeds:
-                        base_model_rdm_seed = subsample_rdm(base_model_rdm, len(task_df), seed)
+                    for _ in range(n_iters):
+                        base_model_rdm_seed = subsample_rdm(base_model_rdm, len(task_df), rng)
                         if compare_with_pretrained:
-                            pt_rdm_seed = subsample_rdm(pretrained_rdm, len(task_df), seed)
+                            pt_rdm_seed = subsample_rdm(pretrained_rdm, len(task_df), rng)
                             compare_rdms(base_model_rdm_seed, pt_rdm_seed,
                                          training_mode_dct[f'{other_model}_pretrained'])
-                        ft_rdm_seed = subsample_rdm(ft_rdm, len(task_df), seed)
+                        ft_rdm_seed = subsample_rdm(ft_rdm, len(task_df), rng)
                         compare_rdms(base_model_rdm_seed, ft_rdm_seed, training_mode_dct[f'{other_model}_tl'])
 
     return models_comparison
 
 
-def subsample_rdm(rdm, dataset_size, random_state):
-    rng = random.default_rng(random_state)
-    indices = list(range(dataset_size // 2))
-    fst_group_indices = rng.choice(indices, size=dataset_size // 2, replace=True)
+def subsample_rdm(rdm, dataset_size, rng):
+    fst_group_indices = list(range(dataset_size // 2))
+    fst_group_indices = rng.choice(fst_group_indices, size=dataset_size // 2, replace=True)
     snd_group_indices = fst_group_indices + dataset_size // 2
     indices = concatenate([fst_group_indices, snd_group_indices])
     subsampled_rdm = {}
