@@ -1,7 +1,7 @@
 from rsatoolbox.data import Dataset
 from rsatoolbox.rdm.calc import calc_rdm
 import matplotlib.pyplot as plt
-from numpy import max, random, concatenate, corrcoef, sqrt, squeeze
+from numpy import max, random, triu, corrcoef, sqrt, squeeze, ones_like
 from torch import load
 from scripts.t1_dataset import T1Dataset
 from scripts.data_handler import balance_dataset
@@ -120,8 +120,6 @@ def calc_baseline_rdms(task_df, datapath):
 def compare_rdms(rdms_dict1, rdms_dict2, layers_dict):
     for layer in layers_dict:
         rdm1 = rdms_dict1[layer]
-        if layer not in rdms_dict2:
-            breakpoint()
         rdm2 = rdms_dict2[layer]
         rdm1 = rdm1.flatten()
         rdm2 = rdm2.flatten()
@@ -154,27 +152,23 @@ def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
                         pretrained_rdm = other_model_rdms[training_modes[0]]
                     training_mode_dct[f'{other_model}_tl'] = {layer: [] for layer in layers}
                     for seed in random_seeds:
-                        base_model_rdm_seed = subsample_rdm(base_model_rdm, len(task_df), seed)
+                        base_model_rdm_seed = resample_rdm(base_model_rdm, len(task_df), seed)
                         if compare_with_pretrained:
-                            pt_rdm_seed = subsample_rdm(pretrained_rdm, len(task_df), seed)
+                            pt_rdm_seed = resample_rdm(pretrained_rdm, len(task_df), seed)
                             compare_rdms(base_model_rdm_seed, pt_rdm_seed,
                                          training_mode_dct[f'{other_model}_pretrained'])
-                        ft_rdm_seed = subsample_rdm(ft_rdm, len(task_df), seed)
+                        ft_rdm_seed = resample_rdm(ft_rdm, len(task_df), seed)
                         compare_rdms(base_model_rdm_seed, ft_rdm_seed, training_mode_dct[f'{other_model}_tl'])
 
     return models_comparison
 
 
-def subsample_rdm(rdm, dataset_size, random_state):
+def resample_rdm(rdms, dataset_size, random_state):
     rng = random.default_rng(random_state)
-    indices = list(range(dataset_size // 2))
-    fst_group_indices = rng.choice(indices, size=dataset_size // 2, replace=True)
-    snd_group_indices = fst_group_indices + dataset_size // 2
-    indices = concatenate([fst_group_indices, snd_group_indices])
-    subsampled_rdm = {}
-    for layer in rdm:
-        subsampled_rdm[layer] = rdm[layer][indices][:, indices]
-    return subsampled_rdm
+    indices = list(range(dataset_size))
+    random_indices = rng.choice(indices, size=len(indices), replace=True)
+    resampled_rdms = {layer: rdms[layer][random_indices][:, random_indices] for layer in rdms}
+    return resampled_rdms
 
 
 def calc_rdms(model_features, method='correlation'):
