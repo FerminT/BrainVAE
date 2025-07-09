@@ -121,9 +121,10 @@ def compare_rdms(rdms_dict1, rdms_dict2, layers_dict):
     for layer in layers_dict:
         rdm1 = rdms_dict1[layer]
         rdm2 = rdms_dict2[layer]
-        rdm1 = rdm1.flatten()
-        rdm2 = rdm2.flatten()
-        correlation = corrcoef(rdm1, rdm2)[0, 1]
+        mask = triu(ones_like(rdm1, dtype=bool), k=1)
+        rdm1_flat = rdm1[mask]
+        rdm2_flat = rdm2[mask]
+        correlation = corrcoef(rdm1_flat, rdm2_flat)[0, 1]
         layers_dict[layer].append(correlation)
 
 
