@@ -10,7 +10,7 @@ class EmbeddingClassifier(lg.LightningModule):
                  output_dim=1,
                  hidden_dims=(128, 64, 32),
                  n_layers=3,
-                 lr=0.1,
+                 lr=0.001,
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
@@ -25,8 +25,8 @@ class EmbeddingClassifier(lg.LightningModule):
     def configure_optimizers(self):
         optimizer = init_optimizer(self.optimizer, self.parameters(), lr=self.lr, momentum=self.momentum,
                                    weight_decay=self.weight_decay)
-        lr_scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.01,
-                                                     total_steps=self.trainer.estimated_stepping_batches)
+        lr_scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.1,
+                                                   total_iters=self.trainer.estimated_stepping_batches // 10)
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
 
     def forward(self, z):
