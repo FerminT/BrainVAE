@@ -12,7 +12,7 @@ from numpy import inf, zeros
 from pretrain_exp.sfcn import SFCN, SFCN_TL
 from collections import OrderedDict
 from torchvision.models.feature_extraction import create_feature_extractor
-from torch import cat
+from torch import cat, no_grad
 import seaborn as sns
 import pickle
 
@@ -385,6 +385,7 @@ def compute_rdms(model, imgs, return_nodes, method='correlation'):
 
 def get_activations(model, imgs, return_nodes):
     feature_extractor = create_feature_extractor(model, return_nodes=return_nodes)
-    activations = feature_extractor(imgs)
+    with no_grad():
+        activations = feature_extractor(imgs)
     activations = {k: v.cpu() for k, v in activations.items()}
     return activations
