@@ -196,23 +196,11 @@ def test_significance(metrics, label, evaluated_cfgs):
                    'mean' not in measure][0]
         model1_values = np.array(metrics[label][model_1][measure])
         model2_values = np.array(metrics[label][model_2][measure])
-        metrics[label][model_1][f'{model_2}_significance'] = bootstrapping_significance(model1_values, model2_values)
+        metrics[label][model_1][f'{model_2}_significance'] = bootstrap_dist_significance(model1_values, model2_values)
 
 
-def bootstrapping_significance(x_samples, y_samples, n_bootstraps=50000, random_state=23):
-    obs_diff = np.abs(np.mean(x_samples) - np.mean(y_samples))
-    combined_samples = np.concatenate((x_samples, y_samples))
-    x_size, y_size = len(x_samples), len(y_samples)
-    indices = np.arange(len(combined_samples))
-    rng = np.random.default_rng(random_state)
-    count = 0
-    for _ in range(n_bootstraps):
-        x_prime = combined_samples[rng.choice(indices, size=x_size)]
-        y_prime = combined_samples[rng.choice(indices, size=y_size)]
-        diff = np.abs(np.mean(x_prime) - np.mean(y_prime))
-        if diff >= obs_diff:
-            count += 1
-    return count / n_bootstraps
+def bootstrap_dist_significance(model1_values, model2_values):
+    return 1.0 - (model1_values > model2_values).sum() / len(model1_values)
 
 
 def metrics_to_df(metrics, label):
