@@ -6,6 +6,7 @@ from scripts.embedding_dataset import EmbeddingDataset
 from scripts.t1_dataset import T1Dataset
 from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
 from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch import Trainer, seed_everything
 from sklearn.metrics import accuracy_score, precision_score, recall_score, mean_absolute_error
 from models.embedding_classifier import EmbeddingClassifier
@@ -58,6 +59,8 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     if config_name == 'age':
         return None
     seed_everything(seed, workers=True)
+    monitor_loss = 'val_bce' if output_dim == 1 else 'val_mae'
+    early_stop_callback = EarlyStopping(monitor=monitor_loss, patience=0, mode='min')
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
                                      bin_centers=bin_centers)
@@ -67,6 +70,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
                       accelerator=device,
                       precision='bf16-mixed',
                       logger=wandb_logger,
+                      callbacks=[early_stop_callback],
                       )
     trainer.fit(classifier, train_dataloader, val_dataloader)
     wandb.finish()
