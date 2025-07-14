@@ -200,7 +200,8 @@ def test_significance(metrics, label, evaluated_cfgs):
 
 
 def bootstrap_dist_significance(model1_values, model2_values):
-    return 1.0 - (model1_values > model2_values).sum() / len(model1_values)
+    return 1.0 - max((model1_values > model2_values).sum() / len(model1_values),
+                     (model2_values > model1_values).sum() / len(model1_values))
 
 
 def metrics_to_df(metrics, label):
