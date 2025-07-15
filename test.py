@@ -276,7 +276,7 @@ if __name__ == '__main__':
         if not args.manifold:
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
-                                    args.batch_size, args.n_layers, args.epochs, args.n_iters, save_path,
+                                    args.batch_size, args.n_layers, args.max_epochs, args.n_iters, save_path,
                                     args.sync, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
