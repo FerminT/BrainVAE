@@ -223,7 +223,8 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, default='age_agnostic', help='config file used for the trained model')
     parser.add_argument('--device', type=str, default='gpu', help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
-    parser.add_argument('--epochs', type=int, default=10, help='number of epochs used for training the age classifier')
+    parser.add_argument('--max_epochs', type=int, default=10,
+                        help='max number of epochs used for training the embedding classifier')
     parser.add_argument('--n_iters', type=int, default=100,
                         help='number of iterations (with different seeds) to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
