@@ -132,16 +132,18 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
 
 def plot_violin(data, results_label, ax, colors):
     results_df = DataFrame.from_dict(data, orient='index')
-    significance_to_invariant = significance_against(results_df, results_label, base_model='Age-invariant')
-    significance_to_baseline = significance_against(results_df, results_label, base_model='Age-agnostic')
-    results_df = results_df.reset_index().rename(columns={'index': 'Model'})
-    results_df = results_df.explode(results_label)[['Model', results_label]]
-    results_df[results_label] = results_df[results_label].astype(float)
-    sns.violinplot(x='Model', y=results_label, data=results_df, hue='Model', ax=ax, palette=colors)
-    add_significance_asterisks(ax, results_df, results_label, significance_to_invariant,
-                               reference_model='Age-invariant')
-    add_significance_to_baseline(ax, results_df, results_label, significance_to_baseline, reference_model='Age-aware',
-                                 base_model='Age-agnostic')
+    plot_df = results_df.reset_index().rename(columns={'index': 'Model'})
+    plot_df = plot_df.explode(results_label)[['Model', results_label]]
+    plot_df[results_label] = plot_df[results_label].astype(float)
+    sns.violinplot(x='Model', y=results_label, data=plot_df, hue='Model', ax=ax, palette=colors)
+    if 'Age-invariant' in results_df.index:
+        significance_to_invariant = significance_against(results_df, results_label, base_model='Age-invariant')
+        add_significance_asterisks(ax, plot_df, results_label, significance_to_invariant,
+                                   reference_model='Age-invariant')
+    if 'Age-agnostic' in results_df.index and 'Age-aware' in results_df.index:
+        significance_to_baseline = significance_against(results_df, results_label, base_model='Age-agnostic')
+        add_significance_to_baseline(ax, plot_df, results_label, significance_to_baseline,
+                                     reference_model='Age-aware', base_model='Age-agnostic')
     ax.axhline(0.5, color='black', linestyle='--', alpha=0.5)
 
 
