@@ -25,11 +25,13 @@ import argparse
 
 
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
-                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, save_path,
-                            no_sync, device):
+                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, use_age,
+                            save_path, no_sync, device):
     train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     binary_classification = output_dim == 1
+    if use_age:
+        latent_dim += 1
     test_dataset = EmbeddingDataset(test, target=target_label, transform_fn=transform_fn)
     rnd_gen = random.default_rng(seed=42)
     random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
@@ -42,8 +44,9 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
         train_resampled = train.sample(frac=1, replace=True, random_state=seed)
         train_dataset = EmbeddingDataset(train_resampled, target=target_label, transform_fn=transform_fn)
         classifier = train_classifier(train_dataset, test_dataset, cfg_name, latent_dim, output_dim, n_layers,
-                                      bin_centers, batch_size, epochs, device, no_sync, seed=42)
-        labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, device)
+                                      bin_centers, use_age, batch_size, epochs, device, no_sync, seed=42)
+        labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, use_age,
+                                 device)
         add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
     params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
               'n_layers': n_layers, 'epochs': epochs}
@@ -54,8 +57,8 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
     save_predictions(test, baseline_preds, labels, target_label, params, baseline_savepath)
 
 
-def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, batch_size,
-                     epochs, device, no_sync, seed):
+def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
+                     batch_size, epochs, device, no_sync, seed):
     if config_name == 'age':
         return None
     seed_everything(seed, workers=True)
@@ -63,7 +66,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     early_stop_callback = EarlyStopping(monitor=monitor_loss, patience=0, mode='min')
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
-                                     bin_centers=bin_centers)
+                                     bin_centers=bin_centers, use_age=use_age)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
@@ -77,15 +80,21 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     return classifier
 
 
-def test_classifier(model, test_dataset, model_results, binary_classification, bin_centers, device):
+def test_classifier(model, test_dataset, model_results, binary_classification, bin_centers, use_age, device):
     device = dev('cuda' if device == 'gpu' and cuda.is_available() else 'cpu')
     if model:
         model.eval().to(device)
     predictions, labels = [], []
     for idx in tqdm(range(len(test_dataset)), desc='Evaluation'):
-        z, target = test_dataset[idx]
+        z, target, age = test_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
-        prediction = model(z) if model else z
+        prediction = z
+        if model:
+            if use_age:
+                age = age.unsqueeze(dim=0).to(device)
+                prediction = model(z, age)
+            else:
+                prediction = model(z)
         if binary_classification:
             prediction = sigmoid(prediction).item()
         else:
@@ -228,6 +237,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_iters', type=int, default=100,
                         help='number of iterations (with different seeds) to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
+    parser.add_argument('--use_age', action='store_true', help='add age as a feature to the classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
     parser.add_argument('--manifold', type=str, default=None,
@@ -248,7 +258,8 @@ if __name__ == '__main__':
 
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
     weights_path = Path(CHECKPOINT_PATH, args.ckpt_dataset, args.cfg, args.weights)
-    save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / weights_path.parent.name
+    run_name = weights_path.parent.name
+    save_path = Path(EVALUATION_PATH, args.dataset, args.set, args.cfg) / run_name
     save_path.mkdir(parents=True, exist_ok=True)
 
     datapath = get_datapath(args.dataset)
@@ -265,18 +276,20 @@ if __name__ == '__main__':
         embeddings_df = subjects_embeddings(weights_path, args.cfg, args.dataset, config, args.set, datapath,
                                             args.splits_path, args.random_state, save_path)
         embeddings_df = embeddings_df[~embeddings_df[args.label].isna()]
+        if args.use_age:
+            run_name += '_with_age'
         if args.balance:
             embeddings_df = balance_dataset(embeddings_df, args.label)
             print(embeddings_df.groupby(args.label)['age_at_scan'].describe())
             print(embeddings_df.groupby(args.label)['gender'].describe())
-            save_path = Path(EVALUATION_PATH, args.dataset + '_balanced', args.set, args.cfg) / weights_path.parent.name
+            save_path = Path(EVALUATION_PATH, args.dataset + '_balanced', args.set, args.cfg) / run_name
             save_path.mkdir(parents=True, exist_ok=True)
 
         data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
         if not args.manifold:
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
-                                    args.batch_size, args.n_layers, args.max_epochs, args.n_iters, save_path,
-                                    args.sync, args.device)
+                                    args.batch_size, args.n_layers, args.max_epochs, args.n_iters, args.use_age,
+                                    save_path, args.sync, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
