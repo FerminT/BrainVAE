@@ -4,7 +4,8 @@ from scripts.data_handler import (get_loader, get_datapath, load_set, create_tes
                                   balance_dataset, save_predictions)
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.t1_dataset import T1Dataset
-from scripts.utils import load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model
+from scripts.utils import (load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model,
+                           get_model_prediction)
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch import Trainer, seed_everything
@@ -18,8 +19,7 @@ from pandas import DataFrame, cut
 from seaborn import scatterplot, kdeplot, set_theme, color_palette
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
-from torch import cat, exp, device as dev, cuda
-from torch.nn.functional import sigmoid
+from torch import cat, device as dev, cuda
 import wandb
 import argparse
 
@@ -88,17 +88,7 @@ def test_classifier(model, test_dataset, model_results, binary_classification, b
     for idx in tqdm(range(len(test_dataset)), desc='Evaluation'):
         z, target, age = test_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
-        prediction = z
-        if model:
-            if use_age:
-                age = age.unsqueeze(dim=0).to(device)
-                prediction = model(z, age)
-            else:
-                prediction = model(z)
-        if binary_classification:
-            prediction = sigmoid(prediction).item()
-        else:
-            prediction = (exp(prediction.float().cpu().detach()) @ bin_centers).item()
+        prediction = get_model_prediction(z, model, age, use_age, device, binary_classification, bin_centers)
         predictions.append(prediction)
         label = target.item() if binary_classification else (target.float().cpu() @ bin_centers).item()
         labels.append(label)

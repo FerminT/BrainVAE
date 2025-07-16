@@ -7,7 +7,7 @@ from scipy.stats import sem, pearsonr
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_absolute_error, accuracy_score
-from torch import cat, device, cuda
+from torch import cat, device, cuda, exp, sigmoid
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
@@ -107,6 +107,21 @@ def init_embedding(method, n_components=2):
         raise NotImplementedError(f'Method {method} not implemented')
 
     return embedding
+
+
+def get_model_prediction(z, model, age, use_age, device, binary_classification, bin_centers):
+    prediction = z
+    if model:
+        if use_age:
+            age = age.unsqueeze(dim=0).to(device)
+            prediction = model(z, age)
+        else:
+            prediction = model(z)
+    if binary_classification:
+        prediction = sigmoid(prediction).item()
+    else:
+        prediction = (exp(prediction.float().cpu().detach()) @ bin_centers).item()
+    return prediction
 
 
 def load_predictions(target_labels, cfgs, results_path):
