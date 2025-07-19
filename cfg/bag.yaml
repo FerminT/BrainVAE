@@ -1,5 +1,5 @@
 input_shape: [160, 192, 160]
-latent_dim: 1
+latent_dim: 2
 layers: ~
 
 age_dim: 1

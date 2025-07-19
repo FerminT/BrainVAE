@@ -64,7 +64,7 @@ class ICVAE(lg.LightningModule):
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'epoch'}]
 
     def training_step(self, batch, batch_idx):
-        x, x_transformed, age, gender, bmi = batch
+        x, x_transformed, age, gender, bmi, _ = batch
         condition = self.get_condition(age, gender, bmi)
         x_reconstructed, mu, logvar, gender_pred, bmi_pred, age_pred = self(x_transformed, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar, gender_pred, bmi_pred, age_pred, gender, bmi, age)
@@ -72,7 +72,7 @@ class ICVAE(lg.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, _, age, gender, bmi = batch
+        x, _, age, gender, bmi, _ = batch
         condition = self.get_condition(age, gender, bmi)
         x_reconstructed, mu, logvar, gender_pred, bmi_pred, age_pred = self(x, condition)
         loss, loss_dict = self._loss(x_reconstructed, x, mu, logvar, gender_pred, bmi_pred, age_pred, gender, bmi, age,

@@ -15,7 +15,7 @@ class EmbeddingDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
-        embedding = from_numpy(sample['embedding'])
+        embedding = from_numpy(sample['embedding']).float()
         age = tensor(sample['age_at_scan'], dtype=bfloat16).unsqueeze(0)
         target = sample[self.target]
         if self.transform_fn:

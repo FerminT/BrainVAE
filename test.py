@@ -59,8 +59,6 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
                      batch_size, epochs, device, no_sync, seed):
-    if config_name == 'age':
-        return None
     seed_everything(seed, workers=True)
     monitor_loss = 'val_bce' if output_dim == 1 else 'val_mae'
     early_stop_callback = EarlyStopping(monitor=monitor_loss, patience=0, mode='min')
@@ -82,8 +80,7 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
 
 def test_classifier(model, test_dataset, model_results, binary_classification, bin_centers, use_age, device):
     device = dev('cuda' if device == 'gpu' and cuda.is_available() else 'cpu')
-    if model:
-        model.eval().to(device)
+    model.eval().to(device)
     predictions, labels = [], []
     for idx in tqdm(range(len(test_dataset)), desc='Evaluation'):
         z, target, age = test_dataset[idx]

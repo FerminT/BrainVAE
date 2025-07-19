@@ -31,7 +31,8 @@ class T1Dataset(Dataset):
             bmi = soft_label(sample['bmi'], self.bmi_range[0], self.bmi_range[1])
         else:
             bmi = float_to_tensor(sample['bmi'])
-        return t1_img, t1_transformed, age, gender, bmi
+        bag = sample['brain_age_gap'] if 'brain_age_gap' in sample else None
+        return t1_img, t1_transformed, age, gender, bmi, bag
 
     def get_subject(self, subject_id):
         return self.data[self.data['subject_id'] == subject_id].iloc[0]

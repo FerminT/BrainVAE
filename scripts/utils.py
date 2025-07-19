@@ -7,7 +7,7 @@ from scipy.stats import sem, pearsonr
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_absolute_error, accuracy_score
-from torch import cat, device, cuda, exp, sigmoid
+from torch import cat, device, cuda, exp, sigmoid, tensor
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
@@ -69,14 +69,19 @@ def subjects_embeddings(weights_path, model_name, dataset_name, config, split, d
     filename = save_path / f'subjects_embeddings.pkl'
     if filename.exists():
         return pd.read_pickle(filename)
-    model = load_model(weights_path, config, device_) if model_name != 'age' else None
+    model = load_model(weights_path, config, device_) if model_name != 'bag' else None
     subjects = []
     print('Computing embeddings...')
     for idx in tqdm(range(len(dataset))):
-        t1_img, _, age, _, _ = dataset[idx]
+        t1_img, _, age, _, _, bag = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device_)
         normalized_age = (age - age_range[0]) / (age_range[1] - age_range[0])
-        z = get_latent_representation(t1_img, model.encoder) if model_name != 'age' else normalized_age.unsqueeze(dim=0)
+        if model_name != 'bag':
+            z = get_latent_representation(t1_img, model.encoder)
+        else:
+            if np.isnan(bag):
+                continue
+            z = tensor([normalized_age, bag]).to(device_)
         subject_metadata = dataset.get_metadata(idx).copy()
         subject_metadata['embedding'] = z.cpu().detach().squeeze(dim=0).numpy()
         subjects.append(subject_metadata)
@@ -110,13 +115,11 @@ def init_embedding(method, n_components=2):
 
 
 def get_model_prediction(z, model, age, use_age, device, binary_classification, bin_centers):
-    prediction = z
-    if model:
-        if use_age:
-            age = age.unsqueeze(dim=0).to(device)
-            prediction = model(z, age)
-        else:
-            prediction = model(z)
+    if use_age:
+        age = age.unsqueeze(dim=0).to(device)
+        prediction = model(z, age)
+    else:
+        prediction = model(z)
     if binary_classification:
         prediction = sigmoid(prediction).item()
     else:
