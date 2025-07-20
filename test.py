@@ -30,8 +30,6 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
     train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     binary_classification = output_dim == 1
-    if use_age:
-        latent_dim += 1
     test_dataset = EmbeddingDataset(test, target=target_label, transform_fn=transform_fn)
     rnd_gen = random.default_rng(seed=42)
     random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]

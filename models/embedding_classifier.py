@@ -18,7 +18,7 @@ class EmbeddingClassifier(lg.LightningModule):
                  use_age=False):
         super(EmbeddingClassifier, self).__init__()
         self.save_hyperparameters()
-        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims, n_layers)
+        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, use_age)
         self.lr, self.optimizer, self.output_dim = lr, optimizer, output_dim
         self.momentum, self.weight_decay = momentum, weight_decay
         self.bin_centers = bin_centers
@@ -32,9 +32,11 @@ class EmbeddingClassifier(lg.LightningModule):
         return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
 
     def forward(self, z, age=None):
-        if self.use_age:
-            z = cat([z, age], dim=1)
-        return self.fc_layers(z)
+        for i, layer in enumerate(self.fc_layers):
+            if self.use_age and i == len(self.fc_layers) - 1:
+                z = cat((z, age), dim=1)
+            z = layer(z)
+        return z
 
     def training_step(self, batch, batch_idx):
         return self._step(batch, 'train')
@@ -58,17 +60,21 @@ class EmbeddingClassifier(lg.LightningModule):
         return loss
 
 
-def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers):
+def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, use_age):
     layers = list()
     if n_layers > 2 or n_layers < 0:
         raise ValueError('Number of layers must be between 0 and 2')
     hidden_dims = hidden_dims[(-1) * n_layers:] if n_layers > 0 else []
     dims = [input_dim] + list(hidden_dims) + [output_dim]
+    last_hidden = len(dims) - 2
     for i in range(len(dims) - 1):
-        layers.append(nn.Linear(dims[i], dims[i + 1]))
-        if i < len(dims) - 2:
+        input_dim = dims[i]
+        if i == last_hidden and use_age:
+            input_dim += 1
+        layers.append(nn.Linear(input_dim, dims[i + 1]))
+        if i < last_hidden:
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(0.3))
-        if i == len(dims) - 2 and output_dim > 1:
+        if i == last_hidden and output_dim > 1:
             layers.append(nn.LogSoftmax(dim=1))
     return nn.Sequential(*layers)
