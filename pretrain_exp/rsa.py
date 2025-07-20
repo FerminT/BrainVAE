@@ -27,12 +27,11 @@ def plot_maps(model_features, model_name, class_labels, layers=None):
     """
     fig = plt.figure(figsize=(18, 4))
     fig.suptitle(f"RDMs across layers for {model_name}")
-    # and we add one plot per reference point
-    gs = fig.add_gridspec(1, len(model_features))
     fig.subplots_adjust(wspace=0.2, hspace=0.2)
     if layers is not None:
         model_features = {k: model_features[k] for k in layers if k in model_features}
-
+    gs = fig.add_gridspec(1, len(model_features))
+    
     for l in range(len(model_features)):
 
         layer = list(model_features.keys())[l]
@@ -133,7 +132,7 @@ def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
     training_modes = ['pretrained', 'tl']
     other_models = models + ['baseline']
     for task in tasks:
-        task_rdms, task_df = load_task_rdms(rdms_path, task)
+        task_rdms, task_df = load_task_rdms(rdms_path, task, filename='rdms_altogether.pkl')
         random_seeds = [random_state + i for i in range(n_iters)]
         models_comparison[task] = {}
         for training_mode in training_modes:
