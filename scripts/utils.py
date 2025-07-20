@@ -69,19 +69,21 @@ def subjects_embeddings(weights_path, model_name, dataset_name, config, split, d
     filename = save_path / f'subjects_embeddings.pkl'
     if filename.exists():
         return pd.read_pickle(filename)
-    model = load_model(weights_path, config, device_) if model_name != 'bag' else None
+    bag_model = 'bag' in model_name
+    model = load_model(weights_path, config, device_) if not bag_model else None
     subjects = []
     print('Computing embeddings...')
     for idx in tqdm(range(len(dataset))):
         t1_img, _, age, _, _, bag = dataset[idx]
         t1_img = t1_img.unsqueeze(dim=0).to(device_)
         normalized_age = (age - age_range[0]) / (age_range[1] - age_range[0])
-        if model_name != 'bag':
+        if not bag_model:
             z = get_latent_representation(t1_img, model.encoder)
         else:
             if np.isnan(bag):
                 continue
-            z = tensor([normalized_age, bag]).to(device_)
+            features = [normalized_age, bag] if 'age' in model_name else [bag]
+            z = tensor(features).to(device_)
         subject_metadata = dataset.get_metadata(idx).copy()
         subject_metadata['embedding'] = z.cpu().detach().squeeze(dim=0).numpy()
         subjects.append(subject_metadata)
