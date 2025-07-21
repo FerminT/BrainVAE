@@ -46,6 +46,8 @@ class EmbeddingClassifier(lg.LightningModule):
 
     def _step(self, batch, mode):
         z, targets, ages = batch
+        if z.ndim == 1:
+            z = z.unsqueeze(1)
         predictions = self(z, ages)
         if self.output_dim == 1:
             loss = nn.functional.binary_cross_entropy_with_logits(predictions, targets)
