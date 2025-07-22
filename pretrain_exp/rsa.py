@@ -132,7 +132,7 @@ def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
     training_modes = ['pretrained', 'tl']
     other_models = models + ['baseline']
     for task in tasks:
-        task_rdms, task_df = load_task_rdms(rdms_path, task, filename='rdms_altogether.pkl')
+        task_rdms, task_df = load_task_rdms(rdms_path, task)
         random_seeds = [random_state + i for i in range(n_iters)]
         models_comparison[task] = {}
         for training_mode in training_modes:
@@ -145,29 +145,34 @@ def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
                 for other_model in other_models:
                     compare_with_pretrained = training_mode == 'pretrained' and other_model != 'baseline'
                     other_model_rdms = task_rdms[other_model]
-                    ft_rdm = other_model_rdms[training_modes[1]] if other_model != 'baseline' else other_model_rdms
                     training_mode_dct = models_comparison[task][f'{model}_{training_mode}']
                     if compare_with_pretrained:
                         training_mode_dct[f'{other_model}_pretrained'] = {layer: [] for layer in layers}
                         pretrained_rdm = other_model_rdms[training_modes[0]]
                     training_mode_dct[f'{other_model}_tl'] = {layer: [] for layer in layers}
+                    ft_rdm = other_model_rdms[training_modes[1]] if other_model != 'baseline' else other_model_rdms
                     for seed in random_seeds:
-                        base_model_rdm_seed = resample_rdm(base_model_rdm, len(task_df), seed)
+                        indices_seed = random_indices(len(task_df), seed)
+                        resampled_base_model_rdm = resample_rdm(base_model_rdm, indices_seed)
                         if compare_with_pretrained:
-                            pt_rdm_seed = resample_rdm(pretrained_rdm, len(task_df), seed)
-                            compare_rdms(base_model_rdm_seed, pt_rdm_seed,
+                            resampled_pt_rdm = resample_rdm(pretrained_rdm, indices_seed)
+                            compare_rdms(resampled_base_model_rdm, resampled_pt_rdm,
                                          training_mode_dct[f'{other_model}_pretrained'])
-                        ft_rdm_seed = resample_rdm(ft_rdm, len(task_df), seed)
-                        compare_rdms(base_model_rdm_seed, ft_rdm_seed, training_mode_dct[f'{other_model}_tl'])
+                        resampled_ft_rdm = resample_rdm(ft_rdm, indices_seed)
+                        compare_rdms(resampled_base_model_rdm, resampled_ft_rdm, training_mode_dct[f'{other_model}_tl'])
 
     return models_comparison
 
 
-def resample_rdm(rdms, dataset_size, random_state):
+def random_indices(dataset_size, random_state):
     rng = random.default_rng(random_state)
     indices = list(range(dataset_size))
     random_indices = rng.choice(indices, size=len(indices), replace=True)
-    resampled_rdms = {layer: rdms[layer][random_indices][:, random_indices] for layer in rdms}
+    return random_indices
+
+
+def resample_rdm(rdms, indices):
+    resampled_rdms = {layer: rdms[layer][indices][:, indices] for layer in rdms}
     return resampled_rdms
 
 
