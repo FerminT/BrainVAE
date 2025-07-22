@@ -80,7 +80,7 @@ def subjects_embeddings(weights_path, model_name, dataset_name, config, split, d
         if not bag_model:
             z = get_latent_representation(t1_img, model.encoder)
         else:
-            if np.isnan(bag):
+            if bag == 99:
                 continue
             features = [normalized_age, bag] if 'age' in model_name else [bag]
             z = tensor(features).to(device_)
