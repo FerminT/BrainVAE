@@ -131,9 +131,9 @@ def compare_models(tasks, models, layers, rdms_path, n_iters, random_state):
     models_comparison = {}
     training_modes = ['pretrained', 'tl']
     other_models = models + ['baseline']
+    random_seeds = [random_state + i for i in range(n_iters)]
     for task in tasks:
         task_rdms, task_df = load_task_rdms(rdms_path, task)
-        random_seeds = [random_state + i for i in range(n_iters)]
         models_comparison[task] = {}
         for training_mode in training_modes:
             for model in models:
