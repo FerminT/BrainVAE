@@ -8,8 +8,8 @@ class EmbeddingClassifier(lg.LightningModule):
     def __init__(self,
                  input_dim=250,
                  output_dim=1,
-                 hidden_dims=(128, 32),
-                 n_layers=2,
+                 hidden_dims=(128, 64, 32),
+                 n_layers=3,
                  lr=0.001,
                  optimizer='AdamW',
                  momentum=0.9,
@@ -64,8 +64,8 @@ class EmbeddingClassifier(lg.LightningModule):
 
 def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, use_age):
     layers = list()
-    if n_layers > 2 or n_layers < 0:
-        raise ValueError('Number of layers must be between 0 and 2')
+    if n_layers > 3 or n_layers < 0:
+        raise ValueError('Number of layers must be between 0 and 3')
     hidden_dims = hidden_dims[(-1) * n_layers:] if n_layers > 0 else []
     dims = [input_dim] + list(hidden_dims) + [output_dim]
     last_hidden = len(dims) - 2
