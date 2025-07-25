@@ -35,6 +35,7 @@ def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
         original_slice = slice_data(data, slice_idx, axis)
         reconstructed_slice = slice_data(outputs, slice_idx, axis)
         img_comparison = make_grid(cat([original_slice[:n], reconstructed_slice[:n]]), nrow=n)
+        img_comparison = (img_comparison * 255).clamp(0, 255).byte()
         imgs.append(img_comparison)
         captions.append(f'Epoch: {epoch} Axis: {axis}')
         max_shape[0] = max(max_shape[0], img_comparison.shape[1])
