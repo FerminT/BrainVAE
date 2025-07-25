@@ -217,7 +217,7 @@ if __name__ == '__main__':
                         help='max number of epochs used for training the embedding classifier')
     parser.add_argument('--n_iters', type=int, default=100,
                         help='number of iterations (with different seeds) to evaluate the classifier')
-    parser.add_argument('--n_layers', type=int, default=2, help='number of layers in the classifier')
+    parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
     parser.add_argument('--use_age', action='store_true', help='add age as a feature to the classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
