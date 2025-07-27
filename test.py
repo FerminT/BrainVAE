@@ -8,11 +8,13 @@ from scripts.utils import (load_yaml, reconstruction_comparison_grid, init_embed
                            get_model_prediction)
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch import Trainer, seed_everything
-from sklearn.metrics import accuracy_score, precision_score, recall_score, mean_absolute_error
+from sklearn.metrics import accuracy_score, precision_score, recall_score, mean_absolute_error, roc_auc_score
+from sklearn.model_selection import KFold
 from models.embedding_classifier import EmbeddingClassifier
 from models.utils import get_latent_representation
 from scipy.stats import pearsonr
 from tqdm import tqdm
+from itertools import product
 from numpy import array, random
 from pandas import DataFrame, cut
 from seaborn import scatterplot, kdeplot, set_theme, color_palette
@@ -23,56 +25,59 @@ import wandb
 import argparse
 
 
-def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
-                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, use_age,
-                            save_path, no_sync, device):
-    train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
-    transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
-    binary_classification = output_dim == 1
-    test_dataset = EmbeddingDataset(test, target=target_label, transform_fn=transform_fn)
-    rnd_gen = random.default_rng(seed=42)
-    random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
-    metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
-    metrics.append('Predictions')
-    model_results = {metric: [] for metric in metrics}
-    baseline_results = {metric: [] for metric in metrics}
-    labels = []
-    for seed in tqdm(random_seeds, desc='Bootstrapping train'):
-        train_resampled = train.sample(frac=1, replace=True, random_state=seed)
-        train_dataset = EmbeddingDataset(train_resampled, target=target_label, transform_fn=transform_fn)
-        classifier = train_classifier(train_dataset, test_dataset, cfg_name, latent_dim, output_dim, n_layers,
-                                      bin_centers, use_age, batch_size, epochs, device, no_sync, seed=42)
-        labels = test_classifier(classifier, test_dataset, model_results, binary_classification, bin_centers, use_age,
-                                 device)
-        add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
-    params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters, 'batch_size': batch_size,
-              'n_layers': n_layers, 'epochs': epochs}
-    baseline_preds = report_results(baseline_results, target_label, name='baseline')
-    model_preds = report_results(model_results, target_label, name=cfg_name)
-    baseline_savepath = save_path.parents[1] / 'baseline' / 'random'
-    save_predictions(test, model_preds, labels, target_label, params, save_path)
-    save_predictions(test, baseline_preds, labels, target_label, params, baseline_savepath)
+def grid_search_cv(train_df, cfg_name, latent_dim, target_label, transform_fn, binary_classification, output_dim,
+                   bin_centers, use_age, device, k_folds=10):
+    param_grid = {
+        'learning_rate': [0.0005, 0.001, 0.005, 0.01],
+        'n_layers': [0, 1, 2],
+        'batch_size': [8, 16, 32],
+        'epochs': [5, 10, 15, 20]
+    }
+    print(f"Starting grid search with {k_folds}-fold cross validation...")
+    print(f"Total configurations to test: {len(list(product(*param_grid.values())))}")
+    best_auc, best_params = 0, None
+    results = []
+    kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+    for params in tqdm(list(product(*param_grid.values())), desc="Grid Search"):
+        lr, n_layers, batch_size, epochs = params
+        param_dict = {
+            'learning_rate': lr,
+            'n_layers': n_layers, 
+            'batch_size': batch_size,
+            'epochs': epochs
+        }
+        cfg_predictions = []
+        cfg_labels = []
+        for train_idx, val_idx in kf.split(train_df):
+            train_fold = train_df.iloc[train_idx]
+            val_fold = train_df.iloc[val_idx]
+            train_dataset = EmbeddingDataset(train_fold, target=target_label, transform_fn=transform_fn)
+            val_dataset = EmbeddingDataset(val_fold, target=target_label, transform_fn=transform_fn)
+            classifier = train_classifier(train_dataset, val_dataset, cfg_name, latent_dim, output_dim, 
+                                          n_layers, bin_centers, use_age, batch_size, epochs, lr, device,
+                                          seed=42)
+            fold_preds, fold_lbls = test_classifier(classifier, val_dataset, binary_classification,
+                                                    bin_centers, use_age, device)
+            cfg_predictions.extend(fold_preds)
+            cfg_labels.extend(fold_lbls)
+        
+        if binary_classification:
+            auc = roc_auc_score(cfg_labels, cfg_predictions)
+        else:
+            corr, _ = pearsonr(cfg_predictions, cfg_labels)
+            auc = abs(corr)
+        results.append({
+            'params': param_dict,
+            'auc': auc
+        })
+        if auc > best_auc:
+            best_auc = auc
+            best_params = param_dict
+        print(f"Config {param_dict}:\n AUC = {auc:.4f}")
+    return best_params, best_auc, results
 
 
-def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
-                     batch_size, epochs, device, no_sync, seed):
-    seed_everything(seed, workers=True)
-    wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=no_sync)
-    classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
-                                     bin_centers=bin_centers, use_age=use_age)
-    train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
-    val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
-    trainer = Trainer(max_epochs=epochs,
-                      accelerator=device,
-                      precision='bf16-mixed',
-                      logger=wandb_logger,
-                      )
-    trainer.fit(classifier, train_dataloader, val_dataloader)
-    wandb.finish()
-    return classifier
-
-
-def test_classifier(model, test_dataset, model_results, binary_classification, bin_centers, use_age, device):
+def test_classifier(model, test_dataset, binary_classification, bin_centers, use_age, device):
     device = dev('cuda' if device == 'gpu' and cuda.is_available() else 'cpu')
     model.eval().to(device)
     predictions, labels = [], []
@@ -83,8 +88,69 @@ def test_classifier(model, test_dataset, model_results, binary_classification, b
         predictions.append(prediction)
         label = target.item() if binary_classification else (target.float().cpu() @ bin_centers).item()
         labels.append(label)
-    compute_metrics(predictions, labels, binary_classification, model_results)
-    return labels
+    return predictions, labels
+
+
+def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
+                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, use_age,
+                            grid_search, k_folds, save_path, device):
+    train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
+    transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
+    binary_classification = output_dim == 1
+    if grid_search:
+        best_params, best_auc, grid_results = grid_search_cv(train, cfg_name, latent_dim, target_label, transform_fn,
+                                                             binary_classification, output_dim, bin_centers, use_age,
+                                                             device, k_folds=k_folds)
+        print(f"Best parameters: {best_params}")
+        print(f"Best AUC: {best_auc:.4f}")
+        grid_results_df = DataFrame(grid_results)
+        grid_results_path = save_path / 'grid_search_results.csv'
+        grid_results_df.to_csv(grid_results_path, index=False)
+        print(f"Grid search results saved to: {grid_results_path}")
+    else:
+        test_dataset = EmbeddingDataset(test, target=target_label, transform_fn=transform_fn)
+        rnd_gen = random.default_rng(seed=42)
+        random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
+        metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
+        metrics.append('Predictions')
+        model_results = {metric: [] for metric in metrics}
+        baseline_results = {metric: [] for metric in metrics}
+        labels = []
+        for seed in tqdm(random_seeds, desc='Bootstrapping train'):
+            train_resampled = train.sample(frac=1, replace=True, random_state=seed)
+            train_dataset = EmbeddingDataset(train_resampled, target=target_label, transform_fn=transform_fn)
+            classifier = train_classifier(train_dataset, test_dataset, cfg_name, latent_dim, output_dim, n_layers,
+                                          bin_centers, use_age, batch_size, epochs, learning_rate=0.001, device=device,
+                                          seed=42)
+            predictions, labels = test_classifier(classifier, test_dataset, binary_classification, bin_centers, use_age,
+                                                  device)
+            compute_metrics(predictions, labels, binary_classification, model_results)
+            add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
+        params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters,
+                  'batch_size': batch_size, 'n_layers': n_layers, 'epochs': epochs}
+        baseline_preds = report_results(baseline_results, target_label, name='baseline')
+        model_preds = report_results(model_results, target_label, name=cfg_name)
+        baseline_savepath = save_path.parents[1] / 'baseline' / 'random'
+        save_predictions(test, model_preds, labels, target_label, params, save_path)
+        save_predictions(test, baseline_preds, labels, target_label, params, baseline_savepath)
+
+
+def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
+                     batch_size, epochs, learning_rate, device, seed):
+    seed_everything(seed, workers=True)
+    wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=True)
+    classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
+                                     bin_centers=bin_centers, use_age=use_age, lr=learning_rate)
+    train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
+    val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
+    trainer = Trainer(max_epochs=epochs,
+                      accelerator=device,
+                      precision='bf16-mixed',
+                      logger=wandb_logger,
+                      )
+    trainer.fit(classifier, train_dataloader, val_dataloader)
+    wandb.finish()
+    return classifier
 
 
 def compute_metrics(predictions, labels, binary_classification, results_dict):
@@ -234,7 +300,10 @@ if __name__ == '__main__':
     parser.add_argument('--val_size', type=float, default=0.3,
                         help='size of the validation split constructed from the set to evaluate')
     parser.add_argument('--random_state', type=int, default=42, help='random state for reproducibility')
-    parser.add_argument('--sync', action='store_false', help='sync to wandb')
+    parser.add_argument('--grid_search', action='store_true',
+                        help='perform grid search for hyperparameter tuning using K-fold cross validation')
+    parser.add_argument('--k_folds', type=int, default=10, 
+                        help='number of folds for K-fold cross validation when using grid search')
     args = parser.parse_args()
 
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
@@ -271,6 +340,6 @@ if __name__ == '__main__':
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
                                     args.batch_size, args.n_layers, args.max_epochs, args.n_iters, args.use_age,
-                                    save_path, args.sync, args.device)
+                                    args.grid_search, args.k_folds, save_path, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
