@@ -92,7 +92,7 @@ def test_classifier(model, test_dataset, binary_classification, bin_centers, use
 
 
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
-                            target_label, target_dataset, batch_size, n_layers, epochs, n_iters, use_age,
+                            target_label, target_dataset, batch_size, n_layers, epochs, lr, n_iters, use_age,
                             grid_search, k_folds, save_path, device):
     train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
@@ -120,7 +120,7 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
             train_resampled = train.sample(frac=1, replace=True, random_state=seed)
             train_dataset = EmbeddingDataset(train_resampled, target=target_label, transform_fn=transform_fn)
             classifier = train_classifier(train_dataset, test_dataset, cfg_name, latent_dim, output_dim, n_layers,
-                                          bin_centers, use_age, batch_size, epochs, learning_rate=0.001, device=device,
+                                          bin_centers, use_age, batch_size, epochs, learning_rate=lr, device=device,
                                           seed=42)
             predictions, labels = test_classifier(classifier, test_dataset, binary_classification, bin_centers, use_age,
                                                   device)
@@ -279,8 +279,10 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, default='age_agnostic', help='config file used for the trained model')
     parser.add_argument('--device', type=str, default='gpu', help='device used for training and evaluation')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
-    parser.add_argument('--max_epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='max number of epochs used for training the embedding classifier')
+    parser.add_argument('--lr', type=float, default=0.001,
+                        help='learning rate used for training the embedding classifier')
     parser.add_argument('--n_iters', type=int, default=100,
                         help='number of iterations (with different seeds) to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
@@ -339,7 +341,7 @@ if __name__ == '__main__':
         if not args.manifold:
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
-                                    args.batch_size, args.n_layers, args.max_epochs, args.n_iters, args.use_age,
+                                    args.batch_size, args.n_layers, args.epochs, args.lr, args.n_iters, args.use_age,
                                     args.grid_search, args.k_folds, save_path, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
