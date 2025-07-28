@@ -9,6 +9,7 @@ from torch import device as dev, cuda
 from tqdm import tqdm
 from models.embedding_classifier import EmbeddingClassifier
 from scripts.data_handler import get_loader
+from scripts.constants import PARAM_GRID
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.utils import get_model_prediction
 import wandb
@@ -16,18 +17,12 @@ import wandb
 
 def grid_search_cv(train_df, cfg_name, latent_dim, target_label, transform_fn, binary_classification, output_dim,
                    bin_centers, use_age, device, k_folds=10):
-    param_grid = {
-        'learning_rate': [0.0005, 0.001, 0.005, 0.01],
-        'n_layers': [0, 1, 2],
-        'batch_size': [8, 16, 32],
-        'epochs': [5, 10, 15, 20]
-    }
     print(f"Starting grid search with {k_folds}-fold cross validation...")
-    print(f"Total configurations to test: {len(list(product(*param_grid.values())))}")
+    print(f"Total configurations to test: {len(list(product(*PARAM_GRID.values())))}")
     best_auc, best_params = 0, None
     results = []
     kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
-    for params in tqdm(list(product(*param_grid.values())), desc="Grid Search"):
+    for params in tqdm(list(product(*PARAM_GRID.values())), desc="Grid Search"):
         lr, n_layers, batch_size, epochs = params
         param_dict = {
             'learning_rate': lr,
