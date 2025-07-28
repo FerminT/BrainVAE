@@ -199,7 +199,11 @@ if __name__ == '__main__':
     else:
         embeddings_df = subjects_embeddings(weights_path, args.cfg, args.dataset, config, args.set, datapath,
                                             args.splits_path, args.random_state, save_path)
+        if args.label not in embeddings_df:
+            raise ValueError(f'Label {args.label} not found in the embeddings dataframe')
         embeddings_df = embeddings_df[~embeddings_df[args.label].isna()]
+        if embeddings_df.empty:
+            raise ValueError(f'No embeddings found for label {args.label} in the dataset {args.dataset}')
         if args.use_age:
             run_name += '_with_age'
         if args.balance:
