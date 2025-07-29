@@ -1,6 +1,7 @@
 from itertools import product
 from lightning import seed_everything, Trainer
 from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.loggers.logger import DummyLogger
 from pandas import DataFrame
 from scipy.stats import pearsonr
 from sklearn.metrics import roc_auc_score, accuracy_score, precision_score, recall_score, mean_absolute_error
@@ -39,7 +40,7 @@ def grid_search_cv(train_df, cfg_name, latent_dim, target_label, transform_fn, b
             val_dataset = EmbeddingDataset(val_fold, target=target_label, transform_fn=transform_fn)
             classifier = train_classifier(train_dataset, val_dataset, cfg_name, latent_dim, output_dim,
                                           n_layers, bin_centers, use_age, batch_size, epochs, lr, device,
-                                          seed=42)
+                                          log=False, seed=42)
             fold_preds, fold_lbls = test_classifier(classifier, val_dataset, binary_classification,
                                                     bin_centers, use_age, device)
             cfg_predictions.extend(fold_preds)
@@ -76,9 +77,10 @@ def test_classifier(model, test_dataset, binary_classification, bin_centers, use
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
-                     batch_size, epochs, learning_rate, device, seed):
+                     batch_size, epochs, learning_rate, device, log, seed):
     seed_everything(seed, workers=True)
-    wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=True)
+    wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=True) \
+        if log else DummyLogger()
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
                                      bin_centers=bin_centers, use_age=use_age, lr=learning_rate)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)

@@ -48,7 +48,7 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
             train_dataset = EmbeddingDataset(train_resampled, target=target_label, transform_fn=transform_fn)
             classifier = train_classifier(train_dataset, test_dataset, cfg_name, latent_dim, output_dim, n_layers,
                                           bin_centers, use_age, batch_size, epochs, learning_rate=lr, device=device,
-                                          seed=42)
+                                          log=False, seed=42)
             predictions, labels = test_classifier(classifier, test_dataset, binary_classification, bin_centers, use_age,
                                                   device)
             compute_metrics(predictions, labels, binary_classification, model_results)
