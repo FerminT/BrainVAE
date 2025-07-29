@@ -7,7 +7,7 @@ from scipy.stats import sem, pearsonr
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_absolute_error, accuracy_score
-from torch import cat, device, cuda, exp, sigmoid, tensor
+from torch import cat, device, cuda, exp, sigmoid, tensor, clamp, uint8
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
@@ -21,11 +21,13 @@ import umap
 
 def slice_data(data, slice_idx, axis):
     if axis == 0:
-        return data[:, :, slice_idx, :, :]
+        sliced_data = data[:, :, slice_idx, :, :]
     elif axis == 1:
-        return data[:, :, :, slice_idx, :]
+        sliced_data = data[:, :, :, slice_idx, :]
     else:
-        return data[:, :, :, :, slice_idx]
+        sliced_data = data[:, :, :, :, slice_idx]
+    sliced_data = clamp((sliced_data / sliced_data.max()) * 255, min=0)
+    return sliced_data
 
 
 def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
@@ -34,8 +36,7 @@ def reconstruction_comparison_grid(data, outputs, n, slice_idx, epoch):
     for axis in range(3):
         original_slice = slice_data(data, slice_idx, axis)
         reconstructed_slice = slice_data(outputs, slice_idx, axis)
-        img_comparison = make_grid(cat([original_slice[:n], reconstructed_slice[:n]]), nrow=n,
-                                   normalize=True, value_range=(0, 255))
+        img_comparison = make_grid(cat([original_slice[:n], reconstructed_slice[:n]]), nrow=n)
         imgs.append(img_comparison)
         captions.append(f'Epoch: {epoch} Axis: {axis}')
         max_shape[0] = max(max_shape[0], img_comparison.shape[1])
