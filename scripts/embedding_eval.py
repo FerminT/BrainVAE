@@ -76,7 +76,7 @@ def test_classifier(model, test_dataset, binary_classification, bin_centers, use
     return predictions, labels
 
 
-def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
+def train_classifier(train_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
                      batch_size, epochs, learning_rate, device, log, seed):
     seed_everything(seed, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=True) \
@@ -84,13 +84,12 @@ def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, 
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
                                      bin_centers=bin_centers, use_age=use_age, lr=learning_rate)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
-    val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='bf16-mixed',
                       logger=wandb_logger,
                       )
-    trainer.fit(classifier, train_dataloader, val_dataloader)
+    trainer.fit(classifier, train_dataloader)
     wandb.finish()
     return classifier
 
@@ -110,16 +109,18 @@ def compute_metrics(predictions, labels, binary_classification, results_dict):
         results_dict['Corr'].append(corr)
         results_dict['p_value'].append(p_value)
     results_dict['Predictions'].append(predictions)
+    results_dict['Labels'].append(labels)
 
 
 def report_results(results_dict, target_label, name):
     model_predictions = results_dict.pop('Predictions')
+    labels = results_dict.pop('Labels')
     results_df = DataFrame(results_dict)
     mean_df = results_df.mean(axis=0).to_frame(name='Mean')
     mean_df['SE'] = results_df.sem(axis=0)
     print(f'Predictions for {target_label} using {name} model')
     print(mean_df)
-    return model_predictions
+    return model_predictions, labels
 
 
 def add_baseline_results(labels, binary_classification, baseline_results, rnd_gen):

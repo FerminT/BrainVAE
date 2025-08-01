@@ -221,8 +221,11 @@ def target_mapping(embeddings_df, label, age_range, bmi_range):
 
 
 def save_predictions(df, predictions, labels, target_name, params, save_path):
-    df['label'] = labels
-    predictions_df = pd.DataFrame({f'pred_{i}': preds for i, preds in enumerate(predictions)}, index=df.index)
+    preds_dict = {}
+    for i, pred, label in enumerate(zip(predictions, labels)):
+        preds_dict[f'pred_{i}'] = pred
+        preds_dict[f'label_{i}'] = label
+    predictions_df = pd.DataFrame(preds_dict, index=df.index)
     df = df.drop(columns=['embedding'])
     df = pd.concat([df, predictions_df], axis=1)
     if not save_path.exists():

@@ -35,28 +35,27 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
         grid_results_df = DataFrame(grid_results)
         grid_results_df.to_csv(save_path / 'grid_search_results.csv', index=False)
     else:
-        test_dataset = EmbeddingDataset(test, target=target_label, transform_fn=transform_fn)
+        train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
+        classifier = train_classifier(train_dataset, cfg_name, latent_dim, output_dim, n_layers,
+                                      bin_centers, use_age, batch_size, epochs, lr, device,
+                                      log=False, seed=42)
         rnd_gen = random.default_rng(seed=42)
-        random_seeds = [rnd_gen.integers(1, 1000) for _ in range(n_iters)]
+        random_seeds = [rnd_gen.integers(1, 100000) for _ in range(n_iters)]
         metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
-        metrics.append('Predictions')
+        metrics.extend(['Predictions', 'Labels'])
         model_results = {metric: [] for metric in metrics}
         baseline_results = {metric: [] for metric in metrics}
-        labels = []
-        for seed in tqdm(random_seeds, desc='Bootstrapping train'):
-            train_resampled = train.sample(frac=1, replace=True, random_state=seed)
-            train_dataset = EmbeddingDataset(train_resampled, target=target_label, transform_fn=transform_fn)
-            classifier = train_classifier(train_dataset, test_dataset, cfg_name, latent_dim, output_dim, n_layers,
-                                          bin_centers, use_age, batch_size, epochs, learning_rate=lr, device=device,
-                                          log=False, seed=42)
+        for seed in tqdm(random_seeds, desc='Bootstrapping test'):
+            test_resampled = test.sample(frac=1, replace=True, random_state=seed)
+            test_dataset = EmbeddingDataset(test_resampled, target=target_label, transform_fn=transform_fn)
             predictions, labels = test_classifier(classifier, test_dataset, binary_classification, bin_centers, use_age,
                                                   device)
             compute_metrics(predictions, labels, binary_classification, model_results)
             add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
         params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters,
                   'batch_size': batch_size, 'n_layers': n_layers, 'epochs': epochs, 'lr': lr}
-        baseline_preds = report_results(baseline_results, target_label, name='baseline')
-        model_preds = report_results(model_results, target_label, name=cfg_name)
+        baseline_preds, _ = report_results(baseline_results, target_label, name='baseline')
+        model_preds, labels = report_results(model_results, target_label, name=cfg_name)
         baseline_savepath = save_path.parents[1] / 'baseline' / 'random'
         save_predictions(test, model_preds, labels, target_label, params, save_path)
         save_predictions(test, baseline_preds, labels, target_label, params, baseline_savepath)
