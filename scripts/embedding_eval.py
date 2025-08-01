@@ -66,7 +66,7 @@ def test_classifier(model, test_dataset, binary_classification, bin_centers, use
     device = dev('cuda' if device == 'gpu' and cuda.is_available() else 'cpu')
     model.eval().to(device)
     predictions, labels = [], []
-    for idx in tqdm(range(len(test_dataset)), desc='Evaluation'):
+    for idx in range(len(test_dataset)):
         z, target, age = test_dataset[idx]
         z = z.unsqueeze(dim=0).to(device)
         prediction = get_model_prediction(z, model, age, use_age, device, binary_classification, bin_centers)
