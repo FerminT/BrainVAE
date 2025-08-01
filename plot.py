@@ -96,6 +96,7 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
     sns.set_theme()
     has_windows = any(age_windows_ranges.values())
     fig, axs = create_subplots(1, len(data.keys()), figsize=(18, 7), sharey=True)
+    axs = [axs] if len(data.keys()) == 1 else axs
     colors = sns.color_palette(n_colors=len(evaluated_cfgs))
     handles = [plt.Line2D([0], [0], color=color, lw=4) for color in colors]
 
