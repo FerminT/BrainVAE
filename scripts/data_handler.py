@@ -222,7 +222,7 @@ def target_mapping(embeddings_df, label, age_range, bmi_range):
 
 def save_predictions(df, predictions, labels, target_name, params, save_path):
     preds_dict = {}
-    for i, pred, label in enumerate(zip(predictions, labels)):
+    for i, (pred, label) in enumerate(zip(predictions, labels)):
         preds_dict[f'pred_{i}'] = pred
         preds_dict[f'label_{i}'] = label
     predictions_df = pd.DataFrame(preds_dict, index=df.index)
