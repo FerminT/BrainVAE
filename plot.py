@@ -268,17 +268,18 @@ def build_precision_recall_curves(labels_results, labels, models, age_windows):
 
 def mean_roc(data, thresholds, label, model_name, roc_curves):
     all_fpr, all_tpr, all_aucs = [], [], []
-    for run in data.columns:
-        if run.startswith('pred_'):
-            fpr_tpr = []
-            for threshold in thresholds:
-                tp, fp, tn, fn = count_tp_fp_tn_fn(data[run].values, data['label'].values, threshold)
-                tpr = tp / (tp + fn)
-                fpr = fp / (fp + tn)
-                fpr_tpr.append((fpr, tpr))
-            all_fpr.append([x[0] for x in fpr_tpr])
-            all_tpr.append([x[1] for x in fpr_tpr])
-            all_aucs.append(auc(all_fpr[-1], all_tpr[-1]))
+    run_numbers = [run.removeprefix('pred_') for run in data.columns if run.startswith('pred_')]
+    for run_number in run_numbers:
+        preds, labels = data[f'pred_{run_number}'].values, data[f'label_{run_number}'].values
+        fpr_tpr = []
+        for threshold in thresholds:
+            tp, fp, tn, fn = count_tp_fp_tn_fn(preds, labels, threshold)
+            tpr = tp / (tp + fn)
+            fpr = fp / (fp + tn)
+            fpr_tpr.append((fpr, tpr))
+        all_fpr.append([x[0] for x in fpr_tpr])
+        all_tpr.append([x[1] for x in fpr_tpr])
+        all_aucs.append(auc(all_fpr[-1], all_tpr[-1]))
     mean_fpr, mean_tpr = np.mean(all_fpr, axis=0), np.mean(all_tpr, axis=0)
     stderr_tpr = np.std(all_tpr, axis=0) / np.sqrt(len(all_tpr))
     roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'stderr': list(zip(mean_fpr, stderr_tpr)),
@@ -289,12 +290,13 @@ def mean_roc(data, thresholds, label, model_name, roc_curves):
 
 def mean_pr(data, common_recall, label, model_name, pr_curves):
     all_precision, all_recall, all_aucs = [], [], []
-    for run in data.columns:
-        if run.startswith('pred_'):
-            precision, recall, _ = precision_recall_curve(data['label'].values, data[run].values)
-            all_precision.append(precision)
-            all_recall.append(recall)
-            all_aucs.append(auc(recall, precision))
+    run_numbers = [run.removeprefix('pred_') for run in data.columns if run.startswith('pred_')]
+    for run_number in run_numbers:
+        preds, labels = data[f'pred_{run_number}'].values, data[f'label_{run_number}'].values
+        precision, recall, _ = precision_recall_curve(labels, preds)
+        all_precision.append(precision)
+        all_recall.append(recall)
+        all_aucs.append(auc(recall, precision))
     interpolated_precisions = []
     for precision, recall in zip(all_precision, all_recall):
         interp_func = interp1d(recall, precision, bounds_error=False, fill_value=(0, 0))
