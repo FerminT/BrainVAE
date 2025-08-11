@@ -146,6 +146,8 @@ def load_predictions(target_labels, cfgs, results_path):
         else:
             model = cfg_path
             name = CFGS_RENAMING.get(model.parent.name, model.parent.name)
+            if name in evaluated_cfgs:
+                name = f'{name}_{model.name}'
             evaluated_cfgs.append(name)
         for label in target_labels:
             results = read_csv(Path(model, f'{label}_predictions.csv'))
