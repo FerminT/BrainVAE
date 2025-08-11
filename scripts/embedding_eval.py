@@ -38,7 +38,7 @@ def grid_search_cv(train_df, cfg_name, latent_dim, target_label, transform_fn, b
             val_fold = train_df.iloc[val_idx]
             train_dataset = EmbeddingDataset(train_fold, target=target_label, transform_fn=transform_fn)
             val_dataset = EmbeddingDataset(val_fold, target=target_label, transform_fn=transform_fn)
-            classifier = train_classifier(train_dataset, val_dataset, cfg_name, latent_dim, output_dim,
+            classifier = train_classifier(train_dataset, cfg_name, latent_dim, output_dim,
                                           n_layers, bin_centers, use_age, batch_size, epochs, lr, device,
                                           log=False, seed=42)
             fold_preds, fold_lbls = test_classifier(classifier, val_dataset, binary_classification,
