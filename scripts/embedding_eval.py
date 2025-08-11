@@ -88,6 +88,7 @@ def train_classifier(train_data, config_name, latent_dim, output_dim, n_layers, 
                       accelerator=device,
                       precision='bf16-mixed',
                       logger=wandb_logger,
+                      enable_checkpointing=False
                       )
     trainer.fit(classifier, train_dataloader)
     wandb.finish()
