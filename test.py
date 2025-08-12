@@ -33,7 +33,7 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
         print(f'Best parameters: {best_params}')
         print(f'Best AUC: {best_auc:.4f}')
         grid_results_df = DataFrame(grid_results)
-        grid_results_df.to_csv(save_path / 'grid_search_results.csv', index=False)
+        grid_results_df.to_csv(save_path / f'grid_search_results_{target_label}.csv', index=False)
     else:
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
         classifier = train_classifier(train_dataset, cfg_name, latent_dim, output_dim, n_layers,
