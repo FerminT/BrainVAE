@@ -170,7 +170,7 @@ if __name__ == '__main__':
     parser.add_argument('--balance', action='store_true', help='balance the dataset by age and sex')
     parser.add_argument('--ukbb_size', type=float, default=0.15,
                         help='size of the validation split constructed from the ukbb set to evaluate')
-    parser.add_argument('--val_size', type=float, default=0.3,
+    parser.add_argument('--val_size', type=float, default=0.2,
                         help='size of the validation split constructed from the set to evaluate')
     parser.add_argument('--random_state', type=int, default=42, help='random state for reproducibility')
     parser.add_argument('--grid_search', action='store_true',
