@@ -154,7 +154,7 @@ if __name__ == '__main__':
                         help='max number of epochs used for training the embedding classifier')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate used for training the embedding classifier')
-    parser.add_argument('--n_iters', type=int, default=100,
+    parser.add_argument('--n_iters', type=int, default=1000,
                         help='number of iterations (with different seeds) to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
     parser.add_argument('--use_age', action='store_true', help='add age as a feature to the classifier')
