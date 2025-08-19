@@ -6,7 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
-from sklearn.metrics import precision_recall_curve, auc
+from sklearn.metrics import precision_recall_curve, roc_auc_score, average_precision_score
 from scripts.utils import load_predictions, get_age_windows, compute_metrics, metrics_to_df, bootstrap_dist_significance
 
 
@@ -280,7 +280,7 @@ def mean_roc(data, thresholds, label, model_name, roc_curves):
             fpr_tpr.append((fpr, tpr))
         all_fpr.append([x[0] for x in fpr_tpr])
         all_tpr.append([x[1] for x in fpr_tpr])
-        all_aucs.append(auc(all_fpr[-1], all_tpr[-1]))
+        all_aucs.append(roc_auc_score(labels, preds))
     mean_fpr, mean_tpr = np.mean(all_fpr, axis=0), np.mean(all_tpr, axis=0)
     stderr_tpr = np.std(all_tpr, axis=0) / np.sqrt(len(all_tpr))
     roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'stderr': list(zip(mean_fpr, stderr_tpr)),
@@ -297,7 +297,7 @@ def mean_pr(data, common_recall, label, model_name, pr_curves):
         precision, recall, _ = precision_recall_curve(labels, preds)
         all_precision.append(precision)
         all_recall.append(recall)
-        all_aucs.append(auc(recall, precision))
+        all_aucs.append(average_precision_score(labels, preds))
     interpolated_precisions = []
     for precision, recall in zip(all_precision, all_recall):
         interp_func = interp1d(recall, precision, bounds_error=False, fill_value=(0, 0))
