@@ -3,7 +3,7 @@ from scripts.constants import CFG_PATH, CHECKPOINT_PATH, EVALUATION_PATH
 from scripts.data_handler import (get_datapath, load_set, create_test_splits, target_mapping,
                                   balance_dataset, save_predictions)
 from scripts.embedding_dataset import EmbeddingDataset
-from scripts.embedding_eval import grid_search_cv, test_classifier, train_classifier, compute_metrics, report_results, \
+from scripts.embedding_eval import test_on_val, test_classifier, train_classifier, compute_metrics, report_results, \
     add_baseline_results
 from scripts.t1_dataset import T1Dataset
 from scripts.utils import (load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model)
@@ -22,25 +22,20 @@ import argparse
 
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
                             target_label, target_dataset, batch_size, n_layers, epochs, lr, n_iters, use_age,
-                            grid_search, k_folds, save_path, device):
+                            split_val, save_path, device):
     train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
-    binary_classification = output_dim == 1
-    if grid_search:
-        best_params, best_auc, grid_results = grid_search_cv(train, cfg_name, latent_dim, target_label, transform_fn,
-                                                             binary_classification, output_dim, bin_centers, use_age,
-                                                             device, k_folds=k_folds)
-        print(f'Best parameters: {best_params}')
-        print(f'Best AUC: {best_auc:.4f}')
-        grid_results_df = DataFrame(grid_results)
-        grid_results_df.to_csv(save_path / f'grid_search_results_{target_label}.csv', index=False)
+    if split_val:
+        _ = test_on_val(train, val_size, cfg_name, latent_dim, target_label, transform_fn, output_dim, bin_centers,
+                        use_age, device, lr, n_layers, batch_size, epochs)
     else:
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
-        classifier = train_classifier(train_dataset, cfg_name, latent_dim, output_dim, n_layers,
+        classifier = train_classifier(train_dataset, DataFrame(), cfg_name, latent_dim, output_dim, n_layers,
                                       bin_centers, use_age, batch_size, epochs, lr, device,
                                       log=False, seed=42)
         rnd_gen = random.default_rng(seed=42)
         random_seeds = [rnd_gen.integers(1, 100000) for _ in range(n_iters)]
+        binary_classification = output_dim == 1
         metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
         metrics.extend(['Predictions', 'Labels'])
         model_results = {metric: [] for metric in metrics}
@@ -173,10 +168,8 @@ if __name__ == '__main__':
     parser.add_argument('--val_size', type=float, default=0.2,
                         help='size of the validation split constructed from the set to evaluate')
     parser.add_argument('--random_state', type=int, default=42, help='random state for reproducibility')
-    parser.add_argument('--grid_search', action='store_true',
-                        help='perform grid search for hyperparameter tuning using K-fold cross validation')
-    parser.add_argument('--k_folds', type=int, default=10, 
-                        help='number of folds for K-fold cross validation when using grid search')
+    parser.add_argument('--val', action='store_true',
+                        help='split train to perform hyperparameter tuning')
     args = parser.parse_args()
 
     config = load_yaml(Path(CFG_PATH, f'{args.cfg}.yaml'))
@@ -217,6 +210,6 @@ if __name__ == '__main__':
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
                                     args.batch_size, args.n_layers, args.epochs, args.lr, args.n_iters, args.use_age,
-                                    args.grid_search, args.k_folds, save_path, args.device)
+                                    args.val, save_path, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)

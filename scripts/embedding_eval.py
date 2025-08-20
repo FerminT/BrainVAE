@@ -1,13 +1,11 @@
-from itertools import product
 from lightning import seed_everything, Trainer
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.loggers.logger import DummyLogger
 from pandas import DataFrame
 from scipy.stats import pearsonr
-from sklearn.metrics import roc_auc_score, accuracy_score, precision_score, recall_score, mean_absolute_error
-from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score, precision_score, recall_score, mean_absolute_error
+from sklearn.model_selection import train_test_split
 from torch import device as dev, cuda
-from tqdm import tqdm
 from models.embedding_classifier import EmbeddingClassifier
 from scripts.data_handler import get_loader
 from scripts.constants import PARAM_GRID
@@ -16,50 +14,16 @@ from scripts.utils import get_model_prediction
 import wandb
 
 
-def grid_search_cv(train_df, cfg_name, latent_dim, target_label, transform_fn, binary_classification, output_dim,
-                   bin_centers, use_age, device, k_folds=10):
-    print(f"Starting grid search with {k_folds}-fold cross validation...")
-    print(f"Total configurations to test: {len(list(product(*PARAM_GRID.values())))}")
-    best_auc, best_params = 0, None
-    results = []
-    kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
-    for params in tqdm(list(product(*PARAM_GRID.values())), desc="Grid Search"):
-        lr, n_layers, batch_size, epochs = params
-        param_dict = {
-            'learning_rate': lr,
-            'n_layers': n_layers,
-            'batch_size': batch_size,
-            'epochs': epochs
-        }
-        cfg_predictions = []
-        cfg_labels = []
-        for train_idx, val_idx in kf.split(train_df):
-            train_fold = train_df.iloc[train_idx]
-            val_fold = train_df.iloc[val_idx]
-            train_dataset = EmbeddingDataset(train_fold, target=target_label, transform_fn=transform_fn)
-            val_dataset = EmbeddingDataset(val_fold, target=target_label, transform_fn=transform_fn)
-            classifier = train_classifier(train_dataset, cfg_name, latent_dim, output_dim,
-                                          n_layers, bin_centers, use_age, batch_size, epochs, lr, device,
-                                          log=False, seed=42)
-            fold_preds, fold_lbls = test_classifier(classifier, val_dataset, binary_classification,
-                                                    bin_centers, use_age, device)
-            cfg_predictions.extend(fold_preds)
-            cfg_labels.extend(fold_lbls)
-
-        if binary_classification:
-            auc = roc_auc_score(cfg_labels, cfg_predictions)
-        else:
-            corr, _ = pearsonr(cfg_predictions, cfg_labels)
-            auc = abs(corr)
-        results.append({
-            'params': param_dict,
-            'auc': auc
-        })
-        if auc > best_auc:
-            best_auc = auc
-            best_params = param_dict
-        print(f"Config {param_dict}:\n AUC = {auc:.4f}\n----------------------------")
-    return best_params, best_auc, results
+def test_on_val(train_df, val_size, cfg_name, latent_dim, target_label, transform_fn, output_dim,
+                bin_centers, use_age, device, learning_rate=0.001, n_layers=3, batch_size=8, epochs=10):
+    train, val = train_test_split(train_df, test_size=val_size, random_state=42)
+    train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
+    val_dataset = EmbeddingDataset(val, target=target_label, transform_fn=transform_fn)
+    run_name = f'{cfg_name}_lr{learning_rate}_layers{n_layers}_bs{batch_size}'
+    classifier = train_classifier(train_dataset, val_dataset, run_name, latent_dim, output_dim,
+                                  n_layers, bin_centers, use_age, batch_size, epochs, learning_rate, device,
+                                  log=True, seed=42)
+    return classifier
 
 
 def test_classifier(model, test_dataset, binary_classification, bin_centers, use_age, device):
@@ -76,21 +40,22 @@ def test_classifier(model, test_dataset, binary_classification, bin_centers, use
     return predictions, labels
 
 
-def train_classifier(train_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
+def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
                      batch_size, epochs, learning_rate, device, log, seed):
     seed_everything(seed, workers=True)
-    wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=True) \
+    wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=False) \
         if log else DummyLogger()
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
                                      bin_centers=bin_centers, use_age=use_age, lr=learning_rate)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
+    val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,
                       accelerator=device,
                       precision='bf16-mixed',
                       logger=wandb_logger,
                       enable_checkpointing=False
                       )
-    trainer.fit(classifier, train_dataloader)
+    trainer.fit(classifier, train_dataloader, val_dataloader)
     wandb.finish()
     return classifier
 
