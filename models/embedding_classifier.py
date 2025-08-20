@@ -1,6 +1,7 @@
 import lightning as lg
 from models.utils import init_optimizer
 from torch import nn, optim, exp, cat
+from sklearn.metrics import roc_auc_score
 
 
 class EmbeddingClassifier(lg.LightningModule):
@@ -53,6 +54,7 @@ class EmbeddingClassifier(lg.LightningModule):
             loss = nn.functional.binary_cross_entropy_with_logits(predictions, targets)
             self.log(f'{mode}_bce', loss.item())
             self.log(f'{mode}_accuracy', ((predictions > 0.5) == targets).float().mean().item())
+            self.log(f'{mode}_auc', roc_auc_score(targets.cpu().numpy(), predictions.sigmoid().cpu().numpy()))
         else:
             loss = nn.functional.kl_div(predictions, targets, reduction='batchmean')
             predicted_values = exp(predictions.float().cpu().detach()) @ self.bin_centers
