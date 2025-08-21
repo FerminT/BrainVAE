@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 from torch import device as dev, cuda
 from models.embedding_classifier import EmbeddingClassifier
 from scripts.data_handler import get_loader
-from scripts.constants import PARAM_GRID
 from scripts.embedding_dataset import EmbeddingDataset
 from scripts.utils import get_model_prediction
 import wandb
