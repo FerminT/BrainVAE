@@ -4,7 +4,6 @@ import numpy as np
 from torch import from_numpy, tensor, randn, float32
 from torch.nn.functional import one_hot
 from torch.utils.data import Dataset
-from torchio import Compose, RandomSwap
 from models.utils import crop_center, num2vect, position_encoding
 
 
@@ -78,10 +77,6 @@ def soft_label(age, lower, upper, bin_step=1, bin_sigma=1):
 
 def float_to_tensor(data):
     return tensor(float(data)).unsqueeze(dim=0)
-
-
-def transform(t1_img):
-    return Compose([RandomSwap(p=0.5)])(t1_img)
 
 
 def label_to_onehot(label, labels):
