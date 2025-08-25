@@ -18,7 +18,7 @@ def test_on_val(train_df, val_size, cfg_name, latent_dim, target_label, transfor
     train, val = train_test_split(train_df, test_size=val_size, random_state=42)
     train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=target_label, transform_fn=transform_fn)
-    run_name = f'{target_label}_{cfg_name}_layers{n_layers}_bs{batch_size}'
+    run_name = f'{target_label}_{cfg_name}_l{n_layers}_bs{batch_size}'
     classifier = train_classifier(train_dataset, val_dataset, run_name, latent_dim, output_dim,
                                   n_layers, bin_centers, use_age, batch_size, epochs, learning_rate, device,
                                   log=True, seed=42)
