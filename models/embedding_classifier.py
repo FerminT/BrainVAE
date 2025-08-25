@@ -79,7 +79,6 @@ def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, use_age):
         layers.append(nn.Linear(input_dim, dims[i + 1]))
         if i < last_hidden:
             layers.append(nn.ReLU())
-            layers.append(nn.Dropout(0.3))
         if i == last_hidden and output_dim > 1:
             layers.append(nn.LogSoftmax(dim=1))
     return nn.Sequential(*layers)
