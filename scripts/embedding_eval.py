@@ -14,13 +14,15 @@ import wandb
 
 
 def test_on_val(train_df, val_size, cfg_name, latent_dim, target_label, transform_fn, output_dim,
-                bin_centers, use_age, device, learning_rate=0.001, n_layers=3, batch_size=8, epochs=10):
+                bin_centers, use_age, device, learning_rate, dropout, n_layers, batch_size, epochs):
     train, val = train_test_split(train_df, test_size=val_size, random_state=42)
     train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
     val_dataset = EmbeddingDataset(val, target=target_label, transform_fn=transform_fn)
     run_name = f'{target_label}_{cfg_name}_l{n_layers}_bs{batch_size}'
+    if dropout > 0.0:
+        run_name += f'_d{dropout}'
     classifier = train_classifier(train_dataset, val_dataset, run_name, latent_dim, output_dim,
-                                  n_layers, bin_centers, use_age, batch_size, epochs, learning_rate, device,
+                                  n_layers, bin_centers, use_age, batch_size, epochs, learning_rate, dropout, device,
                                   log=True, seed=42)
     return classifier
 
@@ -40,12 +42,12 @@ def test_classifier(model, test_dataset, binary_classification, bin_centers, use
 
 
 def train_classifier(train_data, val_data, config_name, latent_dim, output_dim, n_layers, bin_centers, use_age,
-                     batch_size, epochs, learning_rate, device, log, seed):
+                     batch_size, epochs, learning_rate, dropout, device, log, seed):
     seed_everything(seed, workers=True)
     wandb_logger = WandbLogger(name=f'classifier_{config_name}', project='BrainVAE', offline=False) \
         if log else DummyLogger()
     classifier = EmbeddingClassifier(input_dim=latent_dim, output_dim=output_dim, n_layers=n_layers,
-                                     bin_centers=bin_centers, use_age=use_age, lr=learning_rate)
+                                     bin_centers=bin_centers, use_age=use_age, lr=learning_rate, dropout=dropout)
     train_dataloader = get_loader(train_data, batch_size=batch_size, shuffle=True)
     val_dataloader = get_loader(val_data, batch_size=batch_size, shuffle=False)
     trainer = Trainer(max_epochs=epochs,

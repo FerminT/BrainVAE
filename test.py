@@ -21,17 +21,17 @@ import argparse
 
 
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
-                            target_label, target_dataset, batch_size, n_layers, epochs, lr, n_iters, use_age,
+                            target_label, target_dataset, batch_size, n_layers, epochs, lr, dp, n_iters, use_age,
                             split_val, save_path, device):
     train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     if split_val:
         _ = test_on_val(train, val_size, cfg_name, latent_dim, target_label, transform_fn, output_dim, bin_centers,
-                        use_age, device, lr, n_layers, batch_size, epochs)
+                        use_age, device, lr, dp, n_layers, batch_size, epochs)
     else:
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
         classifier = train_classifier(train_dataset, DataFrame(), cfg_name, latent_dim, output_dim, n_layers,
-                                      bin_centers, use_age, batch_size, epochs, lr, device,
+                                      bin_centers, use_age, batch_size, epochs, lr, dp, device,
                                       log=False, seed=42)
         rnd_gen = random.default_rng(seed=42)
         random_seeds = [rnd_gen.integers(1, 100000) for _ in range(n_iters)]
@@ -48,7 +48,7 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
             compute_metrics(predictions, labels, binary_classification, model_results)
             add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
         params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters,
-                  'batch_size': batch_size, 'n_layers': n_layers, 'epochs': epochs, 'lr': lr}
+                  'batch_size': batch_size, 'n_layers': n_layers, 'epochs': epochs, 'dropout': dp, 'lr': lr}
         baseline_preds, _ = report_results(baseline_results, target_label, name='baseline')
         model_preds, labels = report_results(model_results, target_label, name=cfg_name)
         baseline_savepath = save_path.parents[1] / 'baseline' / 'random'
@@ -149,6 +149,8 @@ if __name__ == '__main__':
                         help='max number of epochs used for training the embedding classifier')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate used for training the embedding classifier')
+    parser.add_argument('--dp', type=float, default=0.0,
+                        help='dropout probability used for training the embedding classifier')
     parser.add_argument('--n_iters', type=int, default=1000,
                         help='number of iterations (with different seeds) to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
@@ -209,7 +211,7 @@ if __name__ == '__main__':
         if not args.manifold:
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
-                                    args.batch_size, args.n_layers, args.epochs, args.lr, args.n_iters, args.use_age,
-                                    args.val, save_path, args.device)
+                                    args.batch_size, args.n_layers, args.epochs, args.lr, args.dp, args.n_iters,
+                                    args.use_age, args.val, save_path, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)

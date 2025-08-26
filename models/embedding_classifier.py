@@ -15,11 +15,12 @@ class EmbeddingClassifier(lg.LightningModule):
                  optimizer='AdamW',
                  momentum=0.9,
                  weight_decay=0.0005,
+                 dropout=0.5,
                  bin_centers=None,
                  use_age=False):
         super(EmbeddingClassifier, self).__init__()
         self.save_hyperparameters()
-        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, use_age)
+        self.fc_layers = create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, dropout, use_age)
         self.lr, self.optimizer, self.output_dim = lr, optimizer, output_dim
         self.momentum, self.weight_decay = momentum, weight_decay
         self.bin_centers = bin_centers
@@ -65,7 +66,7 @@ class EmbeddingClassifier(lg.LightningModule):
         return loss
 
 
-def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, use_age):
+def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, dropout, use_age):
     layers = list()
     if n_layers > 3 or n_layers < 0:
         raise ValueError('Number of layers must be between 0 and 3')
@@ -79,6 +80,7 @@ def create_fc_layers(input_dim, output_dim, hidden_dims, n_layers, use_age):
         layers.append(nn.Linear(input_dim, dims[i + 1]))
         if i < last_hidden:
             layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
         if i == last_hidden and output_dim > 1:
             layers.append(nn.LogSoftmax(dim=1))
     return nn.Sequential(*layers)
