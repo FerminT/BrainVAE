@@ -17,7 +17,44 @@ from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 from torch import cat, device as dev, cuda
 from wandb import Image
+import multiprocessing as mp
 import argparse
+
+
+def _init_bootstrap_worker(classifier_, test_df_, target_label_, transform_fn_, binary_classification_,
+                           bin_centers_, use_age_, device_, model_results_, baseline_results_, metrics_):
+    # Globals used by workers
+    global _BOOTSTRAP_CTX
+    _BOOTSTRAP_CTX = {
+        'classifier': classifier_,
+        'test_df': test_df_,
+        'target_label': target_label_,
+        'transform_fn': transform_fn_,
+        'binary_classification': binary_classification_,
+        'bin_centers': bin_centers_,
+        'use_age': use_age_,
+        'device': device_,
+        'model_results': model_results_,
+        'baseline_results': baseline_results_,
+        'metrics': metrics_,
+    }
+
+
+def _bootstrap_one(seed):
+    ctx = _BOOTSTRAP_CTX
+    test_resampled = ctx['test_df'].sample(frac=1, replace=True, random_state=int(seed))
+    test_dataset = EmbeddingDataset(test_resampled,
+                                    target=ctx['target_label'],
+                                    transform_fn=ctx['transform_fn'])
+    predictions, labels = test_classifier(ctx['classifier'], test_dataset,
+                                          ctx['binary_classification'],
+                                          ctx['bin_centers'],
+                                          ctx['use_age'],
+                                          ctx['device'])
+    compute_metrics(predictions, labels, ctx['binary_classification'], ctx['model_results'])
+    rnd_gen = random.default_rng(seed=seed)
+    add_baseline_results(labels, ctx['binary_classification'], ctx['baseline_results'], rnd_gen)
+    return 1
 
 
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
@@ -38,15 +75,33 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
         binary_classification = output_dim == 1
         metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
         metrics.extend(['Predictions', 'Labels'])
-        model_results = {metric: [] for metric in metrics}
-        baseline_results = {metric: [] for metric in metrics}
-        for seed in tqdm(random_seeds, desc='Bootstrapping test'):
-            test_resampled = test.sample(frac=1, replace=True, random_state=seed)
-            test_dataset = EmbeddingDataset(test_resampled, target=target_label, transform_fn=transform_fn)
-            predictions, labels = test_classifier(classifier, test_dataset, binary_classification, bin_centers, use_age,
-                                                  device)
-            compute_metrics(predictions, labels, binary_classification, model_results)
-            add_baseline_results(labels, binary_classification, baseline_results, rnd_gen)
+        n_workers = 12
+        if n_workers > 1:
+            manager = mp.Manager()
+            model_results = {m: manager.list() for m in metrics}
+            baseline_results = {m: manager.list() for m in metrics}
+            with mp.get_context('spawn').Pool(
+                    processes=n_workers,
+                    initializer=_init_bootstrap_worker,
+                    initargs=(classifier, test, target_label, transform_fn, binary_classification,
+                              bin_centers, use_age, device, model_results, baseline_results, metrics)) as pool:
+                for _ in tqdm(pool.imap(_bootstrap_one, random_seeds),
+                              total=len(random_seeds),
+                              desc='Bootstrapping test'):
+                    pass
+            model_results = {k: list(v) for k, v in model_results.items()}
+            baseline_results = {k: list(v) for k, v in baseline_results.items()}
+        else:
+            model_results = {m: [] for m in metrics}
+            baseline_results = {m: [] for m in metrics}
+            for seed in tqdm(random_seeds, desc='Bootstrapping test'):
+                test_resampled = test.sample(frac=1, replace=True, random_state=seed)
+                test_dataset = EmbeddingDataset(test_resampled, target=target_label, transform_fn=transform_fn)
+                predictions, labels = test_classifier(classifier, test_dataset, binary_classification,
+                                                      bin_centers, use_age, device)
+                compute_metrics(predictions, labels, binary_classification, model_results)
+                add_baseline_results(labels, binary_classification, baseline_results,
+                                     random.default_rng(seed))
         params = {'cfg': cfg_name, 'dataset': dataset, 'target': target_label, 'n_iters': n_iters,
                   'batch_size': batch_size, 'n_layers': n_layers, 'epochs': epochs, 'dropout': dp, 'lr': lr}
         baseline_preds, _ = report_results(baseline_results, target_label, name='baseline')
@@ -144,8 +199,8 @@ if __name__ == '__main__':
     parser.add_argument('--target', type=str, default='general', help='target dataset for predicting features')
     parser.add_argument('--cfg', type=str, default='age_agnostic', help='config file used for the trained model')
     parser.add_argument('--device', type=str, default='gpu', help='device used for training and evaluation')
-    parser.add_argument('--batch_size', type=int, default=8, help='batch size used for training the age classifier')
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--batch_size', type=int, default=32, help='batch size used for training the age classifier')
+    parser.add_argument('--epochs', type=int, default=50,
                         help='max number of epochs used for training the embedding classifier')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate used for training the embedding classifier')
@@ -153,7 +208,7 @@ if __name__ == '__main__':
                         help='dropout probability used for training the embedding classifier')
     parser.add_argument('--n_iters', type=int, default=1000,
                         help='number of iterations (with different seeds) to evaluate the classifier')
-    parser.add_argument('--n_layers', type=int, default=3, help='number of layers in the classifier')
+    parser.add_argument('--n_layers', type=int, default=2, help='number of layers in the classifier')
     parser.add_argument('--use_age', action='store_true', help='add age as a feature to the classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
