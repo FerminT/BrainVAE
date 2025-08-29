@@ -22,7 +22,7 @@ import argparse
 
 
 def _init_bootstrap_worker(classifier_, test_df_, target_label_, transform_fn_, binary_classification_,
-                           bin_centers_, use_age_, device_, model_results_, baseline_results_, metrics_):
+                           bin_centers_, use_age_, device_, metrics_):
     # Globals used by workers
     global _BOOTSTRAP_CTX
     _BOOTSTRAP_CTX = {
@@ -34,8 +34,6 @@ def _init_bootstrap_worker(classifier_, test_df_, target_label_, transform_fn_, 
         'bin_centers': bin_centers_,
         'use_age': use_age_,
         'device': device_,
-        'model_results': model_results_,
-        'baseline_results': baseline_results_,
         'metrics': metrics_,
     }
 
@@ -51,15 +49,17 @@ def _bootstrap_one(seed):
                                           ctx['bin_centers'],
                                           ctx['use_age'],
                                           ctx['device'])
-    compute_metrics(predictions, labels, ctx['binary_classification'], ctx['model_results'])
+    model_results = {m: [] for m in ctx['metrics']}
+    baseline_results = {m: [] for m in ctx['metrics']}
+    compute_metrics(predictions, labels, ctx['binary_classification'], model_results)
     rnd_gen = random.default_rng(seed=seed)
-    add_baseline_results(labels, ctx['binary_classification'], ctx['baseline_results'], rnd_gen)
-    return 1
+    add_baseline_results(labels, ctx['binary_classification'], baseline_results, rnd_gen)
+    return model_results, baseline_results
 
 
 def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
-                            target_label, target_dataset, batch_size, n_layers, epochs, lr, dp, n_iters, use_age,
-                            split_val, save_path, device):
+                            target_label, target_dataset, batch_size, n_layers, epochs, lr, dp, n_iters, n_workers,
+                            use_age, split_val, save_path, device):
     train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     if split_val:
@@ -75,22 +75,24 @@ def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_siz
         binary_classification = output_dim == 1
         metrics = ['Accuracy', 'Precision', 'Recall'] if binary_classification else ['MAE', 'Corr', 'p_value']
         metrics.extend(['Predictions', 'Labels'])
-        n_workers = 12
         if n_workers > 1:
-            manager = mp.Manager()
-            model_results = {m: manager.list() for m in metrics}
-            baseline_results = {m: manager.list() for m in metrics}
             with mp.get_context('spawn').Pool(
                     processes=n_workers,
                     initializer=_init_bootstrap_worker,
                     initargs=(classifier, test, target_label, transform_fn, binary_classification,
-                              bin_centers, use_age, device, model_results, baseline_results, metrics)) as pool:
-                for _ in tqdm(pool.imap(_bootstrap_one, random_seeds),
-                              total=len(random_seeds),
-                              desc='Bootstrapping test'):
-                    pass
-            model_results = {k: list(v) for k, v in model_results.items()}
-            baseline_results = {k: list(v) for k, v in baseline_results.items()}
+                              bin_centers, use_age, device, metrics)) as pool:
+                results = []
+                for result in tqdm(pool.imap(_bootstrap_one, random_seeds),
+                                   total=len(random_seeds),
+                                   desc='Bootstrapping test'):
+                    results.append(result)
+            model_results = {m: [] for m in metrics}
+            baseline_results = {m: [] for m in metrics}
+
+            for model_res, baseline_res in results:
+                for metric in metrics:
+                    model_results[metric].extend(model_res[metric])
+                    baseline_results[metric].extend(baseline_res[metric])
         else:
             model_results = {m: [] for m in metrics}
             baseline_results = {m: [] for m in metrics}
@@ -209,6 +211,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_iters', type=int, default=1000,
                         help='number of iterations (with different seeds) to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=2, help='number of layers in the classifier')
+    parser.add_argument('--n_workers', type=int, default=12, help='number of workers for bootstrapping')
     parser.add_argument('--use_age', action='store_true', help='add age as a feature to the classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
@@ -267,6 +270,6 @@ if __name__ == '__main__':
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
                                     args.batch_size, args.n_layers, args.epochs, args.lr, args.dp, args.n_iters,
-                                    args.use_age, args.val, save_path, args.device)
+                                    args.n_workers, args.use_age, args.val, save_path, args.device)
         else:
             plot_embeddings(embeddings_df, args.manifold.lower(), args.label, save_path, color_by=args.color_label)
