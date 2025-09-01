@@ -178,21 +178,21 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
         for model in evaluated_cfgs:
             model_results = labels_results[label][model]
             measure_list, corr_list, pvalues_list = [], [], []
-            for run in model_results.columns:
-                if run.startswith('pred_'):
-                    predictions = model_results[run].values
-                    true_values = model_results['label'].values
+            run_numbers = [run.removeprefix('pred_') for run in model_results.columns if run.startswith('pred_')]
+            for run in run_numbers:
+                predictions = model_results[f'pred_{run}'].values
+                true_values = model_results[f'label_{run}'].values
 
-                    if not np.array_equal(true_values, true_values.astype(bool)):
-                        corr = pearsonr(true_values, predictions)
-                        corr_list.append(corr[0]), pvalues_list.append(corr[1])
-                        measure_list.append(mean_absolute_error(true_values, predictions))
-                    else:
-                        measure_name = 'Accuracy'
-                        measure_list.append(accuracy_score(true_values, predictions >= 0.5))
-                if label == 'reconstruction_error' and run.startswith('reconstruction_error'):
-                    measure_name = 'MSE'
-                    measure_list = list(model_results[run].values)
+                if not np.array_equal(true_values, true_values.astype(bool)):
+                    corr = pearsonr(true_values, predictions)
+                    corr_list.append(corr[0]), pvalues_list.append(corr[1])
+                    measure_list.append(mean_absolute_error(true_values, predictions))
+                else:
+                    measure_name = 'Accuracy'
+                    measure_list.append(accuracy_score(true_values, predictions >= 0.5))
+            if label == 'reconstruction_error' and 'reconstruction_error' in model_results.columns:
+                measure_name = 'MSE'
+                measure_list = model_results['reconstruction_error'].tolist()
 
             metrics[label][model] = {f'{measure_name}_mean': np.mean(measure_list),
                                      f'{measure_name}_stderr': sem(measure_list),
