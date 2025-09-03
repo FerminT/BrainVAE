@@ -61,9 +61,9 @@ if __name__ == '__main__':
     if args.device == 'gpu' and not is_available():
         raise ValueError('gpu is not available')
     train_data, val_data, test_data = load_datasets(args.dataset, config['input_shape'], config['latent_dim'],
-                                                    config['age_dim'], args.sample_size, args.val_size, args.test_size,
-                                                    args.splits_path, args.redo_splits, args.final, shuffle=True,
-                                                    random_state=42)
+                                                    config['age_dim'], config['invariance'], args.sample_size,
+                                                    args.val_size, args.test_size, args.splits_path, args.redo_splits,
+                                                    args.final, shuffle=True, random_state=42)
     save_path = Path(constants.CHECKPOINT_PATH, args.dataset, args.cfg)
     run_name = f'e{args.epochs}'
     if args.run_name:

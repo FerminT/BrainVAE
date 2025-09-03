@@ -25,26 +25,27 @@ def load_metadata(datapath):
     return metadata, age_range, bmi_range
 
 
-def load_datasets(dataset, input_shape, latent_dim, age_dim, sample_size, val_size, test_size, splits_path,
+def load_datasets(dataset, input_shape, latent_dim, age_dim, invariance, sample_size, val_size, test_size, splits_path,
                   redo_splits, final_run, shuffle, random_state):
     datapath = get_datapath(dataset)
     datasets = get_datasets(dataset)
-    train, val, test, age_range, bmi_range = combine_datasets(datasets, sample_size, val_size, test_size, splits_path,
-                                                              redo_splits, final_run, shuffle, random_state)
+    train, val, test, age_range, bmi_range = combine_datasets(datasets, invariance, sample_size, val_size, test_size,
+                                                              splits_path, redo_splits, final_run, shuffle,
+                                                              random_state)
     train_dataset = T1Dataset(input_shape, datapath, train, latent_dim, age_dim, age_range, bmi_range, testing=False)
     val_dataset = T1Dataset(input_shape, datapath, val, latent_dim, age_dim, age_range, bmi_range, testing=True)
     test_dataset = T1Dataset(input_shape, datapath, test, latent_dim, age_dim, age_range, bmi_range, testing=True)
     return train_dataset, val_dataset, test_dataset
 
 
-def combine_datasets(datasets, sample_size, val_size, test_size, splits_path, redo_splits, final_run, shuffle,
-                     random_state):
+def combine_datasets(datasets, invariance, sample_size, val_size, test_size, splits_path, redo_splits, final_run,
+                     shuffle, random_state):
     train_datasets, val_datasets, test_datasets = [], [], []
     age_range, bmi_range = [inf, -inf], [inf, -inf]
     for dataset in datasets:
         metadata, dataset_age_range, dataset_bmi_range = load_metadata(dataset)
-        train, val, test = load_splits(dataset, metadata, sample_size, val_size, test_size, splits_path, redo_splits,
-                                       final_run, shuffle=shuffle, random_state=random_state)
+        train, val, test = load_splits(dataset, invariance, metadata, sample_size, val_size, test_size, splits_path,
+                                       redo_splits, final_run, shuffle=shuffle, random_state=random_state)
         age_range = [min(age_range[0], dataset_age_range[0]), max(age_range[1], dataset_age_range[1])]
         bmi_range = [min(bmi_range[0], dataset_bmi_range[0]), max(bmi_range[1], dataset_bmi_range[1])]
         train_datasets.append(train)
@@ -56,7 +57,7 @@ def combine_datasets(datasets, sample_size, val_size, test_size, splits_path, re
     return train, val, test, age_range, bmi_range
 
 
-def load_splits(datapath, metadata, sample_size, val_size, test_size, splits_path, redo, final_run, shuffle,
+def load_splits(datapath, invariance, metadata, sample_size, val_size, test_size, splits_path, redo, final_run, shuffle,
                 random_state):
     train_csv, val_csv, test_csv = get_splits_files(datapath, splits_path)
     if train_csv.exists() and val_csv.exists() and test_csv.exists() and not redo:
@@ -69,10 +70,14 @@ def load_splits(datapath, metadata, sample_size, val_size, test_size, splits_pat
         train.to_csv(train_csv, index=False)
         val.to_csv(val_csv, index=False)
         test.to_csv(test_csv, index=False)
+    if invariance and invariance == 'bmi':
+        train = train[train['bmi'].notna()]
+        val = val[val['bmi'].notna()]
+        test = test[test['bmi'].notna()]
     if final_run:
         train = pd.concat([train, val])
         val = test
-    if datapath.name != 'ukbb' and sample_size:
+    if not train.empty and datapath.name != 'ukbb' and sample_size:
         train = train.sample(sample_size, random_state=random_state, replace=True)
     return train, val, test
 
