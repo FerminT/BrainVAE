@@ -265,7 +265,8 @@ if __name__ == '__main__':
             save_path = Path(EVALUATION_PATH, args.dataset + '_balanced', args.set, args.cfg) / run_name
             save_path.mkdir(parents=True, exist_ok=True)
 
-        data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
+        data, age_range, bmi_range = load_set(args.dataset, args.set, config['invariance'], args.splits_path,
+                                              args.random_state)
         if not args.manifold:
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,

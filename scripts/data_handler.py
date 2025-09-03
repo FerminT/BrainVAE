@@ -127,9 +127,10 @@ def is_single_dataset(dataset):
     return len(Path(dataset).parts) > 1
 
 
-def load_set(dataset, split, splits_path, random_state):
+def load_set(dataset, split, invariance, splits_path, random_state):
     datasets = get_datasets(dataset)
-    train, val, test, age_range, bmi_range = combine_datasets(datasets, sample_size=None, val_size=None, test_size=None,
+    train, val, test, age_range, bmi_range = combine_datasets(datasets, invariance, sample_size=None,
+                                                              val_size=None, test_size=None,
                                                               splits_path=splits_path, redo_splits=False,
                                                               final_run=False, shuffle=True, random_state=random_state)
     if split == 'val':
