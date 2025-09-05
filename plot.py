@@ -141,10 +141,14 @@ def plot_violin(data, results_label, ax, colors):
         significance_to_invariant = significance_against(results_df, results_label, base_model='Age-invariant')
         add_significance_asterisks(ax, plot_df, results_label, significance_to_invariant,
                                    reference_model='Age-invariant')
-    if 'Age-agnostic' in results_df.index and 'Age-aware' in results_df.index:
-        significance_to_baseline = significance_against(results_df, results_label, base_model='Age-agnostic')
-        add_significance_to_baseline(ax, plot_df, results_label, significance_to_baseline,
-                                     reference_model='Age-aware', base_model='Age-agnostic')
+    if 'BAG' in results_df.index:
+        significance_to_bag = significance_against(results_df, results_label, base_model='BAG')
+        if 'Age-aware' in results_df.index:
+            add_significance_to_baseline(ax, plot_df, results_label, significance_to_bag,
+                                         reference_model='Age-aware', base_model='BAG')
+        if 'Age-agnostic' in results_df.index:
+            add_significance_to_baseline(ax, plot_df, results_label, significance_to_bag,
+                                         reference_model='Age-agnostic', base_model='BAG')
     ax.axhline(0.5, color='black', linestyle='--', alpha=0.5)
 
 
