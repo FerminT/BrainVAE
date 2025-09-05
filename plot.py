@@ -55,7 +55,7 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
 
         if metric == 'MSE':
             heights_drawn = []
-            offset, text_height, separation = 0.02, 0.002, 0.05
+            offset, text_height, separation = 0.02, 0.002, 0.04
             for i, bar in enumerate(ax.patches):
                 for j in range(i + 1, len(ax.patches)):
                     model1, model2 = data.iloc[i]['Model'], data.iloc[j]['Model']
@@ -63,12 +63,9 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
                         continue
                     significance = metrics[label][model1][f'{model2}_significance']
                     max_height = max(bar.get_height(), ax.patches[j].get_height())
-                    height_found = True
-                    while height_found:
-                        if max_height in heights_drawn:
+                    for height in heights_drawn:
+                        if max_height < height + offset:
                             max_height += separation
-                        else:
-                            height_found = False
                     plot_significance_against(ax, [i, j], max_height, significance, text_height=text_height,
                                               offset=offset, ns=True)
                     heights_drawn.append(max_height)
