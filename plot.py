@@ -1,4 +1,7 @@
 from pathlib import Path
+
+from sympy import false
+
 from scripts.constants import EVALUATION_PATH
 from scipy.interpolate import interp1d
 from pandas import DataFrame
@@ -20,9 +23,9 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
     else:
         roc_curves = build_roc_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
         pr_curves = build_precision_recall_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
-        plot_data(roc_curves, evaluated_cfgs, '', 'ROC-AUC', (0.4, 1.0), False, 25,
+        plot_data(roc_curves, evaluated_cfgs, '', 'ROC-AUC', (0.45, 1.06), False, 25,
                   results_path / 'roc_aucs.png', age_windows_ranges, type='auc')
-        plot_data(pr_curves, evaluated_cfgs, '', 'PR-AUC', (0.4, 1.0), False, 25,
+        plot_data(pr_curves, evaluated_cfgs, '', 'PR-AUC', (0.45, 1.06), False, 25,
                   results_path / 'pr_aucs.png', age_windows_ranges, type='auc')
 
 
@@ -140,12 +143,14 @@ def plot_violin(data, results_label, ax, colors):
                                    reference_model='Age-invariant')
     if 'BAG' in results_df.index:
         significance_to_bag = significance_against(results_df, results_label, base_model='BAG')
+        plotted = False
         if 'Age-aware' in results_df.index:
-            add_significance_to_baseline(ax, plot_df, results_label, significance_to_bag,
-                                         reference_model='Age-aware', base_model='BAG')
+            plotted = add_significance_to_baseline(ax, plot_df, results_label, significance_to_bag,
+                                                   reference_model='Age-aware', base_model='BAG')
         if 'Age-agnostic' in results_df.index:
+            y_offset = 0.03 if plotted else 0.0
             add_significance_to_baseline(ax, plot_df, results_label, significance_to_bag,
-                                         reference_model='Age-agnostic', base_model='BAG')
+                                         reference_model='Age-agnostic', base_model='BAG', y_offset=y_offset)
     ax.axhline(0.5, color='black', linestyle='--', alpha=0.5)
 
 
@@ -155,19 +160,20 @@ def add_significance_asterisks(ax, results_df, results_label, pvalues, reference
             p_value = pvalues[model]
             if p_value < 0.05:
                 y = results_df[results_df['Model'] == model][results_label].max()
-                ax.annotate(significance_asterisks(p_value), xy=(i, y + 0.05), ha='center', va='center', fontsize=20)
+                ax.annotate(significance_asterisks(p_value), xy=(i, y + 0.03), ha='center', va='center', fontsize=20)
 
 
-def add_significance_to_baseline(ax, results_df, results_label, pvalues, reference_model, base_model):
+def add_significance_to_baseline(ax, results_df, results_label, pvalues, reference_model, base_model, y_offset=0.0):
     significance = pvalues[reference_model]
     reference_index = results_df[results_df['Model'] == reference_model].index[0]
     base_index = results_df[results_df['Model'] == base_model].index[0]
     y = max(results_df[results_df['Model'] == reference_model][results_label].max(),
-            results_df[results_df['Model'] == base_model][results_label].max())
-    plot_significance_against(ax, [base_index, reference_index], y, significance)
+            results_df[results_df['Model'] == base_model][results_label].max()) + y_offset
+    plotted = plot_significance_against(ax, [base_index, reference_index], y, significance)
+    return plotted
 
 
-def plot_significance_against(ax, indices, y, p_value, text_height=0.005, offset=0.1, ns=False):
+def plot_significance_against(ax, indices, y, p_value, text_height=0.005, offset=0.06, ns=False):
     asterisks = significance_asterisks(p_value, ns)
     if len(asterisks):
         y += offset
@@ -175,6 +181,7 @@ def plot_significance_against(ax, indices, y, p_value, text_height=0.005, offset
                 color='black')
         ax.text((indices[0] + indices[1]) / 2, y+text_height, asterisks, ha='center', va='bottom', color='black',
                 fontsize=20)
+    return len(asterisks) > 0
 
 
 def significance_asterisks(p, ns=False):
