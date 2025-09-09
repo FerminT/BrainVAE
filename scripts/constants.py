@@ -6,7 +6,8 @@ METADATA_PATH = 'metadata'
 BRAIN_MASK = [160, 192, 160]
 CFGS_RENAMING = {'age_agnostic': 'Age-agnostic',
                  'age_invariant': 'Age-invariant',
-                 'age_invariant_with_age': 'Age-invariant+Age',
+                 'age_invariant_sin': 'Sinusoidal',
+                 'age_invariant_soft': 'Soft label',
                  'age_aware': 'Age-aware',
                  'bmi_invariant': 'BMI-invariant',
                  'sex_invariant': 'Sex-invariant',

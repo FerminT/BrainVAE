@@ -1,7 +1,4 @@
 from pathlib import Path
-
-from sympy import false
-
 from scripts.constants import EVALUATION_PATH
 from scipy.interpolate import interp1d
 from pandas import DataFrame
