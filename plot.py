@@ -45,13 +45,13 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
         data_metric = data[data['Metric'] == metric]
         bars = sns.barplot(x='Model', y='Value', hue='Model', data=data_metric, ax=ax, errorbar=None,
                            width=1.0, alpha=1.0, dodge=False)
-        for bar, model, error in zip(bars.patches, data_metric['Model'], data_metric['Error']):
+        for bar, model, std in zip(bars.patches, data_metric['Model'], data_metric['STD']):
             if model == 'Random':
                 color = bar.get_facecolor()
                 bar.set_facecolor('none')
                 bar.set_edgecolor(color)
-            else:
-                ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=error, fmt='none', c='black')
+            ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=std, fmt='none', c='black',
+                        ls='--', capsize=5, elinewidth=1)
 
         if metric == 'MSE':
             heights_drawn = []
@@ -75,6 +75,8 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
         ax.set_ylabel(metric)
         ax.set_xlabel('')
         ax.grid(False)
+        if metric == 'Correlation':
+            ax.set_ylim(0, 1)
         ax.set_xticklabels([])
 
     fig.tight_layout()
@@ -109,7 +111,7 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
                     if f'window_{window}' in model:
                         model_name = model.split('_')[0]
                         if type == 'curve':
-                            plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model_name, axs[window])
+                            plot_mean(data[label][model]['mean'], data[label][model]['std'], model_name, axs[window])
                         else:
                             plot_violin(data[label], 'aucs', axs[window], colors)
 
@@ -120,7 +122,7 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
         else:
             if type == 'curve':
                 for model in data[label]:
-                    plot_mean(data[label][model]['mean'], data[label][model]['stderr'], model, axs[i])
+                    plot_mean(data[label][model]['mean'], data[label][model]['std'], model, axs[i])
             else:
                 plot_violin(data[label], 'aucs', axs[i], colors)
             configure_axes(axs[i], xlabel, ylabel, ylim, identity_line, fontsize, label, i == 0)
@@ -202,12 +204,12 @@ def significance_against(results_df, results_label, base_model):
     return models_significance
 
 
-def plot_mean(mean_data, stderr_data, model_label, ax):
+def plot_mean(mean_data, std_data, model_label, ax):
     mean_fpr = [x[0] for x in mean_data]
     mean_tpr = [x[1] for x in mean_data]
-    stderr_tpr = [x[1] for x in stderr_data]
+    std_tpr = [x[1] for x in std_data]
     ax.plot(mean_fpr, mean_tpr, label=model_label)
-    ax.fill_between(mean_fpr, np.array(mean_tpr) - np.array(stderr_tpr), np.array(mean_tpr) + np.array(stderr_tpr),
+    ax.fill_between(mean_fpr, np.array(mean_tpr) - np.array(std_tpr), np.array(mean_tpr) + np.array(std_tpr),
                     alpha=0.2)
 
 
@@ -287,8 +289,8 @@ def mean_roc(data, thresholds, label, model_name, roc_curves):
         all_tpr.append([x[1] for x in fpr_tpr])
         all_aucs.append(roc_auc_score(labels, preds))
     mean_fpr, mean_tpr = np.mean(all_fpr, axis=0), np.mean(all_tpr, axis=0)
-    stderr_tpr = np.std(all_tpr, axis=0) / np.sqrt(len(all_tpr))
-    roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'stderr': list(zip(mean_fpr, stderr_tpr)),
+    std_tpr = np.std(all_tpr, axis=0)
+    roc_curves[label][model_name] = {'mean': list(zip(mean_fpr, mean_tpr)), 'std': list(zip(mean_fpr, std_tpr)),
                                      'aucs': all_aucs}
     print(f'{model_name} {label} AUC: {np.median(all_aucs):.4f} '
           f'IQR: {np.percentile(all_aucs, 75) - np.percentile(all_aucs, 25):.4f}')
@@ -310,9 +312,9 @@ def mean_pr(data, common_recall, label, model_name, pr_curves):
         interpolated_precisions.append(interp_prec)
     interpolated_precisions = np.array(interpolated_precisions)
     mean_precision = np.mean(interpolated_precisions, axis=0)
-    std_error_precision = np.std(interpolated_precisions, axis=0) / np.sqrt(len(interpolated_precisions))
+    std_error_precision = np.std(interpolated_precisions, axis=0)
     pr_curves[label][model_name] = {'mean': list(zip(common_recall, mean_precision)),
-                                    'stderr': list(zip(common_recall, std_error_precision)),
+                                    'std': list(zip(common_recall, std_error_precision)),
                                     'aucs': all_aucs}
     print(f'{model_name} {label} AUC: {np.median(all_aucs):.4f} '
           f'IQR: {np.percentile(all_aucs, 75) - np.percentile(all_aucs, 25):.4f}')

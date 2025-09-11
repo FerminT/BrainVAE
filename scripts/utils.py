@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from pandas import read_csv
-from scipy.stats import sem, pearsonr
+from scipy.stats import pearsonr
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
 from sklearn.metrics import mean_absolute_error, accuracy_score
@@ -195,7 +195,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                 measure_list = model_results['reconstruction_error'].tolist()
 
             metrics[label][model] = {f'{measure_name}_mean': np.mean(measure_list),
-                                     f'{measure_name}_stderr': sem(measure_list),
+                                     f'{measure_name}_std': np.std(measure_list),
                                         measure_name: measure_list}
             print(f'{model} {label} {measure_name}: {np.mean(measure_list):.4f}')
             if measure_name == 'MAE':
@@ -205,7 +205,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                 else:
                     metrics[label_name][model] = {}
                 metrics[label_name][model]['Correlation_mean'] = max(np.mean(corr_list), 0.001)
-                metrics[label_name][model]['Correlation_stderr'] = sem(corr_list)
+                metrics[label_name][model]['Correlation_std'] = np.std(corr_list)
                 print(f'{model} {label} Correlation: {np.mean(corr_list):.4f} (p: {np.mean(pvalues_list):.4f})')
 
         test_significance(metrics, label, evaluated_cfgs)
@@ -216,7 +216,7 @@ def test_significance(metrics, label, evaluated_cfgs):
     models_to_compare = [(model_1, model_2) for model_1 in evaluated_cfgs for model_2 in evaluated_cfgs if
                          model_1 != model_2]
     for model_1, model_2 in models_to_compare:
-        measure = [measure for measure in metrics[label][model_1].keys() if 'stderr' not in measure and
+        measure = [measure for measure in metrics[label][model_1].keys() if 'std' not in measure and
                    'mean' not in measure][0]
         model1_values = np.array(metrics[label][model_1][measure])
         model2_values = np.array(metrics[label][model_2][measure])
@@ -233,16 +233,16 @@ def metrics_to_df(metrics, label):
     for model in metrics[label]:
         if 'MAE_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'MAE', 'Value': metrics[label][model]['MAE_mean'],
-                         'Error': metrics[label][model]['MAE_stderr']})
+                         'STD': metrics[label][model]['MAE_std']})
         if 'Correlation_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'Correlation', 'Value': metrics[label][model]['Correlation_mean'],
-                         'Error': metrics[label][model]['Correlation_stderr']})
+                         'STD': metrics[label][model]['Correlation_std']})
         if 'Accuracy_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'Accuracy', 'Value': metrics[label][model]['Accuracy_mean'],
-                         'Error': metrics[label][model]['Accuracy_stderr']})
+                         'STD': metrics[label][model]['Accuracy_std']})
         if 'MSE_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'MSE', 'Value': metrics[label][model]['MSE_mean'],
-                         'Error': metrics[label][model]['MSE_stderr']})
+                         'STD': metrics[label][model]['MSE_std']})
 
     df = pd.DataFrame(data)
     return df
