@@ -46,11 +46,12 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
         bars = sns.barplot(x='Model', y='Value', hue='Model', data=data_metric, ax=ax, errorbar=None,
                            width=1.0, alpha=1.0, dodge=False)
         for bar, model, std in zip(bars.patches, data_metric['Model'], data_metric['STD']):
+            color = 'black'
             if model == 'Random':
                 color = bar.get_facecolor()
                 bar.set_facecolor('none')
                 bar.set_edgecolor(color)
-            ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=std, fmt='none', c='black',
+            ax.errorbar(bar.get_x() + bar.get_width() / 2, bar.get_height(), yerr=std, fmt='none', c=color,
                         ls='--', capsize=5, elinewidth=1)
 
         if metric == 'MSE':
@@ -63,6 +64,8 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
                         continue
                     significance = metrics[label][model1][f'{model2}_significance']
                     max_height = max(bar.get_height(), ax.patches[j].get_height())
+                    max_height += data_metric.iloc[i]['STD'] if bar.get_height() >= ax.patches[j].get_height() \
+                        else data_metric.iloc[j]['STD']
                     for height in heights_drawn:
                         if max_height < height + offset:
                             max_height += separation
