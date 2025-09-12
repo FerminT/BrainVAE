@@ -17,7 +17,7 @@ import seaborn as sns
 import pickle
 
 
-def plot_maps(model_features, model_name, class_labels, layers=None):
+def plot_maps(model_features, model_name, class_labels, layers=None, colorbar=False):
     """
     Plots representational dissimilarity matrices (RDMs) across different layers of a model.
 
@@ -58,9 +58,10 @@ def plot_maps(model_features, model_name, class_labels, layers=None):
             ax.set_yticklabels([])
 
     fig.subplots_adjust(right=0.9)
-    # cbar_ax = fig.add_axes([0.92, 0.18, 0.01, 0.53])
-    # cbar = fig.colorbar(ax_, cax=cbar_ax)
-    # cbar.set_label('Dissimilarity', rotation=270, labelpad=15)
+    if colorbar:
+        cbar_ax = fig.add_axes([0.92, 0.18, 0.01, 0.53])
+        cbar = fig.colorbar(ax_, cax=cbar_ax, ticks=[])
+        cbar.set_label('Dissimilarity', rotation=270, labelpad=15)
     plt.tight_layout()
     plt.show()
 
