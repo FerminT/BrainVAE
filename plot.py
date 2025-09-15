@@ -85,7 +85,7 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
     fig.tight_layout()
     fig.patch.set_alpha(0)
     colors = sns.color_palette(n_colors=len(evaluated_cfgs))
-    ncols = len(evaluated_cfgs) if len(evaluated_cfgs) < 6 else len(evaluated_cfgs) // 2
+    ncols = len(evaluated_cfgs) if len(evaluated_cfgs) < 6 else len(evaluated_cfgs) // 2 + 1
     fig.legend(handles=[plt.Line2D([0], [0], color=color, lw=4) for color in colors],
                labels=evaluated_cfgs, loc='upper center', bbox_to_anchor=(0.5, 0.05), ncol=ncols,
                fontsize='large')
