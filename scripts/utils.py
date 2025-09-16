@@ -6,8 +6,8 @@ from pandas import read_csv
 from scipy.stats import pearsonr
 from sklearn.manifold import MDS, TSNE, Isomap
 from sklearn.decomposition import PCA
-from sklearn.metrics import mean_absolute_error, accuracy_score
-from torch import cat, device, cuda, exp, sigmoid, tensor, clamp, uint8
+from sklearn.metrics import mean_absolute_error, roc_auc_score
+from torch import cat, device, cuda, exp, sigmoid, tensor, clamp
 from torchvision.utils import make_grid
 from torchvision.transforms import Resize
 from tqdm import tqdm
@@ -188,8 +188,8 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
                     corr_list.append(corr[0]), pvalues_list.append(corr[1])
                     measure_list.append(mean_absolute_error(true_values, predictions))
                 else:
-                    measure_name = 'Accuracy'
-                    measure_list.append(accuracy_score(true_values, predictions >= 0.5))
+                    measure_name = 'ROC-AUC'
+                    measure_list.append(roc_auc_score(true_values, predictions))
             if label == 'reconstruction_error' and 'reconstruction_error' in model_results.columns:
                 measure_name = 'MSE'
                 measure_list = model_results['reconstruction_error'].tolist()
@@ -237,9 +237,9 @@ def metrics_to_df(metrics, label):
         if 'Correlation_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'Correlation', 'Value': metrics[label][model]['Correlation_mean'],
                          'STD': metrics[label][model]['Correlation_std']})
-        if 'Accuracy_mean' in metrics[label][model]:
-            data.append({'Model': model, 'Metric': 'Accuracy', 'Value': metrics[label][model]['Accuracy_mean'],
-                         'STD': metrics[label][model]['Accuracy_std']})
+        if 'ROC-AUC_mean' in metrics[label][model]:
+            data.append({'Model': model, 'Metric': 'ROC-AUC', 'Value': metrics[label][model]['ROC-AUC_mean'],
+                         'STD': metrics[label][model]['ROC-AUC_std']})
         if 'MSE_mean' in metrics[label][model]:
             data.append({'Model': model, 'Metric': 'MSE', 'Value': metrics[label][model]['MSE_mean'],
                          'STD': metrics[label][model]['MSE_std']})

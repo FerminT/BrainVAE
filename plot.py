@@ -41,7 +41,7 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
         elif 'Correlation' in data['Metric'].values:
             metric = 'Correlation'
         else:
-            metric = 'Accuracy'
+            metric = 'ROC-AUC'
         data_metric = data[data['Metric'] == metric]
         bars = sns.barplot(x='Model', y='Value', hue='Model', data=data_metric, ax=ax, errorbar=None,
                            width=1.0, alpha=1.0, dodge=False)
