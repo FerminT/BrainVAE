@@ -197,7 +197,7 @@ def compute_metrics(labels_results, target_labels, evaluated_cfgs):
             metrics[label][model] = {f'{measure_name}_mean': np.mean(measure_list),
                                      f'{measure_name}_std': np.std(measure_list),
                                         measure_name: measure_list}
-            print(f'{model} {label} {measure_name}: {np.mean(measure_list):.4f}')
+            print(f'{model} {label} {measure_name}: {np.mean(measure_list):.4f} -- std: {np.std(measure_list):.4f}')
             if measure_name == 'MAE':
                 label_name = f'{label}_correlation'
                 if label_name not in metrics:
