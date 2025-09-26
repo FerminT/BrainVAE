@@ -47,6 +47,7 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
                            width=1.0, alpha=1.0, dodge=False)
         for bar, model, std in zip(bars.patches, data_metric['Model'], data_metric['STD']):
             color = 'black'
+            bar.set_edgecolor(color)
             if model == 'Random':
                 color = bar.get_facecolor()
                 bar.set_facecolor('none')
@@ -78,6 +79,10 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
         ax.set_ylabel(metric)
         ax.set_xlabel('')
         ax.grid(False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_color('black')
+        ax.spines['left'].set_color('black')
         if metric == 'Correlation':
             ax.set_ylim(0, 1)
         ax.set_xticklabels([])
