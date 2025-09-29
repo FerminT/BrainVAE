@@ -12,7 +12,7 @@ from models.utils import get_latent_representation
 from tqdm import tqdm
 from numpy import array, random
 from pandas import DataFrame, cut
-from seaborn import scatterplot, kdeplot, set_theme, color_palette
+from seaborn import scatterplot, kdeplot, set_theme, color_palette, set_style
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 from torch import cat, device as dev, cuda
@@ -144,9 +144,10 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
     seed_everything(42, workers=True)
     save_path.mkdir(parents=True, exist_ok=True)
     components = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
+
     subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
-    set_theme()
-    fig, ax = plt.subplots(figsize=(10, 8))
+    set_style('white')
+    fig, ax = plt.subplots(figsize=(10, 7))
     if color_by:
         color_by_is_float = subjects_df[color_by].dtype == 'float64'
         if color_by_is_float:
@@ -154,10 +155,12 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
             palette = 'viridis_r'
         else:
             palette = color_palette()[2:4]
-        scatter = scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=color_by, style=label, ax=ax, alpha=0.5,
-                              size=.3, palette=palette)
+        scatter = scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=color_by, ax=ax, alpha=0.8,
+                              size=.8, palette=palette, edgecolor='grey', linewidth=0.5, legend=False,
+                              style=label, markers=['o', 'X'])
         handles_scatter, labels_scatter = scatter.get_legend_handles_labels()
-        kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax, alpha=0.8)
+        kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax, alpha=0.7,
+                legend=False, linewidth=0.5)
         if color_by_is_float:
             norm = plt.Normalize(subjects_df[color_by].min(), subjects_df[color_by].max())
             sm = plt.cm.ScalarMappable(cmap=palette, norm=norm)
@@ -178,13 +181,17 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
         if label == 'age_at_scan' or label == 'bmi':
             subjects_df[label] = cut(subjects_df[label], bins=3)
             subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
-        scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, ax=ax, alpha=0.5, size=.3)
+        subjects_df['age_at_scan'] = cut(subjects_df['age_at_scan'], bins=5)
+        subjects_df['age_at_scan'] = subjects_df['age_at_scan'].cat.reorder_categories(subjects_df['age_at_scan'].cat.categories[::-1])
+        scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, ax=ax, alpha=0.7, size='age_at_scan',
+                    linewidth=0.3, legend=False, edgecolor='grey')
         kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax)
     if annotate_ids:
         for i, subject_id in enumerate(subjects_df.index):
             ax.annotate(subject_id, (components[i, 0], components[i, 1]), alpha=0.6)
     ax.set_title(f'Latent representations {method.upper()} embeddings')
     ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
+    plt.tight_layout()
     filename = save_path / f'latents_{method}_{label}.png'
     plt.savefig(filename, dpi=150)
     plt.show()
