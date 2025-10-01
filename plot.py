@@ -102,7 +102,7 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
 def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsize, filename, age_windows_ranges, type):
     sns.set_style('whitegrid')
     has_windows = any(age_windows_ranges.values())
-    fig, axs = create_subplots(1, len(data.keys()), figsize=(16.5, 8), sharey=True)
+    fig, axs = create_subplots(1, len(data.keys()), figsize=(15, 6), sharey=True)
     axs = [axs] if len(data.keys()) == 1 else axs
     colors = sns.color_palette('deep', n_colors=len(evaluated_cfgs))
     handles = [plt.Line2D([0], [0], color=color, lw=4) for color in colors]
