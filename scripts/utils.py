@@ -64,13 +64,13 @@ def get_weights(weights_path):
 
 def subjects_embeddings(weights_path, model_name, dataset_name, config, split, datapath, splits_path,
                         random_state, save_path):
+    filename = save_path / f'subjects_embeddings.pkl'
+    if filename.exists():
+        return pd.read_pickle(filename)
     data, age_range, bmi_range = load_set(dataset_name, split, splits_path, random_state)
     dataset = T1Dataset(config['input_shape'], datapath, data, config['latent_dim'], age_dim=1, age_range=age_range,
                         bmi_range=bmi_range, testing=True)
     device_ = device('cuda' if cuda.is_available() else 'cpu')
-    filename = save_path / f'subjects_embeddings.pkl'
-    if filename.exists():
-        return pd.read_pickle(filename)
     bag_model = 'bag' in model_name
     model = load_model(weights_path, config, device_) if not bag_model else None
     subjects = []
