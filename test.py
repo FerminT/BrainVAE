@@ -12,7 +12,7 @@ from models.utils import get_latent_representation
 from tqdm import tqdm
 from numpy import array, random
 from pandas import DataFrame, cut
-from seaborn import scatterplot, kdeplot, color_palette, set_style
+from seaborn import scatterplot, kdeplot, color_palette, set_style, jointplot
 from PIL import ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 from torch import cat, device as dev, cuda
@@ -148,8 +148,8 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
     subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
     subjects_df = subjects_df.sample(frac=0.5, random_state=42)
     set_style('white')
-    fig, ax = plt.subplots(figsize=(7, 7))
     if color_by:
+        fig, ax = plt.subplots(figsize=(7, 7))
         color_by_is_float = subjects_df[color_by].dtype == 'float64'
         if color_by_is_float:
             subjects_df[color_by] = subjects_df[color_by].astype(int)
@@ -178,19 +178,23 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
                        plt.Line2D([0], [0], color=color_palette()[1])]
         ax.legend(handles_scatter + handles_kde, labels_scatter + labels_kde,
                   loc='lower center', ncol=2)
+        if annotate_ids:
+            for i, subject_id in enumerate(subjects_df.index):
+                ax.annotate(subject_id, (components[i, 0], components[i, 1]), alpha=0.6)
+        ax.set_title(f'Latent representations {method.upper()} embeddings')
+        ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
     else:
         if label == 'age_at_scan' or label == 'bmi':
             subjects_df[label] = cut(subjects_df[label], bins=3)
             subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
         colors = color_palette('Set2', n_colors=len(subjects_df[label].unique()))
-        scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, ax=ax, alpha=0.8,
-                    linewidth=0.5, legend=False, edgecolor='grey', palette=colors)
-        kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax, alpha=0.5, palette=colors)
-    if annotate_ids:
-        for i, subject_id in enumerate(subjects_df.index):
-            ax.annotate(subject_id, (components[i, 0], components[i, 1]), alpha=0.6)
-    ax.set_title(f'Latent representations {method.upper()} embeddings')
-    ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
+        joint_ax = jointplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=0.8,
+                             linewidth=0.5, legend=False, edgecolor='grey', palette=colors, height=7)
+        joint_ax.ax_joint.axes.xaxis.set_visible(False)
+        joint_ax.ax_joint.axes.yaxis.set_visible(False)
+        joint_ax.ax_marg_x.axes.xaxis.set_visible(False)
+        joint_ax.ax_marg_y.axes.yaxis.set_visible(False)
+
     plt.tight_layout()
     filename = save_path / f'latents_{method}_{label}.png'
     plt.savefig(filename, dpi=300, transparent=True, bbox_inches='tight')
