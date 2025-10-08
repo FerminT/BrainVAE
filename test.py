@@ -158,10 +158,8 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
             palette = color_palette()[2:4]
         scatter = scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=color_by, ax=ax, alpha=0.8,
                               size=.8, palette=palette, edgecolor='grey', linewidth=0.5, legend=False,
-                              style=label, markers=['o', 'X'])
+                              style=label)
         handles_scatter, labels_scatter = scatter.get_legend_handles_labels()
-        kdeplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, fill=False, ax=ax, alpha=0.7,
-                legend=False, linewidth=0.5)
         if color_by_is_float:
             norm = plt.Normalize(subjects_df[color_by].min(), subjects_df[color_by].max())
             sm = plt.cm.ScalarMappable(cmap=palette, norm=norm)
@@ -188,8 +186,11 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
             subjects_df[label] = cut(subjects_df[label], bins=3)
             subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
         colors = color_palette('Set2', n_colors=len(subjects_df[label].unique()))
+        labels = subjects_df[label].unique().tolist()
+        labels = labels[1:] + [labels[0]]
         joint_ax = jointplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=0.8,
-                             linewidth=0.5, legend=False, edgecolor='grey', palette=colors, height=7)
+                             linewidth=0.5, legend=False, edgecolor='grey', palette=colors, height=7,
+                             hue_order=labels)
         joint_ax.ax_joint.axes.xaxis.set_visible(False)
         joint_ax.ax_joint.axes.yaxis.set_visible(False)
         joint_ax.ax_marg_x.axes.xaxis.set_visible(False)
