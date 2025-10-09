@@ -10,7 +10,7 @@ from scripts.utils import (load_yaml, reconstruction_comparison_grid, init_embed
 from lightning.pytorch import seed_everything
 from models.utils import get_latent_representation
 from tqdm import tqdm
-from numpy import array, random
+from numpy import array, random, exp
 from pandas import DataFrame, cut
 from seaborn import scatterplot, kdeplot, color_palette, set_style, jointplot
 from PIL import ImageDraw, ImageFont
@@ -146,7 +146,7 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
     components = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
 
     subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
-    subjects_df = subjects_df.sample(frac=0.5, random_state=42)
+    subjects_df = subjects_df.sample(frac=0.4, random_state=42)
     set_style('white')
     if color_by:
         fig, ax = plt.subplots(figsize=(7, 7))
@@ -186,11 +186,17 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
             subjects_df[label] = cut(subjects_df[label], bins=3)
             subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
         colors = color_palette('Set2', n_colors=len(subjects_df[label].unique()))
-        labels = subjects_df[label].unique().tolist()
-        labels = labels[1:] + [labels[0]]
+        subjects_df['age_at_scan'] = cut(subjects_df['age_at_scan'], bins=35)
+        subjects_df['age_at_scan'] = subjects_df['age_at_scan'].cat.codes.astype(int)
+        subjects_df['age_at_scan'] = subjects_df['age_at_scan'].astype(int)
+        marker_sizes = {age: 50 + (age ** 1.5) for age in subjects_df['age_at_scan'].unique()}
         joint_ax = jointplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=0.8,
                              linewidth=0.5, legend=False, edgecolor='grey', palette=colors, height=7,
-                             hue_order=labels)
+                             marginal_kws={'fill': True, 'linewidth': 2})
+        joint_ax.ax_joint.cla()
+        scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=.9,
+                    size='age_at_scan', sizes=marker_sizes, palette=colors,
+                    edgecolor='black', linewidth=.5, legend=False, ax=joint_ax.ax_joint)
         joint_ax.ax_joint.axes.xaxis.set_visible(False)
         joint_ax.ax_joint.axes.yaxis.set_visible(False)
         joint_ax.ax_marg_x.axes.xaxis.set_visible(False)
