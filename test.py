@@ -182,21 +182,10 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
         ax.set_title(f'Latent representations {method.upper()} embeddings')
         ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
     else:
-        if label == 'age_at_scan' or label == 'bmi':
-            subjects_df[label] = cut(subjects_df[label], bins=3)
-            subjects_df = subjects_df[subjects_df[label] != subjects_df[label].cat.categories[1]]
         colors = color_palette('Set2', n_colors=len(subjects_df[label].unique()))
-        subjects_df['age_at_scan'] = cut(subjects_df['age_at_scan'], bins=35)
-        subjects_df['age_at_scan'] = subjects_df['age_at_scan'].cat.codes.astype(int)
-        subjects_df['age_at_scan'] = subjects_df['age_at_scan'].astype(int)
-        marker_sizes = {age: 50 + (age ** 1.5) for age in subjects_df['age_at_scan'].unique()}
-        joint_ax = jointplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=0.8,
-                             linewidth=0.5, legend=False, edgecolor='grey', palette=colors, height=7,
+        joint_ax = jointplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=0.9,
+                             edgecolor='black', linewidth=.5, legend=False, palette=colors, height=7,
                              marginal_kws={'fill': True, 'linewidth': 2})
-        joint_ax.ax_joint.cla()
-        scatterplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=.9,
-                    size='age_at_scan', sizes=marker_sizes, palette=colors,
-                    edgecolor='black', linewidth=.5, legend=False, ax=joint_ax.ax_joint)
         joint_ax.ax_joint.axes.xaxis.set_visible(False)
         joint_ax.ax_joint.axes.yaxis.set_visible(False)
         joint_ax.ax_marg_x.axes.xaxis.set_visible(False)
