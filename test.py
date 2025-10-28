@@ -146,7 +146,7 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
     components = init_embedding(method).fit_transform(array(subjects_df['embedding'].to_list()))
 
     subjects_df['emb_x'], subjects_df['emb_y'] = components[:, 0], components[:, 1]
-    subjects_df = subjects_df.sample(frac=0.4, random_state=42)
+    subjects_df = subjects_df.sample(frac=0.3, random_state=42)
     set_style('white')
     if color_by:
         fig, ax = plt.subplots(figsize=(7, 7))
@@ -182,10 +182,33 @@ def plot_embeddings(subjects_df, method, label, save_path, color_by=None, annota
         ax.set_title(f'Latent representations {method.upper()} embeddings')
         ax.axes.xaxis.set_visible(False), ax.axes.yaxis.set_visible(False)
     else:
-        colors = color_palette('Set2', n_colors=len(subjects_df[label].unique()))
+        unique_labels = subjects_df[label].unique()
+        colors = color_palette('Set2', n_colors=len(unique_labels))
+        label_to_color = dict(zip(unique_labels, colors))
+        min_age = subjects_df['age_at_scan'].min()
+        max_age = subjects_df['age_at_scan'].max()
+        normalized_ages = (subjects_df['age_at_scan'] - min_age) / (max_age - min_age) + 0.15
+
+        rgba_colors = []
+        for idx, row in subjects_df.iterrows():
+            rgb = label_to_color[row[label]]
+            alpha = min(normalized_ages[idx], 1.0)
+            rgba_colors.append((*rgb, alpha))
         joint_ax = jointplot(data=subjects_df, x='emb_x', y='emb_y', hue=label, alpha=0.9,
                              edgecolor='black', linewidth=.5, legend=False, palette=colors, height=7,
                              marginal_kws={'fill': True, 'linewidth': 2})
+        for point, color in zip(joint_ax.ax_joint.collections[0].get_offsets(), rgba_colors):
+            joint_ax.ax_joint.scatter(point[0], point[1], c=[color], linewidth=0.1, edgecolor='black', s=75)
+        x_range = subjects_df['emb_x'].max() - subjects_df['emb_x'].min()
+        y_range = subjects_df['emb_y'].max() - subjects_df['emb_y'].min()
+        x_margin = x_range * 0.05
+        y_margin = y_range * 0.05
+
+        joint_ax.ax_marg_x.set_xlim(subjects_df['emb_x'].min() - x_margin,
+                                    subjects_df['emb_x'].max() + x_margin)
+        joint_ax.ax_marg_y.set_ylim(subjects_df['emb_y'].min() - y_margin,
+                                    subjects_df['emb_y'].max() + y_margin)
+        joint_ax.ax_joint.collections[0].remove()
         joint_ax.ax_joint.axes.xaxis.set_visible(False)
         joint_ax.ax_joint.axes.yaxis.set_visible(False)
         joint_ax.ax_marg_x.axes.xaxis.set_visible(False)
