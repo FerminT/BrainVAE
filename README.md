@@ -1,5 +1,8 @@
 # Age-invariant brain MRI representations
 This repository contains code and resources for the paper _Alzheimer’s Progression Brain Phenotypes are Age-dependent_ (2026) by Fermin Travi, Anushree Mehta, Eduardo Castro, Hongyang Li, Jenna Reinen, Amit Dhurandhar, Pablo Meyer Rojas, Diego Fernández Slezak, Guillermo A. Cecchi, and Pablo Polosecki.
+
+![Age-invariant brain MRI architecture](age_invariant_vae_diagram.png)
+
 ## Data structure
 ```aiignore
 .
@@ -7,7 +10,7 @@ This repository contains code and resources for the paper _Alzheimer’s Progres
 │   └── <config_name>.yaml          # model architecture and training hyperparameters
 ├── checkpoints/
 │   └── general/
-│       └── <config_name>/          # cfg1 ... cfgK
+│       └── <config_name>/          
 │           └── <run_name>/
 │               └── last.ckpt
 ├── datasets/
