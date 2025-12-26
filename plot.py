@@ -21,9 +21,9 @@ def plot(results_path, cfgs, target_labels, bars, age_windows):
         roc_curves = build_roc_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
         pr_curves = build_precision_recall_curves(labels_predictions, target_labels, evaluated_cfgs, age_windows)
         plot_data(roc_curves, evaluated_cfgs, '', 'ROC-AUC', (0.45, 1.06), False, 25,
-                  results_path / 'roc_aucs.png', age_windows_ranges, type='auc')
+                  results_path / 'roc_aucs.png', age_windows_ranges)
         plot_data(pr_curves, evaluated_cfgs, '', 'PR-AUC', (0.45, 1.06), False, 25,
-                  results_path / 'pr_aucs.png', age_windows_ranges, type='auc')
+                  results_path / 'pr_aucs.png', age_windows_ranges)
 
 
 def plot_bar_plots(metrics, evaluated_cfgs, results_path):
@@ -99,7 +99,7 @@ def plot_bar_plots(metrics, evaluated_cfgs, results_path):
     plt.show()
 
 
-def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsize, filename, age_windows_ranges, type):
+def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsize, filename, age_windows_ranges):
     sns.set_style('whitegrid')
     has_windows = any(age_windows_ranges.values())
     fig, axs = create_subplots(1, len(data.keys()), figsize=(15, 6), sharey=True)
@@ -117,22 +117,13 @@ def plot_data(data, evaluated_cfgs, xlabel, ylabel, ylim, identity_line, fontsiz
             for window in range(n_columns):
                 for model in data[label]:
                     if f'window_{window}' in model:
-                        model_name = model.split('_')[0]
-                        if type == 'curve':
-                            plot_mean(data[label][model]['mean'], data[label][model]['std'], model_name, axs[window])
-                        else:
-                            plot_violin(data[label], 'aucs', axs[window], colors)
-
+                        plot_violin(data[label], 'aucs', axs[window], colors)
                 window_age_range = label_age_ranges[f'window_{window}']
                 window_title = f'Age {window_age_range[0]:.1f}-{window_age_range[1]:.1f}'
                 configure_axes(axs[window], xlabel, ylabel, ylim, identity_line, fontsize, window_title, window == 0)
             show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
         else:
-            if type == 'curve':
-                for model in data[label]:
-                    plot_mean(data[label][model]['mean'], data[label][model]['std'], model, axs[i])
-            else:
-                plot_violin(data[label], 'aucs', axs[i], colors)
+            plot_violin(data[label], 'aucs', axs[i], colors)
             configure_axes(axs[i], xlabel, ylabel, ylim, identity_line, fontsize, label, i == 0)
     if not has_windows:
         show_plot(fig, (handles, evaluated_cfgs), fontsize, filename)
@@ -210,15 +201,6 @@ def significance_against(results_df, results_label, base_model):
             base_results = np.array(results_df.loc[base_model, results_label])
             models_significance[model] = bootstrap_dist_significance(model_results, base_results)
     return models_significance
-
-
-def plot_mean(mean_data, std_data, model_label, ax):
-    mean_fpr = [x[0] for x in mean_data]
-    mean_tpr = [x[1] for x in mean_data]
-    std_tpr = [x[1] for x in std_data]
-    ax.plot(mean_fpr, mean_tpr, label=model_label)
-    ax.fill_between(mean_fpr, np.array(mean_tpr) - np.array(std_tpr), np.array(mean_tpr) + np.array(std_tpr),
-                    alpha=0.2)
 
 
 def configure_axes(ax, xlabel, ylabel, ylim, identity_line, fontsize, label, is_first_column):
