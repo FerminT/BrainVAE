@@ -57,13 +57,13 @@ def _bootstrap_one(seed):
     return model_results, baseline_results
 
 
-def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, val_size, latent_dim, age_range, bmi_range,
+def predict_from_embeddings(embeddings_df, cfg_name, dataset, ukbb_size, test_size, latent_dim, age_range, bmi_range,
                             target_label, target_dataset, batch_size, n_layers, epochs, lr, dp, n_iters, n_workers,
                             use_age, split_val, save_path, device):
-    train, test = create_test_splits(embeddings_df, dataset, val_size, ukbb_size, target_dataset, n_upsampled=180)
+    train, test = create_test_splits(embeddings_df, dataset, test_size, ukbb_size, target_dataset, n_upsampled=180)
     transform_fn, output_dim, bin_centers = target_mapping(embeddings_df, target_label, age_range, bmi_range)
     if split_val:
-        _ = test_on_val(train, val_size, cfg_name, latent_dim, target_label, transform_fn, output_dim, bin_centers,
+        _ = test_on_val(train, test_size, cfg_name, latent_dim, target_label, transform_fn, output_dim, bin_centers,
                         use_age, device, lr, dp, n_layers, batch_size, epochs)
     else:
         train_dataset = EmbeddingDataset(train, target=target_label, transform_fn=transform_fn)
@@ -255,8 +255,8 @@ if __name__ == '__main__':
     parser.add_argument('--balance', action='store_true', help='balance the dataset by age and sex')
     parser.add_argument('--ukbb_size', type=float, default=0.15,
                         help='size of the validation split constructed from the ukbb set to evaluate')
-    parser.add_argument('--val_size', type=float, default=0.2,
-                        help='size of the validation split constructed from the set to evaluate')
+    parser.add_argument('--test_size', type=float, default=0.2,
+                        help='size of the test split constructed from the training set')
     parser.add_argument('--random_state', type=int, default=42, help='random state for reproducibility')
     parser.add_argument('--val', action='store_true',
                         help='split train to perform hyperparameter tuning')
@@ -297,7 +297,7 @@ if __name__ == '__main__':
 
         if not args.manifold:
             data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
-            predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.val_size,
+            predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.test_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,
                                     args.batch_size, args.n_layers, args.epochs, args.lr, args.dp, args.n_iters,
                                     args.n_workers, args.use_age, args.val, save_path, args.device)
