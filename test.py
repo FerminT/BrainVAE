@@ -292,7 +292,7 @@ if __name__ == '__main__':
             run_name += '_with_age'
         if args.balance:
             embeddings_df = balance_dataset(embeddings_df, args.label)
-            print(embeddings_df.groupby(args.label)['age_at_scan'].describe())
+            print(embeddings_df.groupby(args.label)['age_at_scan'].describe().iloc[:, :7])
             print(embeddings_df.groupby(args.label)['gender'].describe())
             save_path = Path(EVALUATION_PATH, args.dataset + '_balanced', args.set, args.cfg) / run_name
             save_path.mkdir(parents=True, exist_ok=True)
