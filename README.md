@@ -76,3 +76,8 @@ To plot the AUC-ROC results of the evaluations on balanced disease estimation by
 ```bash
 python plot.py -d diseased_balanced -c age_invariant/e100 age_agnostic/e100 age_aware/e100
 ```
+
+To perform dimensionality reduction on the embeddings and plot all classes (e.g., AD, MCI, HC) matched by age and sex in 2D space, use:
+```bash
+python test.py e100/last --cfg <cfg_name> --dataset diseased_balanced --label dx --manifold pca
+```
