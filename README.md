@@ -53,18 +53,18 @@ python train.py --cfg age_invariant --epochs 100
 ### Testing
 Testing is done on the embeddings extracted from the general population and diseased and healthy controls datasets, training a shallow neural network to evaluate the information they codify:
 ```bash
-python test.py <ckpt_path> --dataset <dataset_name> --cfg <config_name> --set <split_name> --epochs <n_epochs> --batch_size <batch_size> --label <target_label> --test_size <test_size>
+python test.py <ckpt_path> --dataset <dataset_name> --cfg <config_name> --set <split_name> --label <target_label> --test_size <test_size> --epochs <n_epochs> --batch_size <batch_size>
 ```
-Where `<ckpt_path>` is the relative path to the trained model checkpoint (e.g., `e100/last`), `<dataset_name>` is the name of the aggregated dataset to evaluate on (e.g., `general`), `<split_name>` is one of `val` or `test`, `<target_label>` is one of `age_at_scan`, `gender`, `bmi`, `dvp`, `dvh`, or `hvp`, and `<test_size>` is the proportion of the training set to use for evaluation. In the case of diseased and healthy controls datasets, add `--balance` to balance the classes for classification tasks.
+Where `<ckpt_path>` is the relative path to the trained model checkpoint (e.g., `e100/last`), `<dataset_name>` is the name of the aggregated dataset to evaluate on (e.g., `general`), `<split_name>` is one of `val` or `test`, `<target_label>` is one of `age_at_scan`, `gender`, `bmi`, `dvp`, `dvh`, or `hvp`, and `<test_size>` is the proportion of the training set to use for evaluation. In the case of diseased and healthy controls datasets, add `--balance` to balance the classes for classification tasks. Add `--use_last` to use the hyperparameters from the last run.
 
 For example, to evaluate age prediction on the test set of the general population datasets using the age-invariant VAE embeddings:
 ```bash
-python test.py e100/last --cfg age_invariant --set test --label age_at_scan --test_size 0.3
+python test.py e100/last --cfg age_invariant --set test --label age_at_scan --test_size 0.3 --use_last
 ```
 
 To evaluate disease prediction (AD vs. HC) on the test set of the diseased and healthy controls datasets using the age-invariant VAE embeddings:
 ```bash
-python test.py e100/last --dataset diseased --balance --test_size 0.2 --cfg age_invariant --label dvh
+python test.py e100/last --dataset diseased --balance --cfg age_invariant --label dvh --use_last
 ```
 ### Plotting
 To plot the results of the evaluations on phenotype estimation by the age-invariant, age-agnostic, and age-aware VAE embeddings in the test set of general populations datasets, use:
