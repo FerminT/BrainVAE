@@ -6,7 +6,8 @@ from scripts.embedding_dataset import EmbeddingDataset
 from scripts.embedding_eval import test_on_val, test_classifier, train_classifier, compute_metrics, report_results, \
     add_baseline_results
 from scripts.t1_dataset import T1Dataset
-from scripts.utils import (load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model)
+from scripts.utils import (load_yaml, reconstruction_comparison_grid, init_embedding, subjects_embeddings, load_model,
+                           load_hyperparameters)
 from lightning.pytorch import seed_everything
 from models.utils import get_latent_representation
 from tqdm import tqdm
@@ -242,6 +243,7 @@ if __name__ == '__main__':
                         help='number of iterations (with different seeds) to evaluate the classifier')
     parser.add_argument('--n_layers', type=int, default=2, help='number of layers in the classifier')
     parser.add_argument('--n_workers', type=int, default=12, help='number of workers for bootstrapping')
+    parser.add_argument('--use_last', action='store_true', help='use the hyperparameters from the last run')
     parser.add_argument('--use_age', action='store_true', help='add age as a feature to the classifier')
     parser.add_argument('--sample', type=int, default=0, help='subject id from which to reconstruct MRI data')
     parser.add_argument('--age', type=float, default=0.0, help='age of the subject to resample to, if using ICVAE')
@@ -296,6 +298,8 @@ if __name__ == '__main__':
             save_path.mkdir(parents=True, exist_ok=True)
 
         if not args.manifold:
+            if args.use_last:
+                load_hyperparameters(save_path, args)
             data, age_range, bmi_range = load_set(args.dataset, args.set, args.splits_path, args.random_state)
             predict_from_embeddings(embeddings_df, args.cfg, args.dataset, args.ukbb_size, args.test_size,
                                     config['latent_dim'], age_range, bmi_range, args.label, args.target,

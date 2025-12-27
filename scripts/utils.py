@@ -51,6 +51,19 @@ def load_yaml(filepath):
         return yaml.safe_load(file)
 
 
+def load_hyperparameters(filepath, args):
+    hp_file = filepath / f'{args.label}_params.yaml'
+    if hp_file.exists():
+        hp_config = load_yaml(hp_file)
+        args.batch_size = hp_config.get('batch_size', args.batch_size)
+        args.epochs = hp_config.get('epochs', args.epochs)
+        args.lr = hp_config.get('lr', args.lr)
+        args.dp = hp_config.get('dropout', args.dp)
+        args.n_layers = hp_config.get('n_layers', args.n_layers)
+        print(f'Using hyperparameters from last run: batch_size={args.batch_size}, epochs={args.epochs}, '
+              f'lr={args.lr}, dropout={args.dp}, n_layers={args.n_layers}')
+
+
 def load_model(weights_path, config, device):
     weights = get_weights(weights_path)
     model = ICVAE.load_from_checkpoint(weights, **config).to(device)
