@@ -341,7 +341,7 @@ if __name__ == '__main__':
                         help='configurations to plot')
     parser.add_argument('-w', '--age_windows', type=int, default=0,
                         help='Divide classifications in n equidistant age windows')
-    parser.add_argument('--set', type=str, default='val', help='set to plot evaluations from (val or test)')
+    parser.add_argument('--set', type=str, default='test', help='set to plot evaluations from (val or test)')
     args = parser.parse_args()
     results_path = Path(EVALUATION_PATH, args.dataset, args.set)
 

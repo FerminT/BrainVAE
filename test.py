@@ -253,7 +253,7 @@ if __name__ == '__main__':
                         help='label used for prediction and plotting latent representations'),
     parser.add_argument('--color_label', type=str, default=None,
                         help='label used for coloring the embeddings when doing manifold learning')
-    parser.add_argument('--set', type=str, default='val', help='set to evaluate (val or test)')
+    parser.add_argument('--set', type=str, default='test', help='set to evaluate (val or test)')
     parser.add_argument('--balance', action='store_true', help='balance the dataset by age and sex')
     parser.add_argument('--ukbb_size', type=float, default=0.15,
                         help='size of the validation split constructed from the ukbb set to evaluate')
