@@ -59,7 +59,7 @@ Where `<ckpt_path>` is the relative path to the trained model checkpoint (e.g., 
 
 For example, to evaluate age prediction on the test set of the general population datasets using the age-invariant VAE embeddings:
 ```bash
-python test.py e100/last --cfg age_invariant --set test --label age_at_scan --test_size 0.3 --use_last
+python test.py e100/last --cfg age_invariant --label age_at_scan --test_size 0.3 --use_last
 ```
 
 To evaluate disease prediction (AD vs. HC) on the test set of the diseased and healthy controls datasets using the age-invariant VAE embeddings:
@@ -69,7 +69,7 @@ python test.py e100/last --dataset diseased --balance --cfg age_invariant --labe
 ### Plotting
 To plot the results of the evaluations on phenotype estimation by the age-invariant, age-agnostic, and age-aware VAE embeddings in the test set of general populations datasets, use:
 ```bash
-python plot.py -b -t age_at_scan bmi gender -d general -c age_invariant/e100 age_agnostic/e100 age_aware/e100 baseline --set test
+python plot.py -b -t age_at_scan bmi gender -d general -c age_invariant/e100 age_agnostic/e100 age_aware/e100 baseline
 ```
 
 To plot the AUC-ROC results of the evaluations on balanced disease estimation by the age-invariant, age-agnostic, and age-aware VAEs embeddings in the test set of diseased and healthy controls datasets, use:
